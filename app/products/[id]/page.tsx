@@ -51,7 +51,7 @@ export default async function ProductPage({
         <div className="grid items-start grid-cols-1 lg:grid-cols-2 gap-8 max-lg:gap-12 max-sm:gap-8">
           {/* Galería de imágenes */}
           <div>
-            <ProductGallery pr oduct={product} />
+            <ProductGallery product={product} />
           </div>
 
           {/* Información del producto */}
