@@ -21,7 +21,6 @@ export default async function ProductPage({
 
   const product = await prisma.product.findUnique({
     where: { id },
-    select: { id: true, name: true, price: true, desc: true, commissionValue: true, imageUrls: true },
   });
 
   const session = await getServerSession(authOptions);

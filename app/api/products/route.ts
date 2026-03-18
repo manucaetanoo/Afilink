@@ -25,7 +25,7 @@ export async function POST(req: Request) {
         name,
         desc: desc ?? null,
         price,
-        commissionValue: commissionValue ?? 10, // 👈 usa el valor enviado o default
+        commissionValue: commissionValue ?? 10, 
       },
       select: {
         id: true,
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
         desc: true,
         price: true,
         sellerId: true,
-        commissionValue: true, // 👈 corregido
+        commissionValue: true, 
       },
     });
 

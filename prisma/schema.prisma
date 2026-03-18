@@ -5,28 +5,26 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
 }
 
-// prisma/schema.prisma
 datasource db {
-  provider  = "postgresql"
-
+  provider = "postgresql"
 }
 
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
 
-  // 👤 Perfil
-  name         String?  @db.VarChar(60)   // nombre
-  lastName     String?  @db.VarChar(60)   // apellido
+  // Perfil
+  name         String?  @db.VarChar(60)
+  lastName     String?  @db.VarChar(60)
   username     String?  @unique @db.VarChar(30)
-  image        String?                 // URL avatar
+  image        String?
   timezone     String?  @db.VarChar(64)
 
-  // 🔐 Auth / sistema
+  // Auth / sistema
   passwordHash String?
   role         Role     @default(AFFILIATE)
   isActive     Boolean  @default(true)
@@ -34,91 +32,167 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // 🔗 Relaciones
-  products     Product[]
-  links        AffiliateLink[]
-  commissions  Commission[]
+  // Relaciones
+  products        Product[]       @relation("SellerProducts")
+  links           AffiliateLink[] @relation("AffiliateLinks")
+  commissions     Commission[]    @relation("AffiliateCommissions")
+  affiliateOrders Order[]         @relation("OrderAffiliate")
+  sellerOrders    Order[]         @relation("OrderSeller")
+  settlements     Settlement[]    @relation("SellerSettlements")
 
   @@index([role])
   @@index([isActive])
   @@index([username])
 }
 
-
-
 model Product {
   id        String   @id @default(cuid())
   sellerId  String
-  seller    User     @relation(fields: [sellerId], references: [id])
-
+  seller    User     @relation("SellerProducts", fields: [sellerId], references: [id])
 
   name      String
-  desc      String? // el ? hace que sea opcional
+  desc      String?
   price     Int
-  imageUrls String[] // ✅ varias fotos
+  imageUrls String[]
 
-  isActive  Boolean @default(true)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  commissionValue Int @default(5)
-  commissionType CommissionType @default(PERCENT)
+  // Comisión del afiliado (la define el seller)
+  commissionValue Int            @default(10)
+  commissionType  CommissionType @default(PERCENT)
+
+  // Comisión de la plataforma
+  platformCommissionValue Int            @default(10)
+  platformCommissionType  CommissionType @default(PERCENT)
 
   links     AffiliateLink[]
   orders    Order[]
 }
 
-
-
 model AffiliateLink {
   id          String   @id @default(cuid())
   code        String   @unique
+
   productId   String
   product     Product  @relation(fields: [productId], references: [id])
+
   affiliateId String
-  affiliate   User     @relation(fields: [affiliateId], references: [id])
+  affiliate   User     @relation("AffiliateLinks", fields: [affiliateId], references: [id])
+
   createdAt   DateTime @default(now())
 
   clicks      Click[]
 
-   @@unique([productId, affiliateId])
+  @@unique([productId, affiliateId])
 }
 
 model Click {
   id        String   @id @default(cuid())
+
   linkId    String
   link      AffiliateLink @relation(fields: [linkId], references: [id])
+
   createdAt DateTime @default(now())
 
-  //para las analytics
+  // Analytics
   ip        String?
   userAgent String?
-  orders   Order[]
+
+  orders    Order[]
 }
 
 model Order {
   id        String   @id @default(cuid())
+
   productId String
   product   Product  @relation(fields: [productId], references: [id])
+
+  sellerId  String
+  seller    User     @relation("OrderSeller", fields: [sellerId], references: [id])
+
+  affiliateId String?
+  affiliate   User?  @relation("OrderAffiliate", fields: [affiliateId], references: [id])
+
   total     Int
-  createdAt DateTime @default(now())
-  status   OrderStatus @default(PENDING)
-    
+  status    OrderStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+
   clickId   String?
   click     Click?   @relation(fields: [clickId], references: [id])
 
+  // Snapshot de comisión afiliado al momento de la compra
+  commissionValue  Int
+  commissionType   CommissionType
+  affiliateAmount  Int @default(0)
+
+  // Snapshot de comisión plataforma al momento de la compra
+  platformCommissionValue Int
+  platformCommissionType  CommissionType
+  platformAmount          Int @default(0)
+
+  // Lo que le queda al seller
+  sellerAmount Int @default(0)
+
+  // Datos del pago
+  paymentProvider String?
+  paymentId       String?
+  paymentStatus   String?
+
   commission Commission?
+  settlement Settlement?
+
+  @@index([productId])
+  @@index([sellerId])
+  @@index([affiliateId])
+  @@index([status])
+  @@index([clickId])
 }
 
 model Commission {
   id          String   @id @default(cuid())
+
   orderId     String   @unique
   order       Order    @relation(fields: [orderId], references: [id])
+
   affiliateId String
-  affiliate   User     @relation(fields: [affiliateId], references: [id])
+  affiliate   User     @relation("AffiliateCommissions", fields: [affiliateId], references: [id])
+
   amount      Int
   status      CommissionStatus @default(PENDING)
   createdAt   DateTime @default(now())
+
+  @@index([affiliateId])
+  @@index([status])
+}
+
+model Settlement {
+  id          String   @id @default(cuid())
+
+  orderId     String   @unique
+  order       Order    @relation(fields: [orderId], references: [id])
+
+  sellerId    String
+  seller      User     @relation("SellerSettlements", fields: [sellerId], references: [id])
+
+  // Monto total cobrado al comprador
+  grossAmount Int
+
+  // Comisión que retiene la plataforma
+  platformFee Int
+
+  // Comisión que corresponde al afiliado (si hubo)
+  affiliateFee Int
+
+  // Monto que le corresponde al seller
+  netAmount   Int
+
+  status      SettlementStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+
+  @@index([sellerId])
+  @@index([status])
 }
 
 enum Role {
@@ -143,4 +217,11 @@ enum OrderStatus {
 enum CommissionType {
   PERCENT
   FIXED
+}
+
+enum SettlementStatus {
+  PENDING
+  AVAILABLE
+  PAID
+  CANCELED
 }

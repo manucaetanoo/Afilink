@@ -18,8 +18,11 @@ export function BuyButton({ productId }: { productId: string }) {
     const orderId = j1.order.id;
 
     // Pago demo
-    const r2 = await fetch(`/api/orders/${orderId}/pay`, { method: "POST" });
+    const r2 = await fetch(`/api/orders/${orderId}/pay`, { 
+      method: "POST" 
+    });
     const j2 = await r2.json();
+    if (!j2.ok) return alert(j2.error ?? "Error al procesar el pago");
 
     // En vez de alert, redirigís:
     router.push(`/orders/${orderId}/success`);

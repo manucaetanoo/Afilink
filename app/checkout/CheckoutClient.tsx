@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { BuyButton } from "@/components/BuyButton";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type ProductLite = {
   id: string;
@@ -13,10 +13,66 @@ type ProductLite = {
 } | null;
 
 export default function CheckoutClient({ product }: { product: ProductLite }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const shipping = 6;
   const tax = 5;
   const subtotal = product?.price ?? 0;
   const total = subtotal + shipping + tax;
+
+  const handleBuy = async () => {
+    try {
+      setError(null);
+
+      if (!product) {
+        setError("No hay producto seleccionado.");
+        return;
+      }
+
+      setLoading(true);
+
+      // 1) Crear orden
+      const r1 = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productId: product.id,
+        }),
+      });
+
+      const j1 = await r1.json();
+
+      if (!r1.ok || !j1.ok) {
+        throw new Error(j1.error ?? "Error al crear el checkout");
+      }
+
+      const orderId = j1.order.id;
+
+      // 2) Pagar orden
+      const r2 = await fetch(`/api/orders/${orderId}/pay`, {
+        method: "POST",
+      });
+
+      const j2 = await r2.json();
+
+      if (!r2.ok || !j2.ok) {
+        throw new Error(j2.error ?? "Error al procesar el pago");
+      }
+
+      // 3) Redirigir a success
+      router.push(`/orders/${orderId}/success`);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Ocurrió un error inesperado";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="bg-white">
@@ -32,7 +88,8 @@ export default function CheckoutClient({ product }: { product: ProductLite }) {
                       No hay producto seleccionado.
                     </p>
                     <p className="text-xs text-slate-500 mt-1">
-                      Entrá a checkout con <span className="font-mono">?productId=...</span>
+                      Entrá a checkout con{" "}
+                      <span className="font-mono">?productId=...</span>
                     </p>
                   </div>
                 ) : (
@@ -40,7 +97,10 @@ export default function CheckoutClient({ product }: { product: ProductLite }) {
                     <div className="w-24 h-24 flex p-3 shrink-0 bg-white rounded-md">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={product.imageUrls?.[0] ?? "https://readymadeui.com/images/product14.webp"}
+                        src={
+                          product.imageUrls?.[0] ??
+                          "https://readymadeui.com/images/product14.webp"
+                        }
                         className="w-full object-contain"
                         alt={product.name}
                       />
@@ -56,7 +116,9 @@ export default function CheckoutClient({ product }: { product: ProductLite }) {
                         </li>
                         <li className="flex flex-wrap gap-4">
                           Total Price{" "}
-                          <span className="ml-auto font-semibold">${product.price}</span>
+                          <span className="ml-auto font-semibold">
+                            ${product.price}
+                          </span>
                         </li>
                       </ul>
                     </div>
@@ -92,25 +154,20 @@ export default function CheckoutClient({ product }: { product: ProductLite }) {
                   </li>
                 </ul>
 
-                <div className="mt-8 space-y-3">
-                  {product ? (
-                    <BuyButton productId={product.id} />
-                  ) : (
-                    <button
-                      type="button"
-                      disabled
-                      className="rounded-md px-4 py-2.5 w-full text-sm font-medium tracking-wide bg-slate-300 text-white cursor-not-allowed"
-                    >
-                      Completar compra
-                    </button>
-                  )}
+                {error && (
+                  <div className="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error}
+                  </div>
+                )}
 
+                <div className="mt-8 space-y-3">
                   <button
                     type="button"
-                    className="rounded-md px-4 py-2.5 w-full text-sm font-medium tracking-wide bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-                    onClick={() => console.log("Complete Purchase")}
+                    disabled={!product || loading}
+                    className="rounded-md px-4 py-2.5 w-full text-sm font-medium tracking-wide bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-300 disabled:cursor-not-allowed"
+                    onClick={handleBuy}
                   >
-                    Completar compra
+                    {loading ? "Procesando compra..." : "Completar compra"}
                   </button>
                 </div>
               </div>
@@ -123,7 +180,7 @@ export default function CheckoutClient({ product }: { product: ProductLite }) {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              console.log("submit");
+              handleBuy();
             }}
           >
             <div>
@@ -237,13 +294,25 @@ export default function CheckoutClient({ product }: { product: ProductLite }) {
                       id="card"
                       defaultChecked
                     />
-                    <label htmlFor="card" className="ml-4 flex gap-2 cursor-pointer">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="https://readymadeui.com/images/visa.webp" className="w-12" alt="visa" />
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="https://readymadeui.com/images/american-express.webp" className="w-12" alt="american express" />
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="https://readymadeui.com/images/master.webp" className="w-12" alt="mastercard" />
+                    <label
+                      htmlFor="card"
+                      className="ml-4 flex gap-2 cursor-pointer"
+                    >
+                      <img
+                        src="https://readymadeui.com/images/visa.webp"
+                        className="w-12"
+                        alt="visa"
+                      />
+                      <img
+                        src="https://readymadeui.com/images/american-express.webp"
+                        className="w-12"
+                        alt="american express"
+                      />
+                      <img
+                        src="https://readymadeui.com/images/master.webp"
+                        className="w-12"
+                        alt="mastercard"
+                      />
                     </label>
                   </div>
                   <p className="mt-4 text-sm text-slate-500 font-medium">
@@ -259,9 +328,15 @@ export default function CheckoutClient({ product }: { product: ProductLite }) {
                       className="w-5 h-5 cursor-pointer"
                       id="paypal"
                     />
-                    <label htmlFor="paypal" className="ml-4 flex gap-2 cursor-pointer">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="https://readymadeui.com/images/paypal.webp" className="w-20" alt="paypal" />
+                    <label
+                      htmlFor="paypal"
+                      className="ml-4 flex gap-2 cursor-pointer"
+                    >
+                      <img
+                        src="https://readymadeui.com/images/paypal.webp"
+                        className="w-20"
+                        alt="paypal"
+                      />
                     </label>
                   </div>
                   <p className="mt-4 text-sm text-slate-500 font-medium">

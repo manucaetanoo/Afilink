@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import {
+  CommissionStatus,
+  OrderStatus,
+  SettlementStatus,
+  type Prisma,
+} from "@prisma/client";
 
 export async function POST(
   _: Request,
@@ -15,59 +20,113 @@ export async function POST(
           where: { id: orderId },
           select: {
             id: true,
+            sellerId: true,
+            affiliateId: true,
             total: true,
-            clickId: true,
+            status: true,
+            affiliateAmount: true,
+            platformAmount: true,
+            sellerAmount: true,
+            paymentProvider: true,
+            paymentId: true,
+            paymentStatus: true,
             commission: { select: { id: true } },
-            product: { select: { commissionValue: true } }, // 👈 traemos comisión del producto
+            settlement: { select: { id: true } },
           },
         });
 
-        if (!order)
-          return { status: 404 as const, body: { ok: false, error: "Order no existe" } };
+        if (!order) {
+          return {
+            status: 404 as const,
+            body: { ok: false, error: "Order no existe" },
+          };
+        }
 
-        if (order.commission)
-          return { status: 200 as const, body: { ok: true, message: "Ya estaba comisionada" } };
+        // idempotencia
+        if (order.status === OrderStatus.PAID) {
+          return {
+            status: 200 as const,
+            body: { ok: true, message: "La orden ya estaba pagada" },
+          };
+        }
 
-        if (!order.clickId)
-          return { status: 200 as const, body: { ok: true, message: "Orden sin atribución" } };
-
-        const click = await tx.click.findUnique({
-          where: { id: order.clickId },
-          select: { linkId: true },
-        });
-
-        if (!click)
-          return { status: 200 as const, body: { ok: true, message: "clickId inválido" } };
-
-        const link = await tx.affiliateLink.findUnique({
-          where: { id: click.linkId },
-          select: { affiliateId: true },
-        });
-
-        if (!link)
-          return { status: 200 as const, body: { ok: true, message: "Link no existe" } };
-
-        // 👇 cálculo dinámico
-        const percent = order.product?.commissionValue ?? 0;
-        const amount = Math.floor((order.total * percent) / 100);
-
-        const commission = await tx.commission.create({
+        const updatedOrder = await tx.order.update({
+          where: { id: order.id },
           data: {
-            orderId: order.id,
-            affiliateId: link.affiliateId,
-            amount,
-            status: "PENDING",
+            status: OrderStatus.PAID,
+            paymentStatus: "approved",
+            paymentProvider: order.paymentProvider ?? "demo",
+            paymentId: order.paymentId ?? `demo_${order.id}`,
           },
-          select: { id: true, amount: true, status: true },
+          select: {
+            id: true,
+            status: true,
+            paymentStatus: true,
+            paymentProvider: true,
+            paymentId: true,
+          },
         });
 
-        return { status: 200 as const, body: { ok: true, commission } };
+        let commission = null;
+
+        if (!order.commission && order.affiliateId && order.affiliateAmount > 0) {
+          commission = await tx.commission.create({
+            data: {
+              orderId: order.id,
+              affiliateId: order.affiliateId,
+              amount: order.affiliateAmount,
+              status: CommissionStatus.PENDING,
+            },
+            select: {
+              id: true,
+              amount: true,
+              status: true,
+            },
+          });
+        }
+
+        let settlement = null;
+
+        if (!order.settlement) {
+          settlement = await tx.settlement.create({
+            data: {
+              orderId: order.id,
+              sellerId: order.sellerId,
+              grossAmount: order.total,
+              platformFee: order.platformAmount,
+              affiliateFee: order.affiliateAmount,
+              netAmount: order.sellerAmount,
+              status: SettlementStatus.AVAILABLE,
+            },
+            select: {
+              id: true,
+              grossAmount: true,
+              platformFee: true,
+              affiliateFee: true,
+              netAmount: true,
+              status: true,
+            },
+          });
+        }
+
+        return {
+          status: 200 as const,
+          body: {
+            ok: true,
+            order: updatedOrder,
+            commission,
+            settlement,
+          },
+        };
       }
     );
 
     return NextResponse.json(result.body, { status: result.status });
   } catch (e) {
     console.error(e);
-    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "Error interno" },
+      { status: 500 }
+    );
   }
 }

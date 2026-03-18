@@ -12,7 +12,6 @@ import { redirect } from "next/navigation";
 
 export default async function page() {
   const products = await prisma.product.findMany({
-    select: { id: true, name: true, desc:true, price: true, commissionValue:true, imageUrls:true },
     orderBy: { createdAt: "desc" },
 
 

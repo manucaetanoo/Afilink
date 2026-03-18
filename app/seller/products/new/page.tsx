@@ -25,6 +25,7 @@ const uploadImage = async (file: File) => {
 };
 
 export default function NewProductPage() {
+  const [] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,6 +147,7 @@ export default function NewProductPage() {
                             name="images"
                             type="file"
                             accept="image/*"
+                            required
                             multiple
                             className="sr-only"
                             onChange={(e) => {
@@ -196,7 +198,7 @@ export default function NewProductPage() {
               <CommissionRange
                 type={commissionType}
                 min={5}
-                max={100}
+                max={90}
                 step={5}
                 initialValue={commissionValue}
                 onChange={(val, type) => {
