@@ -3,9 +3,11 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
+// Usamos JWT que es como una cookie segura, pero sin necesidad de guardar nada en el servidor
+//El cliente guarda el JWT y lo manda en cada petición, y el servidor lo verifica y lee los datos que le pusimos (id, role, etc)
+
 
 export const authOptions: NextAuthOptions = {
-  // 👇 Usamos JWT (OBLIGATORIO con Credentials)
   session: {
     strategy: "jwt",
   },
@@ -49,9 +51,9 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-
+  
+  // Se ejecuta al crear/leer el JWT
   callbacks: {
-    // 👉 Se ejecuta al crear/leer el JWT
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = (user as any).id;
@@ -75,7 +77,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
-    // 👉 Se ejecuta cuando pedís la sesión (useSession / getServerSession)
+    // Se ejecuta cuando pedís la sesión (useSession / getServerSession)
     async session({ session, token }) {
       if (session.user) {
     (session.user as any).id = token.id as string;

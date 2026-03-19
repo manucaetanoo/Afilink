@@ -55,7 +55,7 @@ export default function Navbar() {
         <div className="relative flex h-16 items-center justify-between">
           {/* Mobile menu button */}
           <div className="absolute inset-y-0 left-0 flex items-center sm:hidden">
-            <DisclosureButton className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-300 hover:bg-white/5 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-indigo-500">
+            <DisclosureButton className="group relative inline-flex items-center justify-between rounded-md p-2 text-gray-300 hover:bg-white/5 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-indigo-500">
               <span className="absolute -inset-0.5" />
               <span className="sr-only">Open main menu</span>
               <Bars3Icon
@@ -105,6 +105,7 @@ export default function Navbar() {
               </div>
             </div>
             */}
+
           </div>
 
           {/* Right: notifications + user */}

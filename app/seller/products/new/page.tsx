@@ -45,7 +45,7 @@ export default function NewProductPage() {
 
     const fd = new FormData(e.currentTarget);
 
-    // ✅ 1) Subir TODAS las imágenes (si hay)
+    // 1) Subir TODAS las imágenes (si hay)
     let imageUrls: string[] = [];
     try {
       if (imageFiles.length > 0) {
@@ -57,14 +57,14 @@ export default function NewProductPage() {
       return setError(err?.message || "No se pudieron subir las imágenes");
     }
 
-    // ✅ 2) Crear payload con imageUrls
+    // 2) Crear payload con imageUrls
     const payload = {
       name: String(fd.get("name") || ""),
       desc: String(fd.get("desc") || ""),
       price: Number(fd.get("price") || 0),
       commissionValue,
       commissionType,
-      imageUrls, // 👈 NUEVO (array)
+      imageUrls, 
     };
 
     console.log("payload:", payload);
@@ -187,6 +187,7 @@ export default function NewProductPage() {
                   <input
                     name="price"
                     type="number"
+                    step="1"
                     min="0"
                     required
                     className="mt-2 block w-full rounded-md border p-2 text-gray-900"

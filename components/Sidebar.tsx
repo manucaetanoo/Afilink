@@ -86,7 +86,7 @@ const menuSeller = {
       title: "PRINCIPAL",
       items: [
         { title: "Dashboard", href: "/dashboard/seller", icon: <FiHome /> },
-        { title: "Productos", href: "/seller/productos", icon: <FiShoppingBag /> },
+        { title: "Mis productos", href: "/seller/products", icon: <FiShoppingBag /> },
         { title: "Órdenes", href: "/seller/ordenes", icon: <FiFileText /> },
       ],
     },
@@ -121,7 +121,7 @@ export default function Sidebar() {
 
   const menu = role === "SELLER" ? menuSeller : menuAfiliado;
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   return (
     <aside

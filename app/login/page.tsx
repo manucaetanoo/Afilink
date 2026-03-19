@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import Navbar from "@/components/Navbar"
+
 
 export default function Example() {
   const router = useRouter();
@@ -27,7 +27,7 @@ export default function Example() {
       return;
     }
 
-    router.push("/products"); // tu ruta real
+    router.push("/products"); // la ruta real
   }
 
   return (

@@ -1,6 +1,6 @@
 // app/orders/[id]/success/page.tsx
 export default async function SuccessPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; // 👈 acá se resuelve la Promise
+  const { id } = await params; // acá se resuelve la Promise
   const orderId = id;
 
   return (

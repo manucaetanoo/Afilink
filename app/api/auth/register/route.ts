@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   const name = body.name ? String(body.name).trim() : null;
   const role = body.role && Object.values(Role).includes(body.role.toUpperCase() as Role)
     ? (body.role.toUpperCase() as Role)
-    : Role.SELLER; // 👈 default válido
+    : Role.SELLER; // default válido
 
 
   if (!email || !password) {

@@ -9,13 +9,14 @@ const Toggle = ({ selected, setSelected }) => {
     return (
         <div className="relative flex w-fit items-center rounded-full">
             <button className={`${TOGGLE_CLASSES} ${selected === "SELLER" ? "text-white" : "text-dark"}`}
-                onClick={() => setSelected("SELLER")} >
+                onClick={() => setSelected("SELLER")} type="button">
                 <CiBag1 className="relative z-10 text-lg md:text-sm" />
                 <span className="relative z-10">Vendedor</span>
             </button> 
             <button className={`${TOGGLE_CLASSES} ${selected === "AFFILIATE" ? "text-white" : "text-slate-800"}`}
-                onClick={() => setSelected("AFFILIATE")} > <CiLink className="relative z-10 text-lg md:text-sm" />
+                onClick={() => setSelected("AFFILIATE")} type="button"> <CiLink className="relative z-10 text-lg md:text-sm" type="btn" />
                 <span className="relative z-10">Afiliado</span>
+                
             </button>
             <div className={`absolute inset-0 z-0 flex ${selected === "AFFILIATE" ? "justify-end" : "justify-start"}`} >
                 <motion.span layout transition={{ type: "spring", damping: 15, stiffness: 250 }} className="h-full w-1/2 rounded-full bg-orange-600" />

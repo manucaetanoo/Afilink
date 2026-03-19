@@ -8,13 +8,12 @@ type Props = {
 };
 
 export default async function CheckoutPage({ searchParams }: Props) {
-  const sp = await searchParams; // ✅ unwrap
-  const productId = sp.productId;
+  const sp = await searchParams; 
+  const productId = sp.productId; //Obtenemos el productId de la URL
 
-  console.log("[checkout] productId:", productId);
 
-  const totalProducts = await prisma.product.count();
-  console.log("[checkout] total products in DB:", totalProducts);
+
+
 
   const product = productId
     ? await prisma.product.findUnique({
@@ -31,6 +30,6 @@ export default async function CheckoutPage({ searchParams }: Props) {
     : null;
 
   console.log("[checkout] found product?", !!product);
-
+      //renderiza el componente
   return <CheckoutClient product={product} />;
 }

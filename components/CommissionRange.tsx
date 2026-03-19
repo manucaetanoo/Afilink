@@ -45,6 +45,7 @@ export const CommissionRange: React.FC<CommissionRangeProps> = ({
         className="range w-full accent-orange-600 hover:accent-orange-600"
         aria-label={`commission-${type}`}
       />
+      
 
       <div className="w-full flex justify-between text-xs px-2 mt-1">
         {Array.from({ length: Math.floor(max / step) + 1 }).map((_, i) => (

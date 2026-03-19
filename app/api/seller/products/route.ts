@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     if (name.length < 3)
       return NextResponse.json({ ok: false, error: "Nombre muy corto" }, { status: 400 });
 
-    // ⚠️ OJO: si querés permitir decimales, no uses Number.isInteger
+    // si querés permitir decimales, no uses Number.isInteger
     if (!Number.isFinite(price) || price <= 0) {
       return NextResponse.json({ ok: false, error: "Precio inválido" }, { status: 400 });
     }

@@ -22,6 +22,7 @@ export default function RegisterPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setLoading(true);
 
     // Validaciones front
     if (password !== confirmPassword) {
@@ -36,6 +37,7 @@ export default function RegisterPage() {
 
     setLoading(true);
 
+    // Enviamos los datos al backend
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -46,6 +48,7 @@ export default function RegisterPage() {
 
     const data = await res.json().catch(() => null);
 
+    // ok es una propiedad de la respuesta (res) que es un booleano y indica si el status esta entre 200 y 299
     if (!res.ok) {
       setError(data?.error || "No se pudo crear la cuenta");
       return;
@@ -75,7 +78,7 @@ export default function RegisterPage() {
       <div className="max-w-md w-full mx-auto  rounded-2xl p-8">
 
 
-        {/* 👇 FORM REAL */}
+        {/* FORM REAL */}
         <form onSubmit={onSubmit}>
           <div className="space-y-6">
             <div>
@@ -167,7 +170,7 @@ export default function RegisterPage() {
               disabled={loading}
               className="w-full py-3 px-4 text-sm tracking-wider font-medium rounded-md text-white bg-orange-600 hover:bg-orange-500 disabled:opacity-60"
             >
-              {loading ? "Creating..." : "Crear cuenta"}
+              {loading ? "Creando..." : "Crear cuenta"}
             </button>
           </div>
 

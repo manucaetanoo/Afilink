@@ -1,5 +1,5 @@
 import React from 'react'
-import Items from "../../components/Items"
+import Items from "@/components/Items"
 import Sidebar from "../../components/Sidebar"
 import {prisma} from "@/lib/prisma";
 import { Product } from '@prisma/client';
