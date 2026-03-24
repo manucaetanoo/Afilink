@@ -12,8 +12,6 @@ function money(n: number) {
   return new Intl.NumberFormat("en-US").format(n);
 }
 
-// ⚠️ En MVP, hardcodeá affiliateId o traelo de tu auth cuando la tengas.
-// Por ahora: poné el id del afiliado logueado (ej: desde cookie/session).
 
 
 export default async function Page() {
@@ -21,7 +19,7 @@ export default async function Page() {
     const affiliateId = session?.user?.id;
 
 
-    if (!session) { redirect("/login"); // 👈 si no hay sesión, lo manda al login }
+    if (!session) { redirect("/login"); 
     }
 
 

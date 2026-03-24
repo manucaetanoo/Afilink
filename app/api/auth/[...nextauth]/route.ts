@@ -90,7 +90,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // 👉 Página de login propia
+
   pages: {
     signIn: "/login",
   },

@@ -52,7 +52,7 @@ function cn(...classes: Array<string | false | null | undefined>) {
 export default function ProfileSettingsWarmPage() {
 
 
-  const router = useRouter();           // ✅ ADENTRO
+  const router = useRouter();           // ADENTRO
   const { update: updateSession } = useSession();
   const [form, setForm] = useState<ProfileForm>({
     Nombre: "",

@@ -7,8 +7,6 @@ function money(n: number) {
   return new Intl.NumberFormat("en-US").format(n);
 }
 
-// ⚠️ En MVP, hardcodeá affiliateId o traelo de tu auth cuando la tengas.
-// Por ahora: poné el id del afiliado logueado (ej: desde cookie/session).
 const affiliateId = "cmjkqubjx0001y4j4ruwsmqvc";
 
 export default async function Page() {

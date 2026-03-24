@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
     const cookieStore = await cookies();
 
-    // Si en algún momento guardás affiliateCode en cookie:
+
     const affiliateCode = cookieStore.get("aff_code")?.value;
 
     const order = await createOrder({

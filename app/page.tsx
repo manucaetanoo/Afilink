@@ -4,6 +4,8 @@
 import Image from "next/image";
 import Navbar from "../components/Navbar"
 
+
+
 import { useState } from 'react'
 import { Dialog, DialogPanel } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
@@ -15,10 +17,13 @@ type NavItem = {
   href: string;
 };
 
+
+
+
+
 const navigation: NavItem[] = [
   { name: "Inicio", href: "/" },
   { name: "Sobre nosotros", href: "/about" },
-  { name: "Contacto", href: "/contact" },
 ];
 
 
@@ -164,6 +169,7 @@ export default function Home() {
           />
         </div>
       </div>
+      
     </div>
     
   );
