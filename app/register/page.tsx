@@ -1,6 +1,6 @@
 "use client";
 
-import Navbar from "@/components/Navbar"
+import Navbar from "@/components/Navbarv2"
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -10,7 +10,8 @@ export default function RegisterPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+  //const [name, setName] = useState("");
+  const [storeSlug, setStoreSlug] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [terms, setTerms] = useState(false);
@@ -41,7 +42,7 @@ export default function RegisterPage() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, role:selected }),
+      body: JSON.stringify({ storeSlug, email, password, role:selected }),
     });
 
     setLoading(false);
@@ -83,15 +84,15 @@ export default function RegisterPage() {
           <div className="space-y-6">
             <div>
               <label className="text-slate-900 text-sm font-medium mb-2 block">
-                Nombre
+                Nombre de la empresa
               </label>
               <input
-                type="name"
+                type="text"
                 required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={storeSlug}
+                onChange={(e) => setStoreSlug(e.target.value)}
                 className="text-slate-900 bg-white border border-gray-300 w-full text-sm px-4 py-3 rounded-md outline-orange-500"
-                placeholder="Ingresar nombre"
+                placeholder="Ingresar el nombre de tu empresa"
               />
             </div>
 

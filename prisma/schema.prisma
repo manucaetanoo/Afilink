@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
@@ -14,26 +11,30 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id    String @id @default(cuid())
+  email String @unique @db.VarChar(191)
 
   // Perfil
-  name         String?  @db.VarChar(60)
-  lastName     String?  @db.VarChar(60)
-  username     String?  @unique @db.VarChar(30)
-  image        String?
-  timezone     String?  @db.VarChar(64)
+  name     String? @db.VarChar(60)
+  lastName String? @db.VarChar(60)
+  username String? @unique @db.VarChar(30)
+  image    String?
+  timezone String? @db.VarChar(64)
+
+  // Store
+  storeSlug String? @unique @db.VarChar(80)
 
   // Auth / sistema
   passwordHash String?
-  role         Role     @default(AFFILIATE)
-  isActive     Boolean  @default(true)
+  role         Role    @default(AFFILIATE)
+  isActive     Boolean @default(true)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relaciones
   products        Product[]       @relation("SellerProducts")
+  campaigns       Campaign[]      @relation("SellerCampaigns")
   links           AffiliateLink[] @relation("AffiliateLinks")
   commissions     Commission[]    @relation("AffiliateCommissions")
   affiliateOrders Order[]         @relation("OrderAffiliate")
@@ -43,15 +44,17 @@ model User {
   @@index([role])
   @@index([isActive])
   @@index([username])
+  @@index([storeSlug])
 }
 
 model Product {
-  id        String   @id @default(cuid())
-  sellerId  String
-  seller    User     @relation("SellerProducts", fields: [sellerId], references: [id])
+  id String @id @default(cuid())
 
-  name      String
-  desc      String?
+  sellerId String
+  seller   User   @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  name      String   @db.VarChar(140)
+  desc      String?  @db.Text
   price     Int
   imageUrls String[]
 
@@ -67,78 +70,133 @@ model Product {
   platformCommissionValue Int            @default(10)
   platformCommissionType  CommissionType @default(PERCENT)
 
-  links     AffiliateLink[]
-  orders    Order[]
+  links            AffiliateLink[]
+  orders           Order[]
+  campaignProducts CampaignProduct[]
+
+  @@index([sellerId])
+  @@index([isActive])
+  @@index([sellerId, isActive])
+}
+
+model Campaign {
+  id          String  @id @default(cuid())
+  title       String  @db.VarChar(120)
+  slug        String  @db.VarChar(140)
+  description String? @db.Text
+  bannerUrl   String?
+  isActive    Boolean @default(true)
+
+  // Opcional: fechas de vigencia
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  // Relación con seller
+  sellerId String
+  seller   User   @relation("SellerCampaigns", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products CampaignProduct[]
+
+  @@unique([sellerId, slug])
+  @@index([sellerId])
+  @@index([sellerId, isActive])
+  @@index([startsAt])
+  @@index([endsAt])
+}
+
+model CampaignProduct {
+  id String @id @default(cuid())
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([campaignId, productId])
+  @@index([campaignId])
+  @@index([productId])
 }
 
 model AffiliateLink {
-  id          String   @id @default(cuid())
-  code        String   @unique
+  id   String @id @default(cuid())
+  code String @unique @db.VarChar(120)
 
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   affiliateId String
-  affiliate   User     @relation("AffiliateLinks", fields: [affiliateId], references: [id])
+  affiliate   User   @relation("AffiliateLinks", fields: [affiliateId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  clicks      Click[]
+  clicks Click[]
 
   @@unique([productId, affiliateId])
+  @@index([affiliateId])
+  @@index([productId])
 }
 
 model Click {
-  id        String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  linkId    String
-  link      AffiliateLink @relation(fields: [linkId], references: [id])
+  linkId String
+  link   AffiliateLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
   // Analytics
-  ip        String?
-  userAgent String?
+  ip        String? @db.VarChar(64)
+  userAgent String? @db.Text
 
-  orders    Order[]
+  orders Order[]
+
+  @@index([linkId])
+  @@index([createdAt])
 }
 
 model Order {
-  id        String   @id @default(cuid())
+  id String @id @default(cuid())
 
   productId String
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 
-  sellerId  String
-  seller    User     @relation("OrderSeller", fields: [sellerId], references: [id])
+  sellerId String
+  seller   User   @relation("OrderSeller", fields: [sellerId], references: [id], onDelete: Restrict)
 
   affiliateId String?
-  affiliate   User?  @relation("OrderAffiliate", fields: [affiliateId], references: [id])
+  affiliate   User?   @relation("OrderAffiliate", fields: [affiliateId], references: [id], onDelete: SetNull)
 
   total     Int
   status    OrderStatus @default(PENDING)
   createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
-  clickId   String?
-  click     Click?   @relation(fields: [clickId], references: [id])
+  clickId String?
+  click   Click?  @relation(fields: [clickId], references: [id], onDelete: SetNull)
 
   // Snapshot de comisión afiliado al momento de la compra
-  commissionValue  Int
-  commissionType   CommissionType
-  affiliateAmount  Int @default(0)
+  commissionValue Int
+  commissionType  CommissionType
+  affiliateAmount Int            @default(0)
 
   // Snapshot de comisión plataforma al momento de la compra
   platformCommissionValue Int
   platformCommissionType  CommissionType
-  platformAmount          Int @default(0)
+  platformAmount          Int            @default(0)
 
   // Lo que le queda al seller
   sellerAmount Int @default(0)
 
   // Datos del pago
-  paymentProvider String?
-  paymentId       String?
-  paymentStatus   String?
+  paymentProvider String? @db.VarChar(50)
+  paymentId       String? @db.VarChar(191)
+  paymentStatus   String? @db.VarChar(50)
 
   commission Commission?
   settlement Settlement?
@@ -148,33 +206,38 @@ model Order {
   @@index([affiliateId])
   @@index([status])
   @@index([clickId])
+  @@index([createdAt])
+  @@index([sellerId, status])
+  @@index([affiliateId, status])
 }
 
 model Commission {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  orderId     String   @unique
-  order       Order    @relation(fields: [orderId], references: [id])
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   affiliateId String
-  affiliate   User     @relation("AffiliateCommissions", fields: [affiliateId], references: [id])
+  affiliate   User   @relation("AffiliateCommissions", fields: [affiliateId], references: [id], onDelete: Cascade)
 
-  amount      Int
-  status      CommissionStatus @default(PENDING)
-  createdAt   DateTime @default(now())
+  amount    Int
+  status    CommissionStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   @@index([affiliateId])
   @@index([status])
+  @@index([affiliateId, status])
 }
 
 model Settlement {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  orderId     String   @unique
-  order       Order    @relation(fields: [orderId], references: [id])
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  sellerId    String
-  seller      User     @relation("SellerSettlements", fields: [sellerId], references: [id])
+  sellerId String
+  seller   User   @relation("SellerSettlements", fields: [sellerId], references: [id], onDelete: Cascade)
 
   // Monto total cobrado al comprador
   grossAmount Int
@@ -186,13 +249,15 @@ model Settlement {
   affiliateFee Int
 
   // Monto que le corresponde al seller
-  netAmount   Int
+  netAmount Int
 
-  status      SettlementStatus @default(PENDING)
-  createdAt   DateTime @default(now())
+  status    SettlementStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   @@index([sellerId])
   @@index([status])
+  @@index([sellerId, status])
 }
 
 enum Role {

@@ -9,7 +9,7 @@ export async function POST(req: Request) {
 
   const email = String(body.email || "").toLowerCase().trim();
   const password = String(body.password || "");
-  const name = body.name ? String(body.name).trim() : null;
+  const storeSlug = body.storeSlug ? String(body.storeSlug).trim() : null;
   const role = body.role && Object.values(Role).includes(body.role.toUpperCase() as Role)
     ? (body.role.toUpperCase() as Role)
     : Role.SELLER; // default válido
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const user = await prisma.user.create({
     data: {
       email,
-      name,
+      storeSlug,
       passwordHash,
       role,
       isActive: true,

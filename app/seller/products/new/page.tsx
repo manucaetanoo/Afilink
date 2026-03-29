@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/Navbarv2";
 import { PhotoIcon } from "@heroicons/react/24/solid";
 import { CommissionRange } from "@/components/CommissionRange";
 

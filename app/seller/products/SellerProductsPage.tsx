@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import ItemSeller from "@/components/ItemSeller";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/Navbarv2";
 import Sidebar from "@/components/Sidebar";
 
 export default function SellerProductsClient({ role }: { role?: string }) {

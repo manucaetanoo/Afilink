@@ -1,6 +1,6 @@
 
 import Link from "next/link";
-import Navbar from "../../../components/Navbar";
+import Navbar from "../../../components/Navbarv2";
 import { prisma } from "@/lib/prisma";
 import { SessionDebug } from "@/components/SessionDebug";
 import { getServerSession } from "next-auth";

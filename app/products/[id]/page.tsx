@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { BuyButton } from "../../../components/BuyButton";
-import Navbar from "../../../components/Navbar"
+import Navbar from "../../../components/Navbarv2"
 import GetAffiliateLinkButton from "@/components/GetAffiliateLinkButton"
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
