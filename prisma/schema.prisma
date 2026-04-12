@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
@@ -24,6 +21,22 @@ model User {
   // Store
   storeSlug String? @unique @db.VarChar(80)
 
+  // Datos de cobro / liquidacion
+  payoutMethod         PayoutMethod? @default(BANK_TRANSFER)
+  payoutHolderName     String?       @db.VarChar(120)
+  payoutDocumentType   String?       @db.VarChar(30)
+  payoutDocumentNumber String?       @db.VarChar(40)
+  payoutEmail          String?       @db.VarChar(191)
+  payoutPhone          String?       @db.VarChar(40)
+  payoutCountry        String?       @db.VarChar(2)
+  payoutCurrency       String?       @db.VarChar(10)
+  bankName             String?       @db.VarChar(120)
+  bankAccountType      String?       @db.VarChar(30)
+  bankAccountNumber    String?       @db.VarChar(80)
+  bankAccountAlias     String?       @db.VarChar(120)
+  bankBranch           String?       @db.VarChar(120)
+  payoutNotes          String?       @db.Text
+
   // Auth / sistema
   passwordHash String?
   role         Role    @default(AFFILIATE)
@@ -33,13 +46,14 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relaciones
-  products        Product[]       @relation("SellerProducts")
-  campaigns       Campaign[]      @relation("SellerCampaigns")
-  links           AffiliateLink[] @relation("AffiliateLinks")
-  commissions     Commission[]    @relation("AffiliateCommissions")
-  affiliateOrders Order[]         @relation("OrderAffiliate")
-  sellerOrders    Order[]         @relation("OrderSeller")
-  settlements     Settlement[]    @relation("SellerSettlements")
+  products        Product[]               @relation("SellerProducts")
+  campaigns       Campaign[]              @relation("SellerCampaigns")
+  links           AffiliateLink[]         @relation("AffiliateLinks")
+  campaignLinks   AffiliateCampaignLink[] @relation("AffiliateCampaignLinks")
+  commissions     Commission[]            @relation("AffiliateCommissions")
+  affiliateOrders Order[]                 @relation("OrderAffiliate")
+  sellerOrders    Order[]                 @relation("OrderSeller")
+  settlements     Settlement[]            @relation("SellerSettlements")
 
   @@index([role])
   @@index([isActive])
@@ -98,7 +112,9 @@ model Campaign {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  products CampaignProduct[]
+  products       CampaignProduct[]
+  affiliateLinks AffiliateCampaignLink[]
+  orders         Order[]
 
   @@unique([sellerId, slug])
   @@index([sellerId])
@@ -142,11 +158,48 @@ model AffiliateLink {
   @@index([productId])
 }
 
+model AffiliateCampaignLink {
+  id   String @id @default(cuid())
+  code String @unique @db.VarChar(120)
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  affiliateId String
+  affiliate   User   @relation("AffiliateCampaignLinks", fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  clicks CampaignClick[]
+
+  @@unique([campaignId, affiliateId])
+  @@index([affiliateId])
+  @@index([campaignId])
+}
+
 model Click {
   id String @id @default(cuid())
 
   linkId String
   link   AffiliateLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // Analytics
+  ip        String? @db.VarChar(64)
+  userAgent String? @db.Text
+
+  orders Order[]
+
+  @@index([linkId])
+  @@index([createdAt])
+}
+
+model CampaignClick {
+  id String @id @default(cuid())
+
+  linkId String
+  link   AffiliateCampaignLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -172,13 +225,22 @@ model Order {
   affiliateId String?
   affiliate   User?   @relation("OrderAffiliate", fields: [affiliateId], references: [id], onDelete: SetNull)
 
+  // opcional: si la venta vino desde una campaña
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
   total     Int
   status    OrderStatus @default(PENDING)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
+  // atribución por link de producto
   clickId String?
   click   Click?  @relation(fields: [clickId], references: [id], onDelete: SetNull)
+
+  // atribución por link de campaña
+  campaignClickId String?
+  campaignClick   CampaignClick? @relation(fields: [campaignClickId], references: [id], onDelete: SetNull)
 
   // Snapshot de comisión afiliado al momento de la compra
   commissionValue Int
@@ -204,8 +266,10 @@ model Order {
   @@index([productId])
   @@index([sellerId])
   @@index([affiliateId])
+  @@index([campaignId])
   @@index([status])
   @@index([clickId])
+  @@index([campaignClickId])
   @@index([createdAt])
   @@index([sellerId, status])
   @@index([affiliateId, status])
@@ -289,4 +353,10 @@ enum SettlementStatus {
   AVAILABLE
   PAID
   CANCELED
+}
+
+enum PayoutMethod {
+  BANK_TRANSFER
+  MERCADO_PAGO
+  MANUAL
 }

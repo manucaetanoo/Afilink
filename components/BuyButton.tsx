@@ -1,31 +1,26 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 export function BuyButton({ productId }: { productId: string }) {
-  const router = useRouter();
-
   const buy = async () => {
-    const r1 = await fetch("/api/checkout", {
+    const response = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ productId }),
     });
 
-    const j1 = await r1.json();
-    if (!j1.ok) return alert(j1.error ?? "Checkout error");
+    const data = await response.json();
 
-    const orderId = j1.order.id;
+    if (!response.ok || !data.ok) {
+      return alert(data.error ?? "Checkout error");
+    }
 
-    // Pago demo
-    const r2 = await fetch(`/api/orders/${orderId}/pay`, { 
-      method: "POST" 
-    });
-    const j2 = await r2.json();
-    if (!j2.ok) return alert(j2.error ?? "Error al procesar el pago");
+    const checkoutUrl = data.checkout?.url;
 
-    // En vez de alert, redirigís:
-    router.push(`/orders/${orderId}/success`);
+    if (!checkoutUrl) {
+      return alert("No se pudo abrir el checkout");
+    }
+
+    window.location.href = checkoutUrl;
   };
 
   return (

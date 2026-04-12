@@ -21,16 +21,14 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-export default function CampaignProductCard({
-  product,
-}: ProductCardProps) {
+export default function CampaignProductCard({ product }: ProductCardProps) {
   const [loading, setLoading] = useState(false);
 
   const handleCheckout = async () => {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/checkout", {
+      const response = await fetch("/api/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -40,27 +38,22 @@ export default function CampaignProductCard({
         }),
       });
 
-      const data = await res.json();
+      const data = await response.json();
 
-      if (!res.ok) {
+      if (!response.ok || !data?.ok) {
         alert(data?.error || "No se pudo iniciar el checkout");
         return;
       }
 
-      if (data?.init_point) {
-        window.location.href = data.init_point;
+      if (data?.checkout?.url) {
+        window.location.href = data.checkout.url;
         return;
       }
 
-      if (data?.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-        return;
-      }
-
-      alert("El checkout no devolvió una URL de pago");
+      alert("El checkout no devolvio una URL valida");
     } catch (error) {
       console.error(error);
-      alert("Ocurrió un error inesperado");
+      alert("Ocurrio un error inesperado");
     } finally {
       setLoading(false);
     }
@@ -91,7 +84,7 @@ export default function CampaignProductCard({
           {product.desc}
         </p>
       ) : (
-        <p className="mt-2 text-sm text-gray-400">Sin descripción</p>
+        <p className="mt-2 text-sm text-gray-400">Sin descripcion</p>
       )}
 
       <p className="mt-3 text-base font-semibold text-gray-900">

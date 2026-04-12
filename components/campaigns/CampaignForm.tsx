@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Props = {
+  storeSlug?: string | null;
   defaultValues?: {
     title?: string;
     slug?: string;
@@ -16,7 +17,7 @@ type Props = {
   campaignId?: string;
 };
 
-export default function CampaignForm({ defaultValues, campaignId }: Props) {
+export default function CampaignForm({storeSlug, defaultValues, campaignId, }: Props) {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -57,7 +58,7 @@ export default function CampaignForm({ defaultValues, campaignId }: Props) {
       return;
     }
 
-    router.push("/dashboard/seller/campaigns");
+    router.push(`/store/${storeSlug}`);
     router.refresh();
   };
 

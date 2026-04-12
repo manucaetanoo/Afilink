@@ -5,13 +5,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Toggle from "@/components/Toggle"
+import { signIn } from "next-auth/react";
 
 export default function RegisterPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   //const [name, setName] = useState("");
-  const [storeSlug, setStoreSlug] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [terms, setTerms] = useState(false);
@@ -23,7 +24,7 @@ export default function RegisterPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setLoading(true);
+    
 
     // Validaciones front
     if (password !== confirmPassword) {
@@ -42,7 +43,7 @@ export default function RegisterPage() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ storeSlug, email, password, role:selected }),
+      body: JSON.stringify({ name, email, password, role:selected }),
     });
 
     setLoading(false);
@@ -55,8 +56,24 @@ export default function RegisterPage() {
       return;
     }
 
+    const loginRes = await signIn("credentials", {
+    email,
+    password,
+    redirect: false,
+  });
+
+    if (loginRes?.error) {
+    throw new Error("La cuenta se creó, pero no se pudo iniciar sesión");
+  }
+
     // Registro OK → login
+
+        if(selected == "SELLER") {
+      router.push("/onboarding/seller");
+    } else {
     router.push("/login");
+  }
+
   }
 
   return (
@@ -84,15 +101,15 @@ export default function RegisterPage() {
           <div className="space-y-6">
             <div>
               <label className="text-slate-900 text-sm font-medium mb-2 block">
-                Nombre de la empresa
+                Nombre
               </label>
               <input
                 type="text"
                 required
-                value={storeSlug}
-                onChange={(e) => setStoreSlug(e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="text-slate-900 bg-white border border-gray-300 w-full text-sm px-4 py-3 rounded-md outline-orange-500"
-                placeholder="Ingresar el nombre de tu empresa"
+                placeholder="Ingresar nombre"
               />
             </div>
 

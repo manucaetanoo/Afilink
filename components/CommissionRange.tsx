@@ -33,7 +33,7 @@ export const CommissionRange: React.FC<CommissionRangeProps> = ({
       <label className="block text-sm font-medium text-gray-800 mb-2">
         {type === "PERCENT" ? "Comisión que deseas que tenga tu producto" : "Comisión fija ($)"}
       </label>
-      <p className="text-xs text-gray-500 mb-3 mt-3"> Mientras más comisión mas facil se vendera pero ganarás menos. </p>
+      <p className="text-xs text-gray-500 mb-3 mt-3"> Mientras más comisión más facil se vendera pero ganarás menos. </p>
 
       <input
         type="range"

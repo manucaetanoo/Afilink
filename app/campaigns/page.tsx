@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import Tabs from "@/components/Tabs";
+import GetCampaignAffiliateLinkButton from "@/components/campaigns/GetCampaignAffiliateLinkButton";
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("es-UY", {
@@ -239,7 +240,7 @@ export default async function CampaignsPage() {
                   key={campaign.id}
                   className="group overflow-hidden rounded-[2rem] border border-orange-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_-20px_rgba(251,146,60,0.30)]"
                 >
-                  <Link href={`/campaigns/${campaign.slug}`} className="block">
+                  <Link href={`/store/${campaign.seller?.storeSlug}/campaign/${campaign.slug}`} className="block">
                     <div className="relative overflow-hidden">
                       <img
                         alt={campaign.slug}
@@ -270,7 +271,7 @@ export default async function CampaignsPage() {
                     </div>
 
                     <h3 className="mt-4 text-xl font-bold leading-tight text-slate-900 transition group-hover:text-orange-700">
-                      <Link href={`/campaigns/${campaign.slug}`}>{campaign.slug}</Link>
+                      <Link href={`/store/${campaign.seller?.storeSlug}/campaign/${campaign.slug}`}>{campaign.slug}</Link>
                     </h3>
 
                     <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
@@ -310,7 +311,7 @@ export default async function CampaignsPage() {
 
                     <div className="mt-6">
                       <Link
-                        href={`/campaigns/${campaign.slug}`}
+                        href={`/store/${campaign.seller?.storeSlug}/campaign/${campaign.slug}`}
                         className="inline-flex items-center text-sm font-semibold text-orange-600 transition hover:text-orange-700"
                       >
                         Ver campaña

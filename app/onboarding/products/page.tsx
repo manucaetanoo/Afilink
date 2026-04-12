@@ -10,7 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import Navbar from "@/components/Navbar";
 import { CommissionRange } from "@/components/CommissionRange";
-
+import ProgresBar from "@/components/ProgresBar";
 
 // ✅ Subida directa a Cloudinary
 const uploadImage = async (file: File) => {
@@ -94,13 +94,14 @@ export default function NewProductPage() {
       });
 
       const data = await res.json().catch(() => null);
+      router.push(`/onboarding/campaings?productId=${data?.productId}`);
 
       if (!res.ok || !data?.ok) {
         throw new Error(data?.error || "Error al crear el producto");
       }
 
       setMessage("Producto creado correctamente ✅");
-      router.push("/products");
+      //router.push("/onboarding/campaings");
     } catch (err: any) {
       setMessage(err?.message || "Ocurrió un error");
     } finally {
@@ -109,8 +110,8 @@ export default function NewProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fff7f0]s mt-15">
-<Navbar />
+    <div className="min-h-screen bg-[#fff7f0]s">
+
       <div className="px-4 py-10 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl">
           <div className="overflow-hidden rounded-[28px] border border-orange-100 bg-white shadow-[0_20px_60px_rgba(251,146,60,0.12)]">
@@ -325,6 +326,10 @@ export default function NewProductPage() {
                 </button>
               </div>
             </form>
+          </div>
+
+          <div className="mt-20 w-140 mx-auto">
+            <ProgresBar />
           </div>
         </div>
       </div>

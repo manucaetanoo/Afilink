@@ -16,13 +16,16 @@ export async function POST(req: Request) {
 
     const cookieStore = await cookies();
 
+    const clickId = cookieStore.get("aff_click_id")?.value;
+    const campaignClickId =
+      cookieStore.get("aff_campaign_click_id")?.value;
 
-    const affiliateCode = cookieStore.get("aff_code")?.value;
-
-    const order = await createOrder({
-      productId,
-      affiliateCode: affiliateCode || undefined,
-    });
+      
+      const order = await createOrder({
+        productId,
+        clickId: clickId || undefined,
+        campaignClickId: campaignClickId || undefined,
+      });
 
     return NextResponse.json(
       {
@@ -31,6 +34,9 @@ export async function POST(req: Request) {
           id: order.id,
           total: order.total,
           createdAt: order.createdAt,
+        },
+        checkout: {
+          url: `/checkout/${order.id}`,
         },
       },
       { status: 201 }

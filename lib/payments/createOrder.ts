@@ -1,15 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { calculateSplit } from "@/lib/payments/calculateSplit";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, CommissionStatus, SettlementStatus } from "@prisma/client";
 
 type CreateOrderInput = {
   productId: string;
-  affiliateCode?: string;
+  clickId?: string;
+  campaignClickId?: string;
 };
 
 export async function createOrder({
   productId,
-  affiliateCode,
+  clickId,
+  campaignClickId,
 }: CreateOrderInput) {
   const product = await prisma.product.findUnique({
     where: { id: productId },
@@ -24,23 +26,64 @@ export async function createOrder({
   }
 
   let affiliateId: string | null = null;
-  let clickId: string | null = null;
+  let resolvedClickId: string | null = null;
+  let campaignId: string | null = null;
+  let resolvedCampaignClickId: string | null = null;
 
-  if (affiliateCode) {
-    const link = await prisma.affiliateLink.findUnique({
-      where: { code: affiliateCode },
+  if (campaignClickId) {
+    const campaignClick = await prisma.campaignClick.findUnique({
+      where: { id: campaignClickId },
+      include: {
+        link: {
+          include: {
+            campaign: true,
+          },
+        },
+      },
     });
 
-    if (link && link.productId === product.id) {
-      affiliateId = link.affiliateId;
+    if (campaignClick && campaignClick.link.campaign.isActive) {
+      const now = new Date();
 
-      const click = await prisma.click.create({
-        data: {
-          linkId: link.id,
+      const started =
+        !campaignClick.link.campaign.startsAt ||
+        campaignClick.link.campaign.startsAt <= now;
+
+      const notEnded =
+        !campaignClick.link.campaign.endsAt ||
+        campaignClick.link.campaign.endsAt >= now;
+
+      const campaignProduct = await prisma.campaignProduct.findUnique({
+        where: {
+          campaignId_productId: {
+            campaignId: campaignClick.link.campaignId,
+            productId: product.id,
+          },
         },
       });
 
-      clickId = click.id;
+      const sameSeller =
+        campaignClick.link.campaign.sellerId === product.sellerId;
+
+      if (started && notEnded && campaignProduct && sameSeller) {
+        affiliateId = campaignClick.link.affiliateId;
+        campaignId = campaignClick.link.campaignId;
+        resolvedCampaignClickId = campaignClick.id;
+      }
+    }
+  }
+
+  if (!affiliateId && clickId) {
+    const click = await prisma.click.findUnique({
+      where: { id: clickId },
+      include: {
+        link: true,
+      },
+    });
+
+    if (click && click.link.productId === product.id) {
+      affiliateId = click.link.affiliateId;
+      resolvedClickId = click.id;
     }
   }
 
@@ -53,26 +96,56 @@ export async function createOrder({
     hasAffiliate: !!affiliateId,
   });
 
-  const order = await prisma.order.create({
-    data: {
-      productId: product.id,
-      sellerId: product.sellerId,
-      affiliateId,
-      total: product.price,
-      status: OrderStatus.PENDING,
-      clickId,
+  const order = await prisma.$transaction(async (tx) => {
+    const createdOrder = await tx.order.create({
+      data: {
+        productId: product.id,
+        sellerId: product.sellerId,
+        affiliateId,
+        campaignId,
+        total: product.price,
+        status: OrderStatus.PENDING,
+        clickId: resolvedClickId,
+        campaignClickId: resolvedCampaignClickId,
 
-      commissionValue: product.commissionValue,
-      commissionType: product.commissionType,
-      affiliateAmount: split.affiliateAmount,
+        commissionValue: product.commissionValue,
+        commissionType: product.commissionType,
+        affiliateAmount: split.affiliateAmount,
 
-      platformCommissionValue: product.platformCommissionValue,
-      platformCommissionType: product.platformCommissionType,
-      platformAmount: split.platformAmount,
+        platformCommissionValue: product.platformCommissionValue,
+        platformCommissionType: product.platformCommissionType,
+        platformAmount: split.platformAmount,
 
-      sellerAmount: split.sellerAmount,
-      paymentProvider: "mercadopago",
-    },
+        sellerAmount: split.sellerAmount,
+        paymentProvider: "mercadopago",
+        paymentStatus: "pending",
+      },
+    });
+
+    if (affiliateId && split.affiliateAmount > 0) {
+      await tx.commission.create({
+        data: {
+          orderId: createdOrder.id,
+          affiliateId,
+          amount: split.affiliateAmount,
+          status: CommissionStatus.PENDING,
+        },
+      });
+    }
+
+    await tx.settlement.create({
+      data: {
+        orderId: createdOrder.id,
+        sellerId: product.sellerId,
+        grossAmount: product.price,
+        platformFee: split.platformAmount,
+        affiliateFee: split.affiliateAmount,
+        netAmount: split.sellerAmount,
+        status: SettlementStatus.PENDING,
+      },
+    });
+
+    return createdOrder;
   });
 
   return order;

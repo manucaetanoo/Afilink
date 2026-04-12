@@ -13,10 +13,19 @@ function isValidUsername(u: string) {
   return /^[a-zA-Z0-9._-]{3,30}$/.test(u);
 }
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
+function isValidPayoutMethod(value: string | null) {
+  return value === null || ["BANK_TRANSFER", "MERCADO_PAGO", "MANUAL"].includes(value);
+}
 
-  const userId = (session?.user as any)?.id as string | undefined;
+async function getUserIdFromSession() {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+  return typeof userId === "string" ? userId : undefined;
+}
+
+export async function GET() {
+  const userId = await getUserIdFromSession();
+
   if (!userId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
@@ -30,6 +39,20 @@ export async function GET() {
       username: true,
       timezone: true,
       image: true,
+      payoutMethod: true,
+      payoutHolderName: true,
+      payoutDocumentType: true,
+      payoutDocumentNumber: true,
+      payoutEmail: true,
+      payoutPhone: true,
+      payoutCountry: true,
+      payoutCurrency: true,
+      bankName: true,
+      bankAccountType: true,
+      bankAccountNumber: true,
+      bankAccountAlias: true,
+      bankBranch: true,
+      payoutNotes: true,
       updatedAt: true,
     },
   });
@@ -42,16 +65,15 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
+  const userId = await getUserIdFromSession();
 
-  const userId = (session?.user as any)?.id as string | undefined;
   if (!userId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: "Body inválido" }, { status: 400 });
+    return NextResponse.json({ error: "Body invalido" }, { status: 400 });
   }
 
   const name = clean(body.name);
@@ -60,6 +82,21 @@ export async function POST(req: Request) {
   const image = clean(body.image);
   const usernameRaw = clean(body.username);
 
+  const payoutMethod = clean(body.payoutMethod);
+  const payoutHolderName = clean(body.payoutHolderName);
+  const payoutDocumentType = clean(body.payoutDocumentType);
+  const payoutDocumentNumber = clean(body.payoutDocumentNumber);
+  const payoutEmail = clean(body.payoutEmail);
+  const payoutPhone = clean(body.payoutPhone);
+  const payoutCountry = clean(body.payoutCountry);
+  const payoutCurrency = clean(body.payoutCurrency);
+  const bankName = clean(body.bankName);
+  const bankAccountType = clean(body.bankAccountType);
+  const bankAccountNumber = clean(body.bankAccountNumber);
+  const bankAccountAlias = clean(body.bankAccountAlias);
+  const bankBranch = clean(body.bankBranch);
+  const payoutNotes = clean(body.payoutNotes);
+
   if (name && name.length > 60) {
     return NextResponse.json({ error: "Nombre demasiado largo" }, { status: 400 });
   }
@@ -67,10 +104,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Apellido demasiado largo" }, { status: 400 });
   }
   if (timezone && timezone.length > 64) {
-    return NextResponse.json({ error: "Timezone inválido" }, { status: 400 });
+    return NextResponse.json({ error: "Timezone invalido" }, { status: 400 });
   }
   if (image && image.length > 500) {
-    return NextResponse.json({ error: "URL de imagen inválida" }, { status: 400 });
+    return NextResponse.json({ error: "URL de imagen invalida" }, { status: 400 });
+  }
+  if (!isValidPayoutMethod(payoutMethod)) {
+    return NextResponse.json({ error: "Metodo de cobro invalido" }, { status: 400 });
   }
 
   let username: string | null = null;
@@ -80,7 +120,7 @@ export async function POST(req: Request) {
 
     if (!isValidUsername(username)) {
       return NextResponse.json(
-        { error: "Username inválido (3-30, letras/números/._-)" },
+        { error: "Username invalido (3-30, letras/numeros/._-)" },
         { status: 400 }
       );
     }
@@ -94,7 +134,7 @@ export async function POST(req: Request) {
     });
 
     if (exists) {
-      return NextResponse.json({ error: "Ese username ya está en uso" }, { status: 409 });
+      return NextResponse.json({ error: "Ese username ya esta en uso" }, { status: 409 });
     }
   }
 
@@ -106,6 +146,20 @@ export async function POST(req: Request) {
       username,
       timezone,
       image,
+      payoutMethod: payoutMethod as "BANK_TRANSFER" | "MERCADO_PAGO" | "MANUAL" | null,
+      payoutHolderName,
+      payoutDocumentType,
+      payoutDocumentNumber,
+      payoutEmail,
+      payoutPhone,
+      payoutCountry,
+      payoutCurrency,
+      bankName,
+      bankAccountType,
+      bankAccountNumber,
+      bankAccountAlias,
+      bankBranch,
+      payoutNotes,
     },
     select: {
       email: true,
@@ -114,6 +168,20 @@ export async function POST(req: Request) {
       username: true,
       timezone: true,
       image: true,
+      payoutMethod: true,
+      payoutHolderName: true,
+      payoutDocumentType: true,
+      payoutDocumentNumber: true,
+      payoutEmail: true,
+      payoutPhone: true,
+      payoutCountry: true,
+      payoutCurrency: true,
+      bankName: true,
+      bankAccountType: true,
+      bankAccountNumber: true,
+      bankAccountAlias: true,
+      bankBranch: true,
+      payoutNotes: true,
       updatedAt: true,
     },
   });

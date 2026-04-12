@@ -11,7 +11,7 @@ const Toggle = ({ selected, setSelected }) => {
             <button className={`${TOGGLE_CLASSES} ${selected === "SELLER" ? "text-white" : "text-dark"}`}
                 onClick={() => setSelected("SELLER")} type="button">
                 <CiBag1 className="relative z-10 text-lg md:text-sm" />
-                <span className="relative z-10">Vendedor</span>
+                <span className="relative z-10">Empresa</span>
             </button> 
             <button className={`${TOGGLE_CLASSES} ${selected === "AFFILIATE" ? "text-white" : "text-slate-800"}`}
                 onClick={() => setSelected("AFFILIATE")} type="button"> <CiLink className="relative z-10 text-lg md:text-sm" type="btn" />

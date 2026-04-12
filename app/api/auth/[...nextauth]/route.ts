@@ -46,6 +46,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name ?? "",
           role: user.role,
+          storeSlug: user.storeSlug,
           image: user.image ?? null,
         } as any;
       },
@@ -61,6 +62,7 @@ export const authOptions: NextAuthOptions = {
         token.email = (user as any).email;
         token.name = (user as any).name;
         token.picture = (user as any).image; // si lo devolvés en authorize
+        token.storeSlug = (user as any).storeSlug;
       }
 
         // updateSession() desde el client
@@ -70,6 +72,7 @@ export const authOptions: NextAuthOptions = {
     if ((session.user as any).image !== undefined) token.picture = (session.user as any).image;
     if (session.user.email !== undefined) token.email = session.user.email;
     if ((session.user as any).role !== undefined) token.role = (session.user as any).role;
+    if ((session.user as any).storeSlug !== undefined) token.storeSlug = (session.user as any).storeSlug;
   }
 
 
@@ -84,6 +87,7 @@ export const authOptions: NextAuthOptions = {
     (session.user as any).role = token.role as string;
     session.user.email = token.email as string;
     session.user.name = token.name as string;
+    session.user.storeSlug = token.storeSlug as string;
     (session.user as any).image = token.picture as string;
       }
       return session;

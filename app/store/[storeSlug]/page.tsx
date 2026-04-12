@@ -135,7 +135,7 @@ export default async function StorePage(props: {
   return (
     <div>
       <Navbar />
-    <div className="min-h-screen w-full bg-[#fffaf5] text-slate-900">
+    <div className="min-h-screen w-full bg-[#fffaf5] text-slate-900 mt-15">
       <div className="mx-auto max-w-7xl px-6 py-8 lg:px-10">
         <header className="overflow-hidden rounded-[32px] border border-orange-100 bg-white shadow-[0_20px_60px_rgba(251,146,60,0.10)]">
           <div className="grid gap-10 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.18),transparent_28%),radial-gradient(circle_at_top_right,rgba(255,237,213,0.9),transparent_30%)] px-8 py-10 lg:grid-cols-[1.3fr_0.7fr] lg:px-12 lg:py-14">
@@ -336,7 +336,7 @@ export default async function StorePage(props: {
 
                         <div>
                           <p className="text-sm text-slate-500">
-                            Desde campaña
+                            Desde
                           </p>
                           <p className="mt-1 text-lg font-semibold text-slate-900">
                             {firstProduct
