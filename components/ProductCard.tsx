@@ -1,93 +1,143 @@
-import React from 'react'
-
-import { motion } from "motion/react";
-import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import Link from "next/link";
 import type { Product } from "@prisma/client";
-import Link from 'next/dist/client/link';
 
-
-
-type ItemProps = {
+type ProductCardProps = {
   product: Product;
+  showAffiliateHighlights?: boolean;
 };
 
-const formatPrice = (amount: number) => {
-  return `$${Number(amount).toFixed(2)}`;
+const formatPrice = (amount: number) =>
+  new Intl.NumberFormat("es-UY", {
+    style: "currency",
+    currency: "UYU",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+
+const getCommissionLabel = (product: Product) => {
+  if (product.commissionType === "FIXED") {
+    return formatPrice(product.commissionValue);
+  }
+
+  return `${product.commissionValue}%`;
 };
 
-export default async function Item({ product }: ItemProps) {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
+const getCommissionEarning = (product: Product) => {
+  if (product.commissionType === "FIXED") {
+    return product.commissionValue;
+  }
 
-  const user = userId
-    ? await prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, name: true, role: true },
-      })
-    : null;
+  return Math.round((product.price * product.commissionValue) / 100);
+};
 
-  const imageUrl =
-    product.imageUrls?.[0];
-
+export default function ProductCard({
+  product,
+  showAffiliateHighlights = false,
+}: ProductCardProps) {
+  const imageUrl = product.imageUrls?.[0] ?? null;
   const hasCommission =
-    user?.role === "AFFILIATE" &&
+    showAffiliateHighlights &&
     typeof product.commissionValue === "number" &&
     product.commissionValue > 0;
 
+  const commissionLabel = getCommissionLabel(product);
+  const commissionEarning = getCommissionEarning(product);
+
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
-      {/* Imagen */}
+    <article className="group overflow-hidden rounded-[28px] border border-orange-100 bg-white shadow-[0_15px_50px_-35px_rgba(15,23,42,0.45)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_30px_80px_-35px_rgba(249,115,22,0.45)]">
       <Link
         href={`/products/${product.id}`}
-        className="relative block aspect-[4/3] w-full overflow-hidden bg-slate-100"
+        className="relative block overflow-hidden"
       >
-        <img
-          src={imageUrl}
-          alt={product.name || "Producto"}
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-        />
-
         {hasCommission && (
-          <div className="absolute left-3 top-3">
-            <span className="inline-flex rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-600 shadow-sm">
-              {product.commissionValue}% comisión
-            </span>
+          <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4">
+            <div className="rounded-2xl bg-orange-500 px-4 py-3 text-white shadow-lg shadow-orange-500/30">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-100">
+                Comision
+              </p>
+              <p className="mt-1 text-2xl font-black leading-none">
+                {commissionLabel}
+              </p>
+              <p className="mt-1 text-xs text-white/85">por venta</p>
+            </div>
+
+            <div className="rounded-full border border-white/60 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+              Ganas {formatPrice(commissionEarning)}
+            </div>
           </div>
         )}
-      </Link>
 
-      {/* Contenido */}
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex-1">
-          <Link href={`/products/${product.id}`} className="block">
-            <h3 className="line-clamp-1 text-lg font-semibold text-slate-900">
-              {product.name}
-            </h3>
-          </Link>
-
-          <p className="mt-2 line-clamp-2 text-sm text-slate-600">
-            {product.desc ?? "Sin descripción"}
-          </p>
-
-          <div className="mt-4 flex items-center justify-between gap-3">
-            <span className="text-xl font-semibold text-slate-900">
-              {formatPrice(product.price)}
-            </span>
-          </div>
+        <div className="aspect-[4/4.6] w-full overflow-hidden bg-slate-100">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={product.name || "Producto"}
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105 group-hover:opacity-90"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-gradient-to-br from-orange-100 via-white to-amber-50 text-sm font-medium text-slate-500">
+              Sin imagen
+            </div>
+          )}
         </div>
 
-        {/* Botón */}
-        <div className="mt-5">
-          <Link href={`/products/${product.id}`} className="block">
-            <button
-              type="button"
-              className="inline-flex min-h-[42px] w-full items-center justify-center rounded-md bg-orange-300 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-400"
-            >
-              Comprar
-            </button>
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950/80 to-transparent" />
+      </Link>
+
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Link href={`/products/${product.id}`} className="block">
+              <h3 className="line-clamp-1 text-lg font-bold leading-tight text-slate-900 transition group-hover:text-orange-700">
+                {product.name}
+              </h3>
+            </Link>
+
+            <p className="mt-2 text-sm font-medium text-slate-500">
+              Precio de venta {formatPrice(product.price)}
+            </p>
+          </div>
+
+          {hasCommission && (
+            <div className="rounded-full bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 ring-1 ring-orange-100">
+              Ideal para afiliados
+            </div>
+          )}
+        </div>
+
+        <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600">
+          {product.desc ?? "Este producto no tiene descripcion todavia."}
+        </p>
+
+        {hasCommission && (
+          <div className="mt-5 rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 via-amber-50 to-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-700">
+              Ganancia estimada
+            </p>
+            <div className="mt-2 flex items-end justify-between gap-4">
+              <p className="text-2xl font-black text-slate-900">
+                {formatPrice(commissionEarning)}
+              </p>
+              <p className="text-right text-xs leading-5 text-slate-500">
+                por cada venta atribuida
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-5 flex gap-3">
+          <Link
+            href={`/products/${product.id}`}
+            className="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+          >
+            Ver producto
+          </Link>
+
+          <Link
+            href={`/products/${product.id}`}
+            className="inline-flex flex-1 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-500"
+          >
+            Comprar
           </Link>
         </div>
       </div>

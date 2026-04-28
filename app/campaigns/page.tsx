@@ -3,12 +3,13 @@ import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import Tabs from "@/components/Tabs";
 import GetCampaignAffiliateLinkButton from "@/components/campaigns/GetCampaignAffiliateLinkButton";
+import Sidebar from "@/components/Sidebar";
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("es-UY", {
     style: "currency",
     currency: "UYU",
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 0, 
     maximumFractionDigits: 2,
   }).format(value);
 
@@ -85,19 +86,22 @@ export default async function CampaignsPage() {
     ? Math.max(...campaignsWithMetrics.map((campaign) => campaign.maxCommissionPercent))
     : 0;
   const topEarning = campaignsWithMetrics.length
-    ? Math.max(...campaignsWithMetrics.map((campaign) => campaign.maxEarning))
-    : 0;
-
+  ? Math.max(...campaignsWithMetrics.map((campaign) => campaign.maxEarning))
+  : 0;
+  
   return (
     <div className="min-h-screen bg-[#fffaf5] text-slate-900">
       <Navbar />
+      <div className="flex mt-15">
+        <Sidebar />
+    
 
-      <main className="relative overflow-hidden pt-20">
+      <main className="relative flex-1 overflow-hidden pt-20">
         <div className="absolute inset-x-0 top-0 -z-10 h-[520px] bg-gradient-to-b from-orange-100/70 via-white to-transparent" />
         <div className="absolute left-[-120px] top-24 -z-10 h-72 w-72 rounded-full bg-orange-200/40 blur-3xl" />
         <div className="absolute right-[-80px] top-40 -z-10 h-80 w-80 rounded-full bg-amber-200/30 blur-3xl" />
 
-        <section className="mx-auto max-w-7xl px-6 pb-14 pt-10 lg:px-8">
+        <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_.95fr]">
             <div>
               <span className="inline-flex items-center rounded-full border border-orange-200 bg-white/80 px-4 py-1.5 text-sm font-medium text-orange-700 shadow-sm backdrop-blur">
@@ -124,7 +128,7 @@ export default async function CampaignsPage() {
                 <Link
                   href="/dashboard/seller/campaigns"
                   className="rounded-2xl border border-orange-200 bg-white px-6 py-3 text-sm font-semibold text-orange-700 transition hover:bg-orange-50"
-                >
+                  >
                   Crear una campaña
                 </Link>
               </div>
@@ -163,7 +167,7 @@ export default async function CampaignsPage() {
                         src={featuredCampaign.mainImage}
                         alt={featuredCampaign.slug}
                         className="aspect-[4/4.2] w-full object-cover"
-                      />
+                        />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/10 to-transparent" />
 
                       <div className="absolute left-5 top-5 flex flex-wrap gap-2">
@@ -214,7 +218,7 @@ export default async function CampaignsPage() {
         <section
           id="campaigns-grid"
           className="mx-auto max-w-7xl px-6 pb-24 lg:px-8"
-        >
+          >
           <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-600">
@@ -237,8 +241,8 @@ export default async function CampaignsPage() {
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
               {campaignsWithMetrics.map((campaign) => (
                 <article
-                  key={campaign.id}
-                  className="group overflow-hidden rounded-[2rem] border border-orange-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_-20px_rgba(251,146,60,0.30)]"
+                key={campaign.id}
+                className="group overflow-hidden rounded-[2rem] border border-orange-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_-20px_rgba(251,146,60,0.30)]"
                 >
                   <Link href={`/store/${campaign.seller?.storeSlug}/campaign/${campaign.slug}`} className="block">
                     <div className="relative overflow-hidden">
@@ -246,7 +250,7 @@ export default async function CampaignsPage() {
                         alt={campaign.slug}
                         src={campaign.mainImage}
                         className="aspect-[16/11] w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
+                        />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/35 to-transparent" />
 
                       <div className="absolute left-4 top-4 flex flex-wrap gap-2">
@@ -283,9 +287,9 @@ export default async function CampaignsPage() {
                       <div className="flex items-center gap-3">
                         {campaign.seller?.image ? (
                           <img
-                            alt={campaign.seller.name ?? "Seller"}
-                            src={campaign.seller.image}
-                            className="h-11 w-11 rounded-full object-cover ring-1 ring-orange-100"
+                          alt={campaign.seller.name ?? "Seller"}
+                          src={campaign.seller.image}
+                          className="h-11 w-11 rounded-full object-cover ring-1 ring-orange-100"
                           />
                         ) : (
                           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-700 ring-1 ring-orange-200">
@@ -313,7 +317,7 @@ export default async function CampaignsPage() {
                       <Link
                         href={`/store/${campaign.seller?.storeSlug}/campaign/${campaign.slug}`}
                         className="inline-flex items-center text-sm font-semibold text-orange-600 transition hover:text-orange-700"
-                      >
+                        >
                         Ver campaña
                         <span className="ml-2 transition group-hover:translate-x-1">→</span>
                       </Link>
@@ -339,7 +343,7 @@ export default async function CampaignsPage() {
                   <Link
                     href="/dashboard/seller/campaigns"
                     className="rounded-2xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-600"
-                  >
+                    >
                     Crear la primera campaña
                   </Link>
                 </div>
@@ -348,6 +352,7 @@ export default async function CampaignsPage() {
           )}
         </section>
       </main>
+                      </div>
     </div>
   );
 }

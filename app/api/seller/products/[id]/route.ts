@@ -1,52 +1,169 @@
-import { NextResponse } from "next/server";   // Utilidad de Next.js para responder en formato JSON
-import { prisma } from "@/lib/prisma";        // Cliente Prisma para interactuar con la base de datos
-import { requireUser, requireRole } from "@/lib/auth"; // Helpers de autenticación/autorización
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireRole, requireUser } from "@/lib/auth";
 
-// Handler para la ruta PATCH /api/seller/products/[id]
-// Sirve para editar un producto existente
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+const productCategories = [
+  "CLOTHING",
+  "SHOES",
+  "ACCESSORIES",
+  "BEAUTY",
+  "HOME",
+  "DIGITAL",
+  "OTHER",
+] as const;
+
+const categoriesWithSizes = new Set(["CLOTHING", "SHOES"]);
+
+function normalizeSizes(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  return Array.from(
+    new Set(
+      value
+        .filter((size): size is string => typeof size === "string")
+        .map((size) => size.trim().toUpperCase())
+        .filter(Boolean)
+    )
+  ).slice(0, 20);
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "ERROR";
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    // 1. Obtener el usuario logueado
     const user = await requireUser();
-
-    // 2. Validar que el usuario tenga rol SELLER o ADMIN
     requireRole(user, ["SELLER", "ADMIN"]);
 
-    // 3. Parsear el body JSON de la petición
+    const { id } = await params;
     const body = await req.json();
 
-    // 4. Construir objeto "data" con los campos a actualizar
-    const data: any = {};
-    if (body.name !== undefined) data.name = String(body.name).trim(); // si viene "name", lo guarda limpio
-    if (body.desc !== undefined) data.desc = String(body.desc).trim() || null; // si viene "desc", lo guarda o null
+    const data: {
+      name?: string;
+      desc?: string | null;
+      price?: number;
+      isActive?: boolean;
+      category?: (typeof productCategories)[number];
+      sizes?: string[];
+      commissionValue?: number;
+      commissionType?: "PERCENT" | "FIXED";
+      imageUrls?: string[];
+    } = {};
+
+    if (body.name !== undefined) {
+      const name = String(body.name).trim();
+
+      if (name.length < 3) {
+        return NextResponse.json(
+          { ok: false, error: "Nombre muy corto" },
+          { status: 400 }
+        );
+      }
+
+      data.name = name;
+    }
+
+    if (body.desc !== undefined) data.desc = String(body.desc).trim() || null;
+
     if (body.price !== undefined) {
       const price = Number(body.price);
-      // Validar que el precio sea entero y mayor a 0
+
       if (!Number.isInteger(price) || price <= 0) {
-        return NextResponse.json({ ok: false, error: "Precio inválido" }, { status: 400 });
+        return NextResponse.json(
+          { ok: false, error: "Precio invalido" },
+          { status: 400 }
+        );
       }
+
       data.price = price;
     }
-    if (body.isActive !== undefined) data.isActive = Boolean(body.isActive); // activar/desactivar producto
 
-    // 5. Condición de ownership:
-    // - Si es ADMIN, puede editar cualquier producto (solo filtra por id)
-    // - Si es SELLER, solo puede editar productos que le pertenecen (id + sellerId)
-    const where = user.role === "ADMIN" ? { id: params.id } : { id: params.id, sellerId: user.id };
+    if (body.category !== undefined) {
+      const category = String(body.category).trim().toUpperCase();
 
-    // 6. Ejecutar actualización en la base de datos
+      if (!productCategories.includes(category as (typeof productCategories)[number])) {
+        return NextResponse.json(
+          { ok: false, error: "Categoria invalida" },
+          { status: 400 }
+        );
+      }
+
+      data.category = category as (typeof productCategories)[number];
+      data.sizes = categoriesWithSizes.has(category)
+        ? normalizeSizes(body.sizes)
+        : [];
+    } else if (body.sizes !== undefined) {
+      data.sizes = normalizeSizes(body.sizes);
+    }
+
+    if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
+
+    if (body.commissionValue !== undefined) {
+      const commissionValue = Number(body.commissionValue);
+
+      if (!Number.isInteger(commissionValue) || commissionValue <= 0) {
+        return NextResponse.json(
+          { ok: false, error: "Comision invalida" },
+          { status: 400 }
+        );
+      }
+
+      data.commissionValue = commissionValue;
+    }
+
+    if (body.commissionType !== undefined) {
+      const commissionType = String(body.commissionType).trim().toUpperCase();
+
+      if (!["PERCENT", "FIXED"].includes(commissionType)) {
+        return NextResponse.json(
+          { ok: false, error: "Tipo de comision invalido" },
+          { status: 400 }
+        );
+      }
+
+      data.commissionType = commissionType as "PERCENT" | "FIXED";
+    }
+
+    if (body.imageUrls !== undefined) {
+      data.imageUrls = Array.isArray(body.imageUrls)
+        ? (body.imageUrls as unknown[])
+            .filter((url: unknown): url is string => typeof url === "string")
+            .map((url) => url.trim())
+            .filter(Boolean)
+        : [];
+    }
+
+    const where = user.role === "ADMIN" ? { id } : { id, sellerId: user.id };
+
     const updated = await prisma.product.update({
-      where,   // filtro según rol
-      data,    // campos a actualizar
-      select: {id: true, name: true, desc: true, price: true, isActive: true, commissionValue: true, commissionType: true,  sellerId: true, imageUrls:true }, // solo devuelve el id del producto actualizado
+      where,
+      data,
+      select: {
+        id: true,
+        name: true,
+        desc: true,
+        price: true,
+        category: true,
+        sizes: true,
+        isActive: true,
+        commissionValue: true,
+        commissionType: true,
+        sellerId: true,
+        imageUrls: true,
+        updatedAt: true,
+      },
     });
 
-    // 7. Responder con éxito y el id del producto actualizado
-    return NextResponse.json({ ok: true, product:updated });
-  } catch (e: any) {
-    // 8. Manejo de errores
-    const msg = e?.message || "ERROR";
-    const status = msg === "UNAUTHORIZED" ? 401 : msg === "Debes tener rol de vendedor" ? 403 : 400;
+    return NextResponse.json({ ok: true, product: updated });
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e);
+    const status =
+      msg === "UNAUTHORIZED" ? 401 : msg === "Debes tener rol de vendedor" ? 403 : 400;
+
     return NextResponse.json({ ok: false, error: msg }, { status });
   }
 }

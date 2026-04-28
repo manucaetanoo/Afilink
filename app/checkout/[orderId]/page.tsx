@@ -9,26 +9,58 @@ type Props = {
 export default async function CheckoutOrderPage({ params }: Props) {
   const { orderId } = await params;
 
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    select: {
-      id: true,
-      total: true,
-      status: true,
-      paymentStatus: true,
-      product: {
+  const orders = orderId.startsWith("cart_")
+    ? await prisma.order.findMany({
+        where: { paymentId: orderId },
+        orderBy: { createdAt: "asc" },
         select: {
-          name: true,
-          desc: true,
-          imageUrls: true,
+          id: true,
+          total: true,
+          status: true,
+          paymentStatus: true,
+          product: {
+            select: {
+              name: true,
+              desc: true,
+              imageUrls: true,
+            },
+          },
         },
-      },
-    },
-  });
+      })
+    : await prisma.order
+        .findUnique({
+          where: { id: orderId },
+          select: {
+            id: true,
+            total: true,
+            status: true,
+            paymentStatus: true,
+            product: {
+              select: {
+                name: true,
+                desc: true,
+                imageUrls: true,
+              },
+            },
+          },
+        })
+        .then((order) => (order ? [order] : []));
 
-  if (!order) {
+  if (orders.length === 0) {
     notFound();
   }
+
+  const order = {
+    id: orderId,
+    total: orders.reduce((total, item) => total + item.total, 0),
+    status: orders.every((item) => item.status === "PAID") ? "PAID" : "PENDING",
+    paymentStatus: orders.find((item) => item.paymentStatus)?.paymentStatus ?? null,
+    items: orders.map((item) => ({
+      id: item.id,
+      total: item.total,
+      product: item.product,
+    })),
+  };
 
   return (
     <main className="min-h-screen bg-[#fffaf5] px-4 py-10 md:px-8">

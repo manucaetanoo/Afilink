@@ -10,7 +10,10 @@ type ProductCardProps = {
     price: number;
     desc: string | null;
     imageUrl: string | null;
+    commissionValue: number;
+    commissionType: "PERCENT" | "FIXED";
   };
+  showAffiliateHighlights?: boolean;
 };
 
 function formatPrice(price: number) {
@@ -21,8 +24,40 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-export default function CampaignProductCard({ product }: ProductCardProps) {
+function getCommissionLabel(price: number, value: number, type: "PERCENT" | "FIXED") {
+  if (type === "FIXED") {
+    return formatPrice(value);
+  }
+
+  return `${value}%`;
+}
+
+function getCommissionEarning(price: number, value: number, type: "PERCENT" | "FIXED") {
+  if (type === "FIXED") {
+    return value;
+  }
+
+  return Math.round((price * value) / 100);
+}
+
+export default function CampaignProductCard({
+  product,
+  showAffiliateHighlights = true,
+}: ProductCardProps) {
   const [loading, setLoading] = useState(false);
+
+  const commissionLabel = getCommissionLabel(
+    product.price,
+    product.commissionValue,
+    product.commissionType
+  );
+  const commissionEarning = getCommissionEarning(
+    product.price,
+    product.commissionValue,
+    product.commissionType
+  );
+  const hasAffiliateHighlights =
+    showAffiliateHighlights && product.commissionValue > 0;
 
   const handleCheckout = async () => {
     try {
@@ -60,52 +95,105 @@ export default function CampaignProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-      <div className="h-52 w-full overflow-hidden rounded-xl bg-gray-100">
-        {product.imageUrl ? (
-          <img
-            src={product.imageUrl}
-            alt={product.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-gray-400">
-            Sin imagen
+    <article className="group overflow-hidden rounded-[28px] border border-orange-100 bg-white shadow-[0_15px_50px_-35px_rgba(15,23,42,0.45)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_30px_80px_-35px_rgba(249,115,22,0.45)]">
+      <div className="relative overflow-hidden">
+        {hasAffiliateHighlights && (
+          <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4">
+            <div className="rounded-2xl bg-orange-500 px-4 py-3 text-white shadow-lg shadow-orange-500/30">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-100">
+                Comision
+              </p>
+              <p className="mt-1 text-2xl font-black leading-none">{commissionLabel}</p>
+              <p className="mt-1 text-xs text-white/85">por venta</p>
+            </div>
+
+            <div className="rounded-full border border-white/60 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+              Ganas {formatPrice(commissionEarning)}
+            </div>
           </div>
         )}
+
+        <div className="aspect-[4/4.6] w-full overflow-hidden bg-slate-100">
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.name}
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105 group-hover:opacity-90"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-gradient-to-br from-orange-100 via-white to-amber-50 text-sm font-medium text-slate-500">
+              Sin imagen
+            </div>
+          )}
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950/80 to-transparent" />
       </div>
 
-      <h3 className="mt-4 text-lg font-semibold text-gray-900">
-        {product.name}
-      </h3>
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-bold leading-tight text-slate-900 transition group-hover:text-orange-700">
+              {product.name}
+            </h3>
+            <p className="mt-2 text-sm font-medium text-slate-500">
+              Precio de venta {formatPrice(product.price)}
+            </p>
+          </div>
 
-      {product.desc ? (
-        <p className="mt-2 line-clamp-2 text-sm text-gray-500">
-          {product.desc}
-        </p>
-      ) : (
-        <p className="mt-2 text-sm text-gray-400">Sin descripcion</p>
-      )}
+          {hasAffiliateHighlights ? (
+            <div className="rounded-full bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 ring-1 ring-orange-100">
+              Ideal para afiliados
+            </div>
+          ) : (
+            <div className="rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-100">
+              Listo para comprar
+            </div>
+          )}
+        </div>
 
-      <p className="mt-3 text-base font-semibold text-gray-900">
-        {formatPrice(product.price)}
-      </p>
+        {product.desc ? (
+          <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600">
+            {product.desc}
+          </p>
+        ) : (
+          <p className="mt-4 text-sm text-slate-400">
+            Este producto no tiene descripcion todavia.
+          </p>
+        )}
 
-      <div className="mt-5 flex gap-3">
-        <Link
-          href={`/products/${product.id}`}
-          className="inline-flex flex-1 items-center justify-center rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-        >
-          Ver producto
-        </Link>
+        {hasAffiliateHighlights && (
+          <div className="mt-5 rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 via-amber-50 to-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-700">
+              Ganancia estimada
+            </p>
+            <div className="mt-2 flex items-end justify-between gap-4">
+              <p className="text-2xl font-black text-slate-900">
+                {formatPrice(commissionEarning)}
+              </p>
+              <p className="text-right text-xs leading-5 text-slate-500">
+                por cada venta atribuida
+              </p>
+            </div>
+          </div>
+        )}
 
-        <button
-          onClick={handleCheckout}
-          disabled={loading}
-          className="inline-flex flex-1 items-center justify-center rounded-xl bg-orange-500 px-4 py-3 text-sm font-medium text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? "Procesando..." : "Comprar ahora"}
-        </button>
+        <div className="mt-5 flex gap-3">
+          <Link
+            href={`/products/${product.id}`}
+            className="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+          >
+            Ver producto
+          </Link>
+
+          <button
+            onClick={handleCheckout}
+            disabled={loading}
+            className="inline-flex flex-1 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? "Procesando..." : "Comprar ahora"}
+          </button>
+        </div>
       </div>
     </article>
   );

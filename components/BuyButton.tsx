@@ -1,6 +1,11 @@
 "use client";
 
-export function BuyButton({ productId }: { productId: string }) {
+type BuyButtonProps = {
+  productId: string;
+  className?: string;
+};
+
+export function BuyButton({ productId, className }: BuyButtonProps) {
   const buy = async () => {
     const response = await fetch("/api/checkout", {
       method: "POST",
@@ -27,7 +32,10 @@ export function BuyButton({ productId }: { productId: string }) {
     <button
       onClick={buy}
       type="button"
-      className="px-4 py-3 w-[45%] cursor-pointer border border-orange-400 bg-orange-400 hover:bg-orange-300 text-white text-sm font-medium"
+      className={
+        className ??
+        "w-full cursor-pointer rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600"
+      }
     >
       Comprar
     </button>

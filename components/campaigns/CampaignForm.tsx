@@ -3,25 +3,28 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type CampaignFormValues = {
+  title?: string;
+  slug?: string;
+  description?: string;
+  bannerUrl?: string;
+  isActive?: boolean;
+  startsAt?: string;
+  endsAt?: string;
+};
+
 type Props = {
   storeSlug?: string | null;
-  defaultValues?: {
-    title?: string;
-    slug?: string;
-    description?: string;
-    bannerUrl?: string;
-    isActive?: boolean;
-    startsAt?: string;
-    endsAt?: string;
-  };
+  defaultValues?: CampaignFormValues;
   campaignId?: string;
 };
 
-export default function CampaignForm({storeSlug, defaultValues, campaignId, }: Props) {
+type FormKey = keyof Required<CampaignFormValues>;
+
+export default function CampaignForm({ storeSlug, defaultValues, campaignId }: Props) {
   const router = useRouter();
-
   const [loading, setLoading] = useState(false);
-
+  const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: defaultValues?.title || "",
     slug: defaultValues?.slug || "",
@@ -32,18 +35,17 @@ export default function CampaignForm({storeSlug, defaultValues, campaignId, }: P
     endsAt: defaultValues?.endsAt || "",
   });
 
-  const handleChange = (key: string, value: any) => {
+  const handleChange = (key: FormKey, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setMessage(null);
 
     const res = await fetch(
-      campaignId
-        ? `/api/seller/campaigns/${campaignId}`
-        : `/api/seller/campaigns`,
+      campaignId ? `/api/seller/campaigns/${campaignId}` : "/api/seller/campaigns",
       {
         method: campaignId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -51,24 +53,35 @@ export default function CampaignForm({storeSlug, defaultValues, campaignId, }: P
       }
     );
 
+    const data = await res.json().catch(() => null);
     setLoading(false);
 
     if (!res.ok) {
-      alert("Error guardando campaña");
+      setMessage(data?.error || "Error guardando campana");
       return;
     }
 
-    router.push(`/store/${storeSlug}`);
+    router.push(
+      campaignId || !storeSlug
+        ? "/seller/campaigns"
+        : `/store/${storeSlug}`
+    );
     router.refresh();
   };
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-5"
+      className="space-y-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
     >
+      {message && (
+        <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
+          {message}
+        </div>
+      )}
+
       <div>
-        <label className="text-sm font-medium">Título</label>
+        <label className="text-sm font-medium">Titulo</label>
         <input
           className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
           value={form.title}
@@ -87,7 +100,7 @@ export default function CampaignForm({storeSlug, defaultValues, campaignId, }: P
       </div>
 
       <div>
-        <label className="text-sm font-medium">Descripción</label>
+        <label className="text-sm font-medium">Descripcion</label>
         <textarea
           className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
           value={form.description}
@@ -126,21 +139,21 @@ export default function CampaignForm({storeSlug, defaultValues, campaignId, }: P
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
           checked={form.isActive}
           onChange={(e) => handleChange("isActive", e.target.checked)}
         />
-        <label className="text-sm">Campaña activa</label>
-      </div>
+        Campana activa
+      </label>
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-xl bg-orange-500 py-3 text-sm font-medium text-white hover:bg-orange-600"
+        className="w-full rounded-xl bg-orange-500 py-3 text-sm font-medium text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {loading ? "Guardando..." : "Guardar campaña"}
+        {loading ? "Guardando..." : "Guardar campana"}
       </button>
     </form>
   );

@@ -1,0 +1,13 @@
+CREATE TYPE "ProductCategory" AS ENUM (
+  'CLOTHING',
+  'SHOES',
+  'ACCESSORIES',
+  'BEAUTY',
+  'HOME',
+  'DIGITAL',
+  'OTHER'
+);
+
+ALTER TABLE "Product"
+ADD COLUMN "category" "ProductCategory" NOT NULL DEFAULT 'OTHER',
+ADD COLUMN "sizes" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

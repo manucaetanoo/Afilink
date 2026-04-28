@@ -1,253 +1,561 @@
-
+import type { ReactNode } from "react";
 import Link from "next/link";
-import Navbar from "../../../components/Navbarv2";
-import { prisma } from "@/lib/prisma";
-import { SessionDebug } from "@/components/SessionDebug";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import {
+  FiActivity,
+  FiBarChart2,
+  FiClock,
+  FiDollarSign,
+  FiExternalLink,
+  FiLink,
+  FiMousePointer,
+  FiShoppingBag,
+  FiTrendingUp,
+} from "react-icons/fi";
+import Navbar from "@/components/Navbar";
+import Sidebar from "@/components/Sidebar";
+import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-
-function money(n: number) {
-  return new Intl.NumberFormat("en-US").format(n);
+function money(value: number) {
+  return new Intl.NumberFormat("es-UY", {
+    style: "currency",
+    currency: "UYU",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
-
-
-export default async function Page() {
-    const session = await getServerSession(authOptions);
-    const affiliateId = session?.user?.id;
-
-
-    if (!session) { redirect("/login"); 
-    }
-
-
-    
-  // 1) Traer links del afiliado + clicks
-  const links: Link[] = await prisma.affiliateLink.findMany({
-    where: { affiliateId },
-    select: {
-      id: true,
-      code: true,
-      product: { select: { id: true, name: true, price: true } },
-      _count: { select: { clicks: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // 2) Traer comisiones del afiliado
-  const commissions: Commission[] = await prisma.commission.findMany({
-    where: { affiliateId },
-    select: {
-      id: true,
-      affiliateId: true,
-      amount: true,
-      status: true,
-      createdAt: true,
-      order: { select: { id: true, total: true, product: { select: { name: true } },
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  });
-
-  interface Link {
-    id: string; 
-    code: string; 
-    product: { id: string; name: string; price: number; }; 
-    _count: { clicks: number; }; }
-
-
-interface Commission {
-  id: string;
-  amount: number;
-  status: "PENDING" | "APPROVED" | "PAID" | "CANCELED";
-  affiliateId: string;  
-  createdAt: Date;
-  order: { id: string; total: number; product: { name: string; }; };
+function number(value: number) {
+  return new Intl.NumberFormat("es-UY").format(value);
 }
 
+function percent(value: number) {
+  return `${value.toFixed(value >= 10 ? 0 : 1)}%`;
+}
 
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("es-UY", {
+    day: "2-digit",
+    month: "short",
+  }).format(date);
+}
 
-  // 3) Calcular métricas (MVP)
-  const totalClicks = links.reduce((acc, l) => acc + l._count.clicks, 0);
-  const totalSales = commissions.length; // ventas atribuidas = comisiones creadas (en tu lógica actual)
-  const totalCommission = commissions.reduce((acc, c) => acc + c.amount, 0);
-  const pendingCommission = commissions
-    .filter((c) => c.status === "PENDING")
-    .reduce((acc, c) => acc + c.amount, 0);
+function delta(current: number, previous: number) {
+  if (previous === 0) return current > 0 ? "+100%" : "0%";
+  const change = ((current - previous) / previous) * 100;
+  return `${change >= 0 ? "+" : ""}${change.toFixed(0)}%`;
+}
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+function statusClasses(status: string) {
+  if (status === "PAID" || status === "APPROVED") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (status === "CANCELED") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+
+  return "border-amber-200 bg-amber-50 text-amber-700";
+}
+
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {
+    APPROVED: "Aprobada",
+    CANCELED: "Cancelada",
+    PAID: "Pagada",
+    PENDING: "Pendiente",
+  };
+
+  return labels[status] ?? status;
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  detail,
+  tone = "slate",
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "slate" | "orange" | "emerald" | "sky";
+}) {
+  const tones = {
+    slate: "bg-slate-900 text-white",
+    orange: "bg-orange-500 text-white",
+    emerald: "bg-emerald-500 text-white",
+    sky: "bg-sky-500 text-white",
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <header className="bg-white border-b">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Dashboard de Afiliado
-            </h1>
-
-            <Link
-              href="/products"
-              className="text-sm font-medium text-gray-900 underline underline-offset-4"
-            >
-              Ver productos
-            </Link>
-          </div>
-          <p className="mt-1 text-sm text-gray-600">
-            Tus métricas y comisiones en un solo lugar.
+    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-slate-500">{label}</p>
+          <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
+            {value}
           </p>
         </div>
-      </header>
+        <div className={`rounded-lg p-2.5 ${tones[tone]}`}>{icon}</div>
+      </div>
+      <p className="mt-4 text-sm text-slate-500">{detail}</p>
+    </div>
+  );
+}
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-8">
-        {/* Resumen */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border bg-white p-4">
-            <div className="text-sm text-gray-600">Clicks</div>
-            <div className="mt-1 text-2xl font-semibold">{totalClicks}</div>
-          </div>
-          <div className="rounded-xl border bg-white p-4">
-            <div className="text-sm text-gray-600">Ventas atribuidas</div>
-            <div className="mt-1 text-2xl font-semibold">{totalSales}</div>
-          </div>
-          <div className="rounded-xl border bg-white p-4">
-            <div className="text-sm text-gray-600">Comisión total</div>
-            <div className="mt-1 text-2xl font-semibold">
-              $ {money(totalCommission)}
-            </div>
-          </div>
-          <div className="rounded-xl border bg-white p-4">
-            <div className="text-sm text-gray-600">Pendiente</div>
-            <div className="mt-1 text-2xl font-semibold">
-              $ {money(pendingCommission)}
-            </div>
-          </div>
-        </section>
+function MiniBar({
+  label,
+  value,
+  max,
+}: {
+  label: string;
+  value: number;
+  max: number;
+}) {
+  const width = max > 0 ? Math.max((value / max) * 100, value > 0 ? 8 : 0) : 0;
 
-        {/* Mis links */}
-        <section className="rounded-xl border bg-white">
-          <div className="border-b px-4 py-4 sm:px-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Mis links</h2>
-              <Link
-                href="/products"
-                className="text-sm font-medium text-gray-900 underline underline-offset-4"
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+        <span className="truncate font-medium text-slate-700">{label}</span>
+        <span className="text-slate-500">{number(value)}</span>
+      </div>
+      <div className="h-2 rounded-full bg-slate-100">
+        <div
+          className="h-2 rounded-full bg-orange-500"
+          style={{ width: `${width}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default async function AffiliateDashboardPage() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
+  const affiliateId = session.user.id;
+  const now = new Date();
+  const currentStart = new Date(now);
+  currentStart.setDate(currentStart.getDate() - 30);
+  const previousStart = new Date(now);
+  previousStart.setDate(previousStart.getDate() - 60);
+
+  const [links, campaignLinks, commissions, orders] = await Promise.all([
+    prisma.affiliateLink.findMany({
+      where: { affiliateId },
+      select: {
+        id: true,
+        code: true,
+        createdAt: true,
+        product: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            commissionValue: true,
+            commissionType: true,
+          },
+        },
+        _count: { select: { clicks: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.affiliateCampaignLink.findMany({
+      where: { affiliateId },
+      select: {
+        id: true,
+        code: true,
+        createdAt: true,
+        campaign: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            isActive: true,
+          },
+        },
+        _count: { select: { clicks: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.commission.findMany({
+      where: { affiliateId },
+      select: {
+        id: true,
+        amount: true,
+        status: true,
+        createdAt: true,
+        order: {
+          select: {
+            id: true,
+            total: true,
+            status: true,
+            product: { select: { name: true } },
+            campaign: { select: { title: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+    }),
+    prisma.order.findMany({
+      where: { affiliateId },
+      select: {
+        id: true,
+        total: true,
+        status: true,
+        affiliateAmount: true,
+        createdAt: true,
+        product: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+  ]);
+
+  const productClicks = links.reduce((total, link) => total + link._count.clicks, 0);
+  const campaignClicks = campaignLinks.reduce(
+    (total, link) => total + link._count.clicks,
+    0
+  );
+  const totalClicks = productClicks + campaignClicks;
+  const paidOrders = orders.filter((order) => order.status === "PAID");
+  const totalSales = paidOrders.length;
+  const salesVolume = paidOrders.reduce((total, order) => total + order.total, 0);
+  const totalCommission = commissions.reduce(
+    (total, commission) => total + commission.amount,
+    0
+  );
+  const pendingCommission = commissions
+    .filter((commission) => commission.status === "PENDING")
+    .reduce((total, commission) => total + commission.amount, 0);
+  const approvedCommission = commissions
+    .filter(
+      (commission) =>
+        commission.status === "APPROVED" || commission.status === "PAID"
+    )
+    .reduce((total, commission) => total + commission.amount, 0);
+
+  const currentOrders = paidOrders.filter((order) => order.createdAt >= currentStart);
+  const previousOrders = paidOrders.filter(
+    (order) => order.createdAt >= previousStart && order.createdAt < currentStart
+  );
+  const currentCommission = commissions
+    .filter((commission) => commission.createdAt >= currentStart)
+    .reduce((total, commission) => total + commission.amount, 0);
+  const previousCommission = commissions
+    .filter(
+      (commission) =>
+        commission.createdAt >= previousStart && commission.createdAt < currentStart
+    )
+    .reduce((total, commission) => total + commission.amount, 0);
+
+  const conversionRate = totalClicks > 0 ? (totalSales / totalClicks) * 100 : 0;
+  const earningsPerClick = totalClicks > 0 ? totalCommission / totalClicks : 0;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  const topLinks = [
+    ...links.map((link) => ({
+      id: link.id,
+      label: link.product.name,
+      href: `${baseUrl}/l/${link.code}`,
+      clicks: link._count.clicks,
+      type: "Producto",
+    })),
+    ...campaignLinks.map((link) => ({
+      id: link.id,
+      label: link.campaign.title,
+      href: `${baseUrl}/cl/${link.code}`,
+      clicks: link._count.clicks,
+      type: "Campana",
+    })),
+  ]
+    .sort((a, b) => b.clicks - a.clicks)
+    .slice(0, 5);
+
+  const maxTopClicks = Math.max(...topLinks.map((link) => link.clicks), 0);
+  const recentCommissions = commissions.slice(0, 6);
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-950">
+      <Navbar />
+
+      <div className="flex min-h-screen pt-16">
+        <Sidebar />
+
+        <main className="min-w-0 flex-1">
+          <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-600">
+                  Dashboard afiliado
+                </p>
+                <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                  Rendimiento de tus links
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                  Mira tus clicks, ventas atribuidas, comisiones y los productos que
+                  mejor estan convirtiendo.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/products"
+                  className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  <FiLink />
+                  Generar link
+                </Link>
+                <Link
+                  href="/campaigns"
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  <FiExternalLink />
+                  Ver campanas
+                </Link>
+              </div>
+            </div>
+
+            <section
+              id="payments"
+              className="mt-8 grid scroll-mt-24 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+            >
+              <StatCard
+                icon={<FiMousePointer />}
+                label="Clicks totales"
+                value={number(totalClicks)}
+                detail={`${number(productClicks)} en productos, ${number(campaignClicks)} en campanas`}
+                tone="orange"
+              />
+              <StatCard
+                icon={<FiShoppingBag />}
+                label="Ventas atribuidas"
+                value={number(totalSales)}
+                detail={`${delta(currentOrders.length, previousOrders.length)} vs. 30 dias previos`}
+                tone="slate"
+              />
+              <StatCard
+                icon={<FiDollarSign />}
+                label="Comision total"
+                value={money(totalCommission)}
+                detail={`${delta(currentCommission, previousCommission)} en los ultimos 30 dias`}
+                tone="emerald"
+              />
+              <StatCard
+                icon={<FiClock />}
+                label="Pendiente"
+                value={money(pendingCommission)}
+                detail={`${money(approvedCommission)} aprobadas o pagadas`}
+                tone="sky"
+              />
+            </section>
+
+            <section className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-950">
+                      Salud comercial
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Conversion y valor generado por cada visita.
+                    </p>
+                  </div>
+                  <FiActivity className="text-xl text-orange-500" />
+                </div>
+
+                <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-lg bg-slate-50 p-4">
+                    <p className="text-sm text-slate-500">Conversion</p>
+                    <p className="mt-2 text-2xl font-semibold">
+                      {percent(conversionRate)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 p-4">
+                    <p className="text-sm text-slate-500">Venta generada</p>
+                    <p className="mt-2 text-2xl font-semibold">
+                      {money(salesVolume)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 p-4">
+                    <p className="text-sm text-slate-500">Ganancia/click</p>
+                    <p className="mt-2 text-2xl font-semibold">
+                      {money(earningsPerClick)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-lg border border-orange-100 bg-orange-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <FiTrendingUp className="mt-0.5 text-orange-600" />
+                    <p className="text-sm leading-6 text-orange-900">
+                      Tus mejores oportunidades son los links con mayor volumen de
+                      clicks y comision aprobada. Si un link recibe clicks pero no
+                      vende, prueba cambiar el mensaje o promocionar otro producto.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-semibold text-slate-950">
+                    Top links
+                  </h2>
+                  <FiBarChart2 className="text-xl text-slate-500" />
+                </div>
+
+                <div className="mt-5 space-y-5">
+                  {topLinks.length === 0 ? (
+                    <p className="text-sm leading-6 text-slate-500">
+                      Todavia no generaste links. Cuando compartas productos o
+                      campanas, vas a ver aca tus mejores fuentes de clicks.
+                    </p>
+                  ) : (
+                    topLinks.map((link) => (
+                      <MiniBar
+                        key={link.id}
+                        label={`${link.type}: ${link.label}`}
+                        value={link.clicks}
+                        max={maxTopClicks}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-5">
+              <div
+                id="links"
+                className="scroll-mt-24 rounded-lg border border-slate-200 bg-white shadow-sm xl:col-span-3"
               >
-                Generar nuevo link
-              </Link>
-            </div>
-            <p className="mt-1 text-sm text-gray-600">
-              Copiá y compartí tus links para ganar comisión.
-            </p>
-          </div>
+                <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-950">
+                      Links recientes
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Productos y campanas que ya puedes compartir.
+                    </p>
+                  </div>
+                  <Link
+                    href="/products"
+                    className="hidden text-sm font-semibold text-orange-600 hover:text-orange-700 sm:inline"
+                  >
+                    Nuevo link
+                  </Link>
+                </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-4 py-3 sm:px-6">Producto</th>
-                  <th className="px-4 py-3 sm:px-6">Link</th>
-                  <th className="px-4 py-3 sm:px-6">Clicks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {links.length === 0 ? (
-                  <tr>
-                    <td className="px-4 py-4 sm:px-6 text-gray-600" colSpan={3}>
-                      Todavía no generaste links. Entrá a Productos y creá uno.
-                    </td>
-                  </tr>
-                ) : (
-                  links.map((l) => (
-                    <tr key={l.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-4 sm:px-6">
-                        <div className="font-medium text-gray-900">
-                          {l.product?.name ?? "Producto"}
-                        </div>
-                        <div className="text-gray-600">
-                          ${money(l.product?.price ?? 0)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 sm:px-6">
-                        <div className="font-mono text-xs text-gray-700">
-                          {baseUrl}/l/{l.code}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 sm:px-6">
-                        {l._count.clicks}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-5 py-3">Origen</th>
+                        <th className="px-5 py-3">Link</th>
+                        <th className="px-5 py-3 text-right">Clicks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {topLinks.length === 0 ? (
+                        <tr>
+                          <td className="px-5 py-8 text-slate-500" colSpan={3}>
+                            No hay links todavia.
+                          </td>
+                        </tr>
+                      ) : (
+                        topLinks.map((link) => (
+                          <tr key={link.id} className="hover:bg-slate-50">
+                            <td className="px-5 py-4">
+                              <p className="font-medium text-slate-900">
+                                {link.label}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {link.type}
+                              </p>
+                            </td>
+                            <td className="px-5 py-4">
+                              <p className="max-w-xs truncate font-mono text-xs text-slate-600">
+                                {link.href}
+                              </p>
+                            </td>
+                            <td className="px-5 py-4 text-right font-semibold">
+                              {number(link.clicks)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-        {/* Comisiones */}
-        <section className="rounded-xl border bg-white">
-          <div className="border-b px-4 py-4 sm:px-6">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Últimas comisiones
-            </h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Se generan cuando la orden pasa por tu endpoint /pay.
-            </p>
-          </div>
+              <div
+                id="orders"
+                className="scroll-mt-24 rounded-lg border border-slate-200 bg-white shadow-sm xl:col-span-2"
+              >
+                <div className="border-b border-slate-100 px-5 py-4">
+                  <h2
+                    id="commissions"
+                    className="scroll-mt-24 text-base font-semibold text-slate-950"
+                  >
+                    Ultimas comisiones
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Estado de tus ventas atribuidas.
+                  </p>
+                </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-4 py-3 sm:px-6">Fecha</th>
-                  <th className="px-4 py-3 sm:px-6">Producto</th>
-                  <th className="px-4 py-3 sm:px-6">Venta</th>
-                  <th className="px-4 py-3 sm:px-6">Comisión</th>
-                  <th className="px-4 py-3 sm:px-6">Estado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {commissions.length === 0 ? (
-                  <tr>
-                    <td className="px-4 py-4 sm:px-6 text-gray-600" colSpan={5}>
-                      Todavía no tenés comisiones. Probá comprar desde un link
-                      afiliado y después llamar /orders/[id]/pay.
-                    </td>
-                  </tr>
-                ) : (
-                  commissions.map((c) => (
-                    <tr key={c.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-4 sm:px-6">
-                        {new Date(c.createdAt).toLocaleDateString("es-UY")}
-                      </td>
-                      <td className="px-4 py-4 sm:px-6">
-                        {c.order?.product?.name ?? "-"}
-                      </td>
-                      <td className="px-4 py-4 sm:px-6">
-                        ${money(c.order?.total ?? 0)}
-                      </td>
-                      <td className="px-4 py-4 sm:px-6 font-medium">
-                        ${money(c.amount)}
-                      </td>
-                      <td className="px-4 py-4 sm:px-6">
-                        <span className="rounded-full border px-2 py-0.5 text-xs">
-                          {c.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                <div className="divide-y divide-slate-100">
+                  {recentCommissions.length === 0 ? (
+                    <p className="px-5 py-8 text-sm text-slate-500">
+                      Todavia no tienes comisiones registradas.
+                    </p>
+                  ) : (
+                    recentCommissions.map((commission) => (
+                      <div
+                        key={commission.id}
+                        className="flex items-start justify-between gap-4 px-5 py-4"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-slate-900">
+                            {commission.order.product.name}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {formatDate(commission.createdAt)} · venta{" "}
+                            {money(commission.order.total)}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="font-semibold text-slate-950">
+                            {money(commission.amount)}
+                          </p>
+                          <span
+                            className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${statusClasses(
+                              commission.status
+                            )}`}
+                          >
+                            {statusLabel(commission.status)}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </section>
           </div>
-        </section>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

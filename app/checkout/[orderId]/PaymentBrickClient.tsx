@@ -2,17 +2,22 @@
 
 import { useMemo, useState } from "react";
 import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
+import { useCart } from "@/components/cart/CartProvider";
 
 type OrderCheckoutData = {
   id: string;
   total: number;
   status: string;
   paymentStatus: string | null;
-  product: {
-    name: string;
-    desc: string | null;
-    imageUrls: string[];
-  };
+  items: Array<{
+    id: string;
+    total: number;
+    product: {
+      name: string;
+      desc: string | null;
+      imageUrls: string[];
+    };
+  }>;
 };
 
 type Props = {
@@ -48,6 +53,7 @@ function getStatusMessage(status: string | null) {
 }
 
 export default function PaymentBrickClient({ order, publicKey }: Props) {
+  const { clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(
@@ -68,9 +74,6 @@ export default function PaymentBrickClient({ order, publicKey }: Props) {
         debitCard: "all" as const,
         minInstallments: 1,
         maxInstallments: 12,
-        types: {
-          excluded: ["wallet_purchase"] as const,
-        },
       },
       visual: {
         hideRedirectionPanel: true,
@@ -110,7 +113,8 @@ export default function PaymentBrickClient({ order, publicKey }: Props) {
             initialization={initialization}
             customization={customization}
             locale="es-UY"
-            onSubmit={async ({ formData }: PaymentBrickSubmitData) => {
+            onSubmit={async (paymentData: unknown) => {
+              const { formData } = paymentData as PaymentBrickSubmitData;
               setLoading(true);
               setError(null);
 
@@ -139,7 +143,9 @@ export default function PaymentBrickClient({ order, publicKey }: Props) {
               setPaymentStatus(status);
 
               if (status === "approved") {
-                window.location.href = `/orders/${order.id}/success`;
+                clearCart();
+                const successOrderId = String(data.orderIds?.[0] ?? order.id);
+                window.location.href = `/orders/${successOrderId}/success`;
               }
             }}
             onReady={() => {
@@ -156,28 +162,35 @@ export default function PaymentBrickClient({ order, publicKey }: Props) {
 
         <aside className="space-y-4">
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex gap-4">
-              <div className="h-20 w-20 overflow-hidden rounded-2xl bg-slate-100">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={
-                    order.product.imageUrls[0] ??
-                    "https://readymadeui.com/images/product14.webp"
-                  }
-                  alt={order.product.name}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg font-semibold text-slate-900">
-                  {order.product.name}
-                </p>
-                {order.product.desc && (
-                  <p className="mt-1 text-sm text-slate-500">
-                    {order.product.desc}
-                  </p>
-                )}
-              </div>
+            <div className="space-y-4">
+              {order.items.map((item) => (
+                <div key={item.id} className="flex gap-4">
+                  <div className="h-20 w-20 overflow-hidden rounded-2xl bg-slate-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={
+                        item.product.imageUrls[0] ??
+                        "https://readymadeui.com/images/product14.webp"
+                      }
+                      alt={item.product.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-semibold text-slate-900">
+                      {item.product.name}
+                    </p>
+                    {item.product.desc && (
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-500">
+                        {item.product.desc}
+                      </p>
+                    )}
+                    <p className="mt-2 text-sm font-semibold text-slate-900">
+                      ${Number(item.total).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="mt-5 border-t border-slate-100 pt-4">
               <div className="flex items-center justify-between text-sm text-slate-500">

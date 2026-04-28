@@ -8,51 +8,67 @@ type Product = {
   commissionValue: number;
   commissionType: "PERCENT" | "FIXED";
   imageUrls: string[];
+  isActive?: boolean;
 };
 
 export default function ItemSeller({ product, role }: { product: Product; role?: string }) {
+  const isAffiliate = role === "AFFILIATE";
+
   return (
-    <div className="bg-white flex flex-col overflow-hidden hover:shadow-md transition-all">
-      {/* Imagen */}
-      <div className="w-full bg-gray-50">
+    <div className="flex flex-col overflow-hidden bg-white transition-all hover:shadow-md">
+      <div className="h-48 w-full bg-gray-50">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={product.imageUrls?.[0] ?? "https://readymadeui.com/images/product14.webp"}
           alt={product.name}
-          className="w-full h-48 object-cover rounded"
+          className="h-full w-full rounded object-cover"
         />
       </div>
 
-      {/* Contenido */}
-      <div className="p-2 flex-1 flex flex-col">
-        <h5 className="text-sm sm:text-base font-semibold text-slate-900 truncate">
+      <div className="flex flex-1 flex-col p-2">
+        <h5 className="truncate text-sm font-semibold text-slate-900 sm:text-base">
           {product.name}
         </h5>
-        <p className="text-sm mt-1 text-slate-600 truncate">
-          {product.desc ?? "Sin descripción"}
+        <p className="mt-1 truncate text-sm text-slate-600">
+          {product.desc ?? "Sin descripcion"}
         </p>
 
-        <div className="flex flex-wrap justify-between gap-2 mt-3">
-          <h6 className="text-sm sm:text-base font-bold text-slate-900">
+        <div className="mt-3 flex flex-wrap justify-between gap-2">
+          <h6 className="text-sm font-bold text-slate-900 sm:text-base">
             ${product.price}
           </h6>
+          {product.isActive !== undefined && (
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+              {product.isActive ? "Activo" : "Inactivo"}
+            </span>
+          )}
         </div>
 
-        {/* Botones */}
-        <div className="flex items-center gap-2 mt-4">
-          <Link href={`/products/${product.id}`} className="flex gap-2 w-full">
-            <button
-              type="button"
-              className="text-sm font-medium px-2 cursor-pointer min-h-[36px] w-full bg-blue-600 hover:bg-blue-700 text-white tracking-wide outline-0 border-0 rounded-sm"
+        <div className="mt-4 flex items-center gap-2">
+          <div className="flex w-full gap-2">
+            <Link
+              href={`/products/${product.id}`}
+              className="inline-flex min-h-[36px] flex-1 items-center justify-center rounded-sm bg-blue-600 px-2 text-sm font-medium text-white hover:bg-blue-700"
             >
-              Ver más
-            </button>
-            {role === "AFFILIATE" && (
-              <span className="inline-block bg-red-100 text-orange-600 text-sm font-semibold px-3 py-1 rounded-full border border-red-300 shadow-sm whitespace-nowrap">
+              Ver mas
+            </Link>
+
+            {!isAffiliate && (
+              <Link
+                href={`/seller/products/${product.id}/edit`}
+                className="inline-flex min-h-[36px] flex-1 items-center justify-center rounded-sm border border-slate-300 px-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Editar
+              </Link>
+            )}
+
+            {isAffiliate && (
+              <span className="inline-block whitespace-nowrap rounded-full border border-red-300 bg-red-100 px-3 py-1 text-sm font-semibold text-orange-600 shadow-sm">
                 {product.commissionValue}
-                {product.commissionType === "PERCENT" ? "%" : "$"} comisión 🔥
+                {product.commissionType === "PERCENT" ? "%" : "$"} comision
               </span>
             )}
-          </Link>
+          </div>
         </div>
       </div>
     </div>

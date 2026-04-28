@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createMercadoPagoPayment } from "@/lib/payments/mercadopago";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
@@ -21,10 +22,20 @@ export async function POST(req: Request) {
       );
     }
 
+    const orderIds = orderId.startsWith("cart_")
+      ? await prisma.order
+          .findMany({
+            where: { paymentId: orderId },
+            select: { id: true },
+            orderBy: { createdAt: "asc" },
+          })
+          .then((orders) => orders.map((order) => order.id))
+      : [orderId];
     const payment = await createMercadoPagoPayment(orderId, formData);
 
     return NextResponse.json({
       ok: true,
+      orderIds,
       payment: {
         id: String(payment.id),
         status: payment.status ?? "pending",

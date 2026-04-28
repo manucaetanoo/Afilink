@@ -1,42 +1,68 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser, requireRole } from "@/lib/auth";
+import { requireRole, requireUser } from "@/lib/auth";
 
+const productCategories = [
+  "CLOTHING",
+  "SHOES",
+  "ACCESSORIES",
+  "BEAUTY",
+  "HOME",
+  "DIGITAL",
+  "OTHER",
+] as const;
 
-//Endpoint para obtener la lista de productos visibles según el rol del usuario.
+const categoriesWithSizes = new Set(["CLOTHING", "SHOES"]);
 
+function normalizeSizes(value: unknown) {
+  if (!Array.isArray(value)) return [];
 
+  return Array.from(
+    new Set(
+      value
+        .filter((size): size is string => typeof size === "string")
+        .map((size) => size.trim().toUpperCase())
+        .filter(Boolean)
+    )
+  ).slice(0, 20);
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "ERROR";
+}
 
 export async function GET() {
   try {
-    const user = await requireUser();              // obtiene el usuario actual
-    requireRole(user, ["SELLER", "ADMIN"]);        // valida que sea SELLER o ADMIN
+    const user = await requireUser();
+    requireRole(user, ["SELLER", "ADMIN"]);
 
     const products = await prisma.product.findMany({
-      where: user.role === "ADMIN" ? {} : { sellerId: user.id }, // si es ADMIN ve todos, si es SELLER solo los suyos
-      orderBy: { createdAt: "desc" },                            // ordena por fecha de creación
-      select: { 
-        id: true, 
-        name: true, 
-        desc: true, 
-        price: true, 
-        createdAt: true, 
+      where: user.role === "ADMIN" ? {} : { sellerId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        desc: true,
+        price: true,
+        category: true,
+        sizes: true,
+        createdAt: true,
         isActive: true,
         commissionValue: true,
-        commissionType: true, 
-        imageUrls: true
-
-      }, // selecciona campos
+        commissionType: true,
+        imageUrls: true,
+      },
     });
 
-    return NextResponse.json({ ok: true, products }); // devuelve lista de productos
-  } catch (e: any) {
-    const msg = e?.message || "ERROR";
-    const status = msg === "UNAUTHORIZED" ? 401 : msg === "Debes tener rol de vendedor" ? 403 : 500;
-    return NextResponse.json({ ok: false, error: msg }, { status }); // maneja errores
+    return NextResponse.json({ ok: true, products });
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e);
+    const status =
+      msg === "UNAUTHORIZED" ? 401 : msg === "Debes tener rol de vendedor" ? 403 : 500;
+
+    return NextResponse.json({ ok: false, error: msg }, { status });
   }
 }
-
 
 export async function POST(req: Request) {
   try {
@@ -50,31 +76,50 @@ export async function POST(req: Request) {
     const price = Number(body.price);
     const commissionValue = Number(body.commissionValue);
     const commissionType = body.commissionType as "PERCENT" | "FIXED";
+    const category = String(body.category ?? "OTHER").trim().toUpperCase();
+    const sizes = normalizeSizes(body.sizes);
 
-    // ✅ imageUrls debe ser string[]
     const imageUrlsRaw = body.imageUrls;
     const imageUrls: string[] = Array.isArray(imageUrlsRaw)
       ? imageUrlsRaw
-          .filter((u: any) => typeof u === "string")
-          .map((u: string) => u.trim())
-          .filter((u: string) => u.length > 0)
+          .filter((url: unknown): url is string => typeof url === "string")
+          .map((url) => url.trim())
+          .filter(Boolean)
       : [];
 
-    // Validaciones básicas
-    if (name.length < 3)
-      return NextResponse.json({ ok: false, error: "Nombre muy corto" }, { status: 400 });
+    if (name.length < 3) {
+      return NextResponse.json(
+        { ok: false, error: "Nombre muy corto" },
+        { status: 400 }
+      );
+    }
 
-    // si querés permitir decimales, no uses Number.isInteger
     if (!Number.isFinite(price) || price <= 0) {
-      return NextResponse.json({ ok: false, error: "Precio inválido" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Precio invalido" },
+        { status: 400 }
+      );
     }
 
     if (!Number.isFinite(commissionValue) || commissionValue <= 0) {
-      return NextResponse.json({ ok: false, error: "Comisión inválida" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Comision invalida" },
+        { status: 400 }
+      );
     }
 
     if (!["PERCENT", "FIXED"].includes(commissionType)) {
-      return NextResponse.json({ ok: false, error: "Tipo de comisión inválido" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Tipo de comision invalido" },
+        { status: 400 }
+      );
+    }
+
+    if (!productCategories.includes(category as (typeof productCategories)[number])) {
+      return NextResponse.json(
+        { ok: false, error: "Categoria invalida" },
+        { status: 400 }
+      );
     }
 
     const created = await prisma.product.create({
@@ -83,20 +128,27 @@ export async function POST(req: Request) {
         name,
         desc: desc.length ? desc : null,
         price,
+        category: category as (typeof productCategories)[number],
+        sizes: categoriesWithSizes.has(category) ? sizes : [],
         commissionValue,
         commissionType,
-        imageUrls, // ✅ SIEMPRE array
+        imageUrls,
       },
-      select: { id: true, commissionValue: true, commissionType: true },
+      select: {
+        id: true,
+        category: true,
+        sizes: true,
+        commissionValue: true,
+        commissionType: true,
+      },
     });
 
     return NextResponse.json({ ok: true, id: created.id }, { status: 201 });
-  } catch (e: any) {
-    const msg = e?.message || "ERROR";
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e);
     const status =
       msg === "UNAUTHORIZED" ? 401 : msg === "Debes tener rol de vendedor" ? 403 : 400;
+
     return NextResponse.json({ ok: false, error: msg }, { status });
   }
 }
-
-

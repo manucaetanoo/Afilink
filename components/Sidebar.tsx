@@ -1,25 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-
-// React Icons
 import {
+  FiBarChart2,
   FiChevronLeft,
   FiChevronRight,
-  FiHome,
-  FiShoppingBag,
-  FiLink,
-  FiUsers,
-  FiSettings,
-  FiUser,
-  FiHelpCircle,
-  FiPlus,
-  FiBarChart2,
   FiCreditCard,
   FiFileText,
+  FiHelpCircle,
+  FiHome,
+  FiLink,
+  FiLayers,
+  FiPlus,
+  FiShoppingBag,
+  FiUser,
+  FiUsers,
 } from "react-icons/fi";
 
 type Role = "SELLER" | "AFILIADO" | string;
@@ -29,99 +29,117 @@ type AppUser = {
   role?: Role | null;
 };
 
-type Item = {
+type MenuItem = {
   title: string;
   href: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
+};
+
+type Menu = {
+  cta: MenuItem;
+  helpHref: string;
+  sections: Array<{
+    title: string;
+    items: MenuItem[];
+  }>;
 };
 
 function cn(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-/* =========================
-   MENÚS POR ROL
-========================= */
-
-const menuAfiliado = {
+const menuAfiliado: Menu = {
   cta: {
     title: "Generar link",
-    href: "/afiliado/links/nuevo",
+    href: "/products",
     icon: <FiLink />,
   },
+  helpHref: "/dashboard/affiliate",
   sections: [
     {
       title: "PRINCIPAL",
       items: [
         { title: "Dashboard", href: "/dashboard/affiliate", icon: <FiHome /> },
-        { title: "Mis links", href: "/afiliado/links", icon: <FiLink /> },
+        { title: "Mis links", href: "/dashboard/affiliate#links", icon: <FiLink /> },
       ],
     },
     {
       title: "RESULTADOS",
       items: [
-        { title: "Órdenes", href: "/afiliado/ordenes", icon: <FiFileText /> },
-        { title: "Comisiones", href: "/afiliado/comisiones", icon: <FiBarChart2 /> },
-        { title: "Pagos", href: "/afiliado/pagos", icon: <FiCreditCard /> },
+        { title: "Ordenes", href: "/dashboard/affiliate#orders", icon: <FiFileText /> },
+        { title: "Comisiones", href: "/dashboard/affiliate#commissions", icon: <FiBarChart2 /> },
+        { title: "Pagos", href: "/dashboard/affiliate#payments", icon: <FiCreditCard /> },
       ],
     },
     {
       title: "CUENTA",
       items: [
-        { title: "Perfil", href: "/profile", icon: <FiUser /> },
-        { title: "Ajustes", href: "/settings", icon: <FiSettings /> },
+        { title: "Perfil y ajustes", href: "/perfil/config", icon: <FiUser /> },
       ],
     },
   ],
 };
 
-const menuSeller = {
+const menuSeller: Menu = {
   cta: {
     title: "Crear producto",
     href: "/seller/products/new",
     icon: <FiPlus />,
   },
+  helpHref: "/dashboard/seller",
   sections: [
     {
       title: "PRINCIPAL",
       items: [
         { title: "Dashboard", href: "/dashboard/seller", icon: <FiHome /> },
         { title: "Mis productos", href: "/seller/products", icon: <FiShoppingBag /> },
-        { title: "Órdenes", href: "/seller/ordenes", icon: <FiFileText /> },
+        { title: "Campanas", href: "/seller/campaigns", icon: <FiLayers /> },
+        { title: "Ordenes", href: "/dashboard/seller#orders", icon: <FiFileText /> },
       ],
     },
     {
-      title: "GESTIÓN",
+      title: "GESTION",
       items: [
-        { title: "Afiliados", href: "/seller/afiliados", icon: <FiUsers /> },
-        { title: "Pagos", href: "/seller/pagos", icon: <FiCreditCard /> },
-        { title: "Reportes", href: "/seller/reportes", icon: <FiBarChart2 /> },
+        { title: "Afiliados", href: "/dashboard/seller#affiliates", icon: <FiUsers /> },
+        { title: "Pagos", href: "/dashboard/seller#payments", icon: <FiCreditCard /> },
+        { title: "Reportes", href: "/dashboard/seller#reports", icon: <FiBarChart2 /> },
       ],
     },
     {
       title: "CUENTA",
       items: [
-        { title: "Perfil", href: "/profile", icon: <FiUser /> },
-        { title: "Ajustes", href: "/settings", icon: <FiSettings /> },
+        { title: "Perfil y ajustes", href: "/perfil/config", icon: <FiUser /> },
       ],
     },
   ],
 };
 
-/* =========================
-   COMPONENTE
-========================= */
-
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data } = useSession();
+  const { data, status } = useSession();
+  const [collapsed, setCollapsed] = useState(true);
+  const [currentHash, setCurrentHash] = useState("");
+
+  useEffect(() => {
+    const updateHash = () => setCurrentHash(window.location.hash);
+
+    updateHash();
+    window.addEventListener("hashchange", updateHash);
+    window.addEventListener("popstate", updateHash);
+
+    return () => {
+      window.removeEventListener("hashchange", updateHash);
+      window.removeEventListener("popstate", updateHash);
+    };
+  }, [pathname]);
+
+  if (status !== "authenticated") {
+    return null;
+  }
 
   const user = (data?.user ?? null) as AppUser | null;
   const role = (user?.role ?? "").toUpperCase();
-
   const menu = role === "SELLER" ? menuSeller : menuAfiliado;
-
-  const [collapsed, setCollapsed] = useState(true);
 
   return (
     <aside
@@ -130,13 +148,14 @@ export default function Sidebar() {
         collapsed ? "w-[72px]" : "w-[260px]"
       )}
     >
-      {/* TOP */}
       <div className={cn("p-4", collapsed && "px-2")}>
         <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
-          <img
+          <Image
             src="/img/logosbg.png"
             alt="Marketafil"
-            className={cn("h-8", collapsed && "hidden")}
+            width={75}
+            height={30}
+            className={cn("h-10", collapsed && "hidden")}
           />
 
           <button
@@ -148,7 +167,6 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* CTA */}
         <Link
           href={menu.cta.href}
           title={menu.cta.title}
@@ -162,7 +180,6 @@ export default function Sidebar() {
         </Link>
       </div>
 
-      {/* MENU */}
       <nav className="flex-1 overflow-y-auto px-2 pb-4">
         {menu.sections.map((section) => (
           <div key={section.title} className="mt-4">
@@ -174,9 +191,13 @@ export default function Sidebar() {
 
             <div className="space-y-1">
               {section.items.map((item) => {
-                const active =
-                  pathname === item.href ||
-                  (item.href !== "/" && pathname.startsWith(item.href));
+                const [targetPath, targetHash] = item.href.split("#");
+                const isSamePath =
+                  pathname === targetPath ||
+                  (targetPath !== "/" && pathname.startsWith(targetPath));
+                const active = targetHash
+                  ? isSamePath && currentHash === `#${targetHash}`
+                  : isSamePath && !currentHash;
 
                 return (
                   <Link
@@ -203,10 +224,9 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* FOOTER */}
       <div className={cn("border-t border-slate-200 p-3", collapsed && "px-2")}>
         <Link
-          href="/help"
+          href={menu.helpHref}
           title="Ayuda"
           className={cn(
             "flex items-center rounded-xl px-3 py-2.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900",

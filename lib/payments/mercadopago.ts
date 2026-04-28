@@ -5,6 +5,7 @@ import {
   SettlementStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { markOrderPaidAndNotify } from "@/lib/order-events";
 
 type MercadoPagoPreferenceResponse = {
   id: string;
@@ -45,6 +46,9 @@ type MercadoPagoPaymentResponse = {
   id: number | string;
   status?: string;
   external_reference?: string;
+  payer?: {
+    email?: string;
+  };
   metadata?: {
     orderId?: string;
   };
@@ -209,25 +213,12 @@ export async function syncOrderWithMercadoPagoPayment(
   }
 
   if (payment.status === "approved") {
-    await prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          status: OrderStatus.PAID,
-          paymentId: String(payment.id),
-          paymentStatus: payment.status,
-        },
-      });
-
-      await tx.commission.updateMany({
-        where: { orderId },
-        data: { status: CommissionStatus.APPROVED },
-      });
-
-      await tx.settlement.updateMany({
-        where: { orderId },
-        data: { status: SettlementStatus.AVAILABLE },
-      });
+    await markOrderPaidAndNotify({
+      orderId,
+      buyerEmail: payment.payer?.email ?? null,
+      paymentId: String(payment.id),
+      paymentProvider: "mercadopago",
+      paymentStatus: payment.status,
     });
   } else if (
     payment.status === "rejected" ||
@@ -270,38 +261,56 @@ export async function createMercadoPagoPayment(
   orderId: string,
   formData: MercadoPagoPaymentFormData
 ) {
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    include: {
-      product: {
-        select: {
-          name: true,
+  const isCartCheckout = orderId.startsWith("cart_");
+  const orders = isCartCheckout
+    ? await prisma.order.findMany({
+        where: { paymentId: orderId },
+        include: {
+          product: {
+            select: {
+              name: true,
+            },
+          },
         },
-      },
-    },
-  });
+        orderBy: { createdAt: "asc" },
+      })
+    : await prisma.order
+        .findUnique({
+          where: { id: orderId },
+          include: {
+            product: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        })
+        .then((order) => (order ? [order] : []));
 
-  if (!order) {
+  if (orders.length === 0) {
     throw new Error("Orden no encontrada");
   }
 
-  if (order.status === OrderStatus.PAID) {
+  if (orders.every((order) => order.status === OrderStatus.PAID)) {
     throw new Error("La orden ya fue pagada");
   }
 
   const baseUrl = resolveBaseUrl();
   const useNotificationUrl = !isLocalUrl(baseUrl);
+  const total = orders.reduce((sum, order) => sum + order.total, 0);
+  const description =
+    orders.length === 1
+      ? orders[0].product.name
+      : `Carrito MarketFill (${orders.length} productos)`;
 
   const paymentPayload = cleanUndefined({
     ...formData,
-    transaction_amount: Number(order.total),
-    description: order.product.name,
-    external_reference: order.id,
+    transaction_amount: Number(total),
+    description,
+    external_reference: orderId,
     metadata: {
-      orderId: order.id,
-      productId: order.productId,
-      sellerId: order.sellerId,
-      affiliateId: order.affiliateId,
+      orderId,
+      orderIds: orders.map((order) => order.id).join(","),
     },
     ...(useNotificationUrl
       ? { notification_url: `${baseUrl}/api/payments/mercadopago/webhook` }
@@ -323,6 +332,50 @@ export async function createMercadoPagoPayment(
   }
 
   const payment = (await response.json()) as MercadoPagoPaymentResponse;
-  await syncOrderWithMercadoPagoPayment(payment);
+
+  if (isCartCheckout) {
+    if (payment.status === "approved") {
+      for (const order of orders) {
+        await markOrderPaidAndNotify({
+          orderId: order.id,
+          buyerEmail: payment.payer?.email ?? null,
+          paymentId: String(payment.id),
+          paymentProvider: "mercadopago",
+          paymentStatus: payment.status,
+        });
+      }
+    } else if (payment.status === "rejected" || payment.status === "cancelled") {
+      await prisma.$transaction(async (tx) => {
+        await tx.order.updateMany({
+          where: { id: { in: orders.map((order) => order.id) } },
+          data: {
+            status: OrderStatus.CANCELED,
+            paymentId: String(payment.id),
+            paymentStatus: payment.status,
+          },
+        });
+
+        await tx.commission.updateMany({
+          where: { orderId: { in: orders.map((order) => order.id) } },
+          data: { status: CommissionStatus.CANCELED },
+        });
+
+        await tx.settlement.updateMany({
+          where: { orderId: { in: orders.map((order) => order.id) } },
+          data: { status: SettlementStatus.CANCELED },
+        });
+      });
+    } else {
+      await prisma.order.updateMany({
+        where: { id: { in: orders.map((order) => order.id) } },
+        data: {
+          paymentStatus: payment.status,
+        },
+      });
+    }
+  } else {
+    await syncOrderWithMercadoPagoPayment(payment);
+  }
+
   return payment;
 }

@@ -4,42 +4,52 @@ import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CubeIcon,
-  PhotoIcon,
   CurrencyDollarIcon,
   DocumentTextIcon,
+  PhotoIcon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import Navbar from "@/components/Navbar";
 import { CommissionRange } from "@/components/CommissionRange";
 
+const productCategories = [
+  { value: "CLOTHING", label: "Ropa", sizes: ["XS", "S", "M", "L", "XL", "XXL"] },
+  {
+    value: "SHOES",
+    label: "Calzado",
+    sizes: ["35", "36", "37", "38", "39", "40", "41", "42", "43", "44"],
+  },
+  { value: "ACCESSORIES", label: "Accesorios", sizes: [] },
+  { value: "BEAUTY", label: "Belleza", sizes: [] },
+  { value: "HOME", label: "Hogar", sizes: [] },
+  { value: "DIGITAL", label: "Digital", sizes: [] },
+  { value: "OTHER", label: "Otro", sizes: [] },
+] as const;
 
-// ✅ Subida directa a Cloudinary
+const categoriesWithSizes = new Set(["CLOTHING", "SHOES"]);
+
 const uploadImage = async (file: File) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", "products_preset");
-
-  const res = await fetch(
-    "https://api.cloudinary.com/v1_1/dyxooovx5/image/upload",
-    { method: "POST", body: formData }
-  );
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data?.error?.message || "Error subiendo imagen");
-  }
-
-  return data.secure_url as string;
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Error leyendo imagen"));
+    reader.readAsDataURL(file);
+  });
 };
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Ocurrio un error";
+}
 
 export default function NewProductPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-
+  const [category, setCategory] = useState("OTHER");
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [customSize, setCustomSize] = useState("");
   const [commissionValue, setCommissionValue] = useState(10);
   const [commissionType, setCommissionType] = useState<"PERCENT" | "FIXED">(
     "PERCENT"
@@ -51,6 +61,28 @@ export default function NewProductPage() {
       url: URL.createObjectURL(file),
     }));
   }, [imageFiles]);
+
+  const selectedCategory = productCategories.find((item) => item.value === category);
+  const suggestedSizes = selectedCategory?.sizes ?? [];
+  const shouldShowSizes = categoriesWithSizes.has(category);
+
+  function toggleSize(size: string) {
+    setSelectedSizes((current) =>
+      current.includes(size)
+        ? current.filter((item) => item !== size)
+        : [...current, size]
+    );
+  }
+
+  function addCustomSize() {
+    const nextSize = customSize.trim().toUpperCase();
+    if (!nextSize) return;
+
+    setSelectedSizes((current) =>
+      current.includes(nextSize) ? current : [...current, nextSize]
+    );
+    setCustomSize("");
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -64,24 +96,18 @@ export default function NewProductPage() {
       const desc = String(fd.get("desc") || "").trim();
       const price = Number(fd.get("price") || 0);
 
-      if (!name) {
-        throw new Error("Debes ingresar el nombre del producto");
-      }
+      if (!name) throw new Error("Debes ingresar el nombre del producto");
+      if (!price || price <= 0) throw new Error("Debes ingresar un precio valido");
 
-      if (!price || price <= 0) {
-        throw new Error("Debes ingresar un precio válido");
-      }
-
-      let imageUrls: string[] = [];
-
-      if (imageFiles.length > 0) {
-        imageUrls = await Promise.all(imageFiles.map(uploadImage));
-      }
+      const imageUrls =
+        imageFiles.length > 0 ? await Promise.all(imageFiles.map(uploadImage)) : [];
 
       const payload = {
         name,
         desc,
         price,
+        category,
+        sizes: shouldShowSizes ? selectedSizes : [],
         commissionValue,
         commissionType,
         imageUrls,
@@ -99,22 +125,22 @@ export default function NewProductPage() {
         throw new Error(data?.error || "Error al crear el producto");
       }
 
-      setMessage("Producto creado correctamente ✅");
-      router.push("/products");
-    } catch (err: any) {
-      setMessage(err?.message || "Ocurrió un error");
+      setMessage("Producto creado correctamente");
+      router.push("/seller/products");
+    } catch (err: unknown) {
+      setMessage(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#fff7f0]s mt-15">
-<Navbar />
+    <div className="min-h-screen bg-[#fff7f0] pt-16">
+      <Navbar />
+
       <div className="px-4 py-10 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl">
           <div className="overflow-hidden rounded-[28px] border border-orange-100 bg-white shadow-[0_20px_60px_rgba(251,146,60,0.12)]">
-            {/* Header */}
             <div className="bg-gradient-to-r from-orange-400 via-amber-500 to-orange-400 px-6 py-8 text-white sm:px-8">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
@@ -123,21 +149,20 @@ export default function NewProductPage() {
 
                 <div>
                   <p className="text-sm font-medium text-orange-100">
-                    Catálogo de productos
+                    Catalogo de productos
                   </p>
                   <h1 className="text-2xl font-bold tracking-tight">
-                    Creá tu producto
+                    Crea tu producto
                   </h1>
                 </div>
               </div>
 
               <p className="mt-4 max-w-xl text-sm text-orange-50/90">
-                Agregá la información principal de tu producto, subí imágenes y
-                definí la comisión para afiliados.
+                Agrega la informacion principal, sube imagenes, define talles si
+                aplica y configura la comision para afiliados.
               </p>
             </div>
 
-            {/* Form */}
             <form onSubmit={onSubmit} className="px-6 py-8 sm:px-8">
               <div className="space-y-8">
                 {message && (
@@ -146,7 +171,6 @@ export default function NewProductPage() {
                   </div>
                 )}
 
-                {/* Nombre */}
                 <div>
                   <label
                     htmlFor="name"
@@ -166,29 +190,134 @@ export default function NewProductPage() {
                   />
                 </div>
 
-                {/* Descripción */}
+                <div>
+                  <label
+                    htmlFor="category"
+                    className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900"
+                  >
+                    <Squares2X2Icon className="h-4 w-4 text-orange-500" />
+                    Categoria
+                  </label>
+
+                  <select
+                    id="category"
+                    name="category"
+                    value={category}
+                    onChange={(e) => {
+                      const nextCategory = e.target.value;
+                      setCategory(nextCategory);
+                      if (!categoriesWithSizes.has(nextCategory)) {
+                        setSelectedSizes([]);
+                      }
+                    }}
+                    className="block w-full rounded-2xl border border-orange-200 bg-orange-50/40 px-4 py-3 text-slate-900 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                  >
+                    {productCategories.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  {shouldShowSizes && (
+                    <div className="mt-4 rounded-3xl border border-orange-100 bg-white p-4">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            Talles disponibles
+                          </h3>
+                          <p className="text-sm text-slate-500">
+                            Elegi las opciones que va a ver el comprador.
+                          </p>
+                        </div>
+                        <span className="text-xs font-medium text-orange-700">
+                          {selectedSizes.length} seleccionados
+                        </span>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {suggestedSizes.map((size) => {
+                          const active = selectedSizes.includes(size);
+
+                          return (
+                            <button
+                              key={size}
+                              type="button"
+                              onClick={() => toggleSize(size)}
+                              className={`min-w-12 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                                active
+                                  ? "border-orange-500 bg-orange-500 text-white"
+                                  : "border-orange-200 bg-orange-50 text-slate-700 hover:border-orange-300"
+                              }`}
+                            >
+                              {size}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
+                        <input
+                          type="text"
+                          value={customSize}
+                          onChange={(e) => setCustomSize(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addCustomSize();
+                            }
+                          }}
+                          placeholder="Agregar talle"
+                          className="min-w-0 flex-1 rounded-xl border border-orange-200 bg-orange-50/40 px-3 py-2 text-sm outline-none transition focus:border-orange-400 focus:bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={addCustomSize}
+                          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          Agregar
+                        </button>
+                      </div>
+
+                      {selectedSizes.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {selectedSizes.map((size) => (
+                            <button
+                              key={size}
+                              type="button"
+                              onClick={() => toggleSize(size)}
+                              className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200"
+                            >
+                              {size} x
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label
                     htmlFor="desc"
                     className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900"
                   >
                     <DocumentTextIcon className="h-4 w-4 text-orange-500" />
-                    Descripción
+                    Descripcion
                   </label>
 
                   <textarea
                     id="desc"
                     name="desc"
                     rows={5}
-                    placeholder="Contá qué hace especial a tu producto, materiales, beneficios, etc."
+                    placeholder="Conta que hace especial a tu producto, materiales, beneficios, etc."
                     className="block w-full rounded-2xl border border-orange-200 bg-orange-50/40 px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                   />
                 </div>
 
-                {/* Imágenes */}
                 <div>
                   <label className="mb-3 block text-sm font-semibold text-slate-900">
-                    Imágenes del producto
+                    Imagenes del producto
                   </label>
 
                   <div className="rounded-3xl border border-dashed border-orange-200 bg-orange-50/40 p-6 transition hover:border-orange-300">
@@ -198,15 +327,15 @@ export default function NewProductPage() {
                       </div>
 
                       <h3 className="mt-4 text-sm font-semibold text-slate-900">
-                        Subí fotos de tu producto
+                        Sube fotos de tu producto
                       </h3>
 
                       <p className="mt-1 text-sm text-slate-500">
-                        PNG, JPG o WEBP. Podés seleccionar varias imágenes.
+                        PNG, JPG o WEBP. Puedes seleccionar varias imagenes.
                       </p>
 
                       <label className="mt-5 inline-flex cursor-pointer items-center rounded-xl border border-orange-200 bg-white px-4 py-2.5 text-sm font-medium text-orange-700 transition hover:bg-orange-50">
-                        Seleccionar imágenes
+                        Seleccionar imagenes
                         <input
                           type="file"
                           name="images"
@@ -235,6 +364,7 @@ export default function NewProductPage() {
                               className="overflow-hidden rounded-2xl border border-orange-100 bg-white"
                             >
                               <div className="aspect-square w-full bg-orange-50">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={image.url}
                                   alt={image.name}
@@ -252,7 +382,6 @@ export default function NewProductPage() {
                   </div>
                 </div>
 
-                {/* Precio */}
                 <div>
                   <label
                     htmlFor="price"
@@ -280,15 +409,13 @@ export default function NewProductPage() {
                   </div>
                 </div>
 
-                {/* Comisión */}
                 <div className="rounded-3xl border border-orange-100 bg-gradient-to-b from-orange-50 to-white p-5">
                   <div className="mb-3">
                     <h3 className="text-sm font-semibold text-slate-900">
-                      Comisión para afiliados
+                      Comision para afiliados
                     </h3>
                     <p className="mt-1 text-sm text-slate-500">
-                      Definí cuánto ganan los afiliados por promocionar este
-                      producto.
+                      Define cuanto ganan los afiliados por promocionar este producto.
                     </p>
                   </div>
 
@@ -306,7 +433,6 @@ export default function NewProductPage() {
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="mt-10 flex items-center justify-end gap-3">
                 <button
                   type="button"

@@ -18,6 +18,8 @@ model User {
   image    String?
   timezone String? @db.VarChar(64)
 
+  notifications Notification[]
+
   // Store
   storeSlug String? @unique @db.VarChar(80)
 
@@ -61,6 +63,24 @@ model User {
   @@index([storeSlug])
 }
 
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      String   @db.VarChar(50)
+  title     String   @db.VarChar(140)
+  message   String   @db.Text
+  readAt    DateTime?
+  orderId    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+
+
 model Product {
   id String @id @default(cuid())
 
@@ -70,6 +90,8 @@ model Product {
   name      String   @db.VarChar(140)
   desc      String?  @db.Text
   price     Int
+  category  ProductCategory @default(OTHER)
+  sizes     String[] @default([])
   imageUrls String[]
 
   isActive  Boolean  @default(true)
@@ -346,6 +368,16 @@ enum OrderStatus {
 enum CommissionType {
   PERCENT
   FIXED
+}
+
+enum ProductCategory {
+  CLOTHING
+  SHOES
+  ACCESSORIES
+  BEAUTY
+  HOME
+  DIGITAL
+  OTHER
 }
 
 enum SettlementStatus {
