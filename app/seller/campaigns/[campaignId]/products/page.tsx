@@ -52,10 +52,10 @@ export default async function SellerCampaignProductsPage({ params }: PageProps) 
                 href="/seller/campaigns"
                 className="text-sm font-semibold text-orange-600 hover:text-orange-700"
               >
-                Volver a campanas
+                Volver a campañas
               </Link>
               <h1 className="mt-4 text-3xl font-semibold tracking-tight">
-                Productos de la campana
+                Productos de la campaña
               </h1>
               <p className="mt-2 text-sm text-slate-500">
                 Administra los productos que forman parte de {campaign.title}.

@@ -46,11 +46,12 @@ export async function PATCH(
       name?: string;
       desc?: string | null;
       price?: number;
+      stock?: number;
       isActive?: boolean;
       category?: (typeof productCategories)[number];
       sizes?: string[];
       commissionValue?: number;
-      commissionType?: "PERCENT" | "FIXED";
+      commissionType?: "PERCENT";
       imageUrls?: string[];
     } = {};
 
@@ -82,6 +83,19 @@ export async function PATCH(
       data.price = price;
     }
 
+    if (body.stock !== undefined) {
+      const stock = Number(body.stock);
+
+      if (!Number.isInteger(stock) || stock < 0) {
+        return NextResponse.json(
+          { ok: false, error: "Stock invalido" },
+          { status: 400 }
+        );
+      }
+
+      data.stock = stock;
+    }
+
     if (body.category !== undefined) {
       const category = String(body.category).trim().toUpperCase();
 
@@ -105,7 +119,7 @@ export async function PATCH(
     if (body.commissionValue !== undefined) {
       const commissionValue = Number(body.commissionValue);
 
-      if (!Number.isInteger(commissionValue) || commissionValue <= 0) {
+      if (!Number.isInteger(commissionValue) || commissionValue <= 0 || commissionValue > 100) {
         return NextResponse.json(
           { ok: false, error: "Comision invalida" },
           { status: 400 }
@@ -113,19 +127,20 @@ export async function PATCH(
       }
 
       data.commissionValue = commissionValue;
+      data.commissionType = "PERCENT";
     }
 
     if (body.commissionType !== undefined) {
       const commissionType = String(body.commissionType).trim().toUpperCase();
 
-      if (!["PERCENT", "FIXED"].includes(commissionType)) {
+      if (commissionType !== "PERCENT") {
         return NextResponse.json(
-          { ok: false, error: "Tipo de comision invalido" },
+          { ok: false, error: "La comision debe ser por porcentaje" },
           { status: 400 }
         );
       }
 
-      data.commissionType = commissionType as "PERCENT" | "FIXED";
+      data.commissionType = "PERCENT";
     }
 
     if (body.imageUrls !== undefined) {
@@ -147,6 +162,7 @@ export async function PATCH(
         name: true,
         desc: true,
         price: true,
+        stock: true,
         category: true,
         sizes: true,
         isActive: true,

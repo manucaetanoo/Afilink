@@ -9,12 +9,8 @@ function clean(value: unknown) {
   return v.length ? v : null;
 }
 
-function isValidUsername(u: string) {
-  return /^[a-zA-Z0-9._-]{3,30}$/.test(u);
-}
-
 function isValidPayoutMethod(value: string | null) {
-  return value === null || ["BANK_TRANSFER", "MERCADO_PAGO", "MANUAL"].includes(value);
+  return value === null || ["BANK_TRANSFER", "DLOCAL_GO", "MANUAL"].includes(value);
 }
 
 async function getUserIdFromSession() {
@@ -35,8 +31,6 @@ export async function GET() {
     select: {
       email: true,
       name: true,
-      lastName: true,
-      username: true,
       timezone: true,
       image: true,
       payoutMethod: true,
@@ -53,6 +47,7 @@ export async function GET() {
       bankAccountAlias: true,
       bankBranch: true,
       payoutNotes: true,
+      dlocalSplitCode: true,
       updatedAt: true,
     },
   });
@@ -77,10 +72,8 @@ export async function POST(req: Request) {
   }
 
   const name = clean(body.name);
-  const lastName = clean(body.lastName);
   const timezone = clean(body.timezone);
   const image = clean(body.image);
-  const usernameRaw = clean(body.username);
 
   const payoutMethod = clean(body.payoutMethod);
   const payoutHolderName = clean(body.payoutHolderName);
@@ -96,12 +89,10 @@ export async function POST(req: Request) {
   const bankAccountAlias = clean(body.bankAccountAlias);
   const bankBranch = clean(body.bankBranch);
   const payoutNotes = clean(body.payoutNotes);
+  const dlocalSplitCode = clean(body.dlocalSplitCode);
 
   if (name && name.length > 60) {
     return NextResponse.json({ error: "Nombre demasiado largo" }, { status: 400 });
-  }
-  if (lastName && lastName.length > 60) {
-    return NextResponse.json({ error: "Apellido demasiado largo" }, { status: 400 });
   }
   if (timezone && timezone.length > 64) {
     return NextResponse.json({ error: "Timezone invalido" }, { status: 400 });
@@ -113,40 +104,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Metodo de cobro invalido" }, { status: 400 });
   }
 
-  let username: string | null = null;
-
-  if (usernameRaw) {
-    username = usernameRaw;
-
-    if (!isValidUsername(username)) {
-      return NextResponse.json(
-        { error: "Username invalido (3-30, letras/numeros/._-)" },
-        { status: 400 }
-      );
-    }
-
-    const exists = await prisma.user.findFirst({
-      where: {
-        username,
-        NOT: { id: userId },
-      },
-      select: { id: true },
-    });
-
-    if (exists) {
-      return NextResponse.json({ error: "Ese username ya esta en uso" }, { status: 409 });
-    }
-  }
-
   const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: {
       name,
-      lastName,
-      username,
       timezone,
       image,
-      payoutMethod: payoutMethod as "BANK_TRANSFER" | "MERCADO_PAGO" | "MANUAL" | null,
+      payoutMethod: payoutMethod as "BANK_TRANSFER" | "DLOCAL_GO" | "MANUAL" | null,
       payoutHolderName,
       payoutDocumentType,
       payoutDocumentNumber,
@@ -160,12 +124,11 @@ export async function POST(req: Request) {
       bankAccountAlias,
       bankBranch,
       payoutNotes,
+      dlocalSplitCode,
     },
     select: {
       email: true,
       name: true,
-      lastName: true,
-      username: true,
       timezone: true,
       image: true,
       payoutMethod: true,
@@ -182,6 +145,7 @@ export async function POST(req: Request) {
       bankAccountAlias: true,
       bankBranch: true,
       payoutNotes: true,
+      dlocalSplitCode: true,
       updatedAt: true,
     },
   });

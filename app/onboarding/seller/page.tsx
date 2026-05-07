@@ -131,7 +131,7 @@ export default function SellerOnboardingPage() {
       }
 
       setMsg("Empresa guardada ✅");
-      router.push(`/onboarding/products`);
+      router.push(`/products`);
     } catch (err: any) {
       setMsg(err?.message ?? "Error");
     } finally {

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatMoney, getSellerNetAmount } from "@/lib/pricing";
 
 const productCategories = [
   { value: "CLOTHING", label: "Ropa", sizes: ["XS", "S", "M", "L", "XL", "XXL"] },
@@ -20,19 +21,21 @@ const productCategories = [
 const categoriesWithSizes = new Set(["CLOTHING", "SHOES"]);
 
 type ProductCategory = (typeof productCategories)[number]["value"];
-type CommissionType = "PERCENT" | "FIXED";
 
 type ProductFormProduct = {
   id: string;
   name: string;
   desc: string | null;
   price: number;
+  stock: number;
   category: ProductCategory;
   sizes: string[];
   imageUrls: string[];
   isActive: boolean;
   commissionValue: number;
-  commissionType: CommissionType;
+  commissionType: "PERCENT" | "FIXED";
+  platformCommissionValue: number;
+  platformCommissionType: "PERCENT" | "FIXED";
 };
 
 export default function ProductEditForm({ product }: { product: ProductFormProduct }) {
@@ -43,12 +46,12 @@ export default function ProductEditForm({ product }: { product: ProductFormProdu
     name: product.name,
     desc: product.desc ?? "",
     price: String(product.price),
+    stock: String(product.stock),
     category: product.category,
     sizes: product.sizes,
     imageUrls: product.imageUrls,
     isActive: product.isActive,
     commissionValue: String(product.commissionValue),
-    commissionType: product.commissionType,
   });
   const [customSize, setCustomSize] = useState("");
 
@@ -57,6 +60,15 @@ export default function ProductEditForm({ product }: { product: ProductFormProdu
     [form.category]
   );
   const shouldShowSizes = categoriesWithSizes.has(form.category);
+  const price = Number(form.price) || 0;
+  const affiliateCommissionValue = Number(form.commissionValue) || 0;
+  const sellerNet = getSellerNetAmount({
+    price,
+    affiliateCommissionValue,
+    affiliateCommissionType: product.commissionType,
+    platformCommissionValue: product.platformCommissionValue,
+    platformCommissionType: product.platformCommissionType,
+  });
 
   function fileToDataUrl(file: File) {
     return new Promise<string>((resolve, reject) => {
@@ -122,12 +134,13 @@ export default function ProductEditForm({ product }: { product: ProductFormProdu
       name: form.name,
       desc: form.desc,
       price: Number(form.price),
+      stock: Number(form.stock),
       category: form.category,
       sizes: shouldShowSizes ? form.sizes : [],
       imageUrls: form.imageUrls,
       isActive: form.isActive,
       commissionValue: Number(form.commissionValue),
-      commissionType: form.commissionType,
+      commissionType: "PERCENT",
     };
 
     const res = await fetch(`/api/seller/products/${product.id}`, {
@@ -182,6 +195,22 @@ export default function ProductEditForm({ product }: { product: ProductFormProdu
             required
           />
         </div>
+
+        <div>
+          <label className="text-sm font-medium text-slate-700">Stock</label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={form.stock}
+            onChange={(e) => setField("stock", e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+            required
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Se descuenta automaticamente cuando una compra queda aprobada.
+          </p>
+        </div>
       </div>
 
       <div>
@@ -194,7 +223,7 @@ export default function ProductEditForm({ product }: { product: ProductFormProdu
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="text-sm font-medium text-slate-700">Categoria</label>
           <select
@@ -218,27 +247,45 @@ export default function ProductEditForm({ product }: { product: ProductFormProdu
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-700">Comision</label>
+          <label className="text-sm font-medium text-slate-700">Comision (%)</label>
           <input
             type="number"
             min="1"
+            max="100"
             step="1"
             value={form.commissionValue}
             onChange={(e) => setField("commissionValue", e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
           />
+          <p className="mt-1 text-xs text-slate-500">
+            Porcentaje que gana el afiliado por cada venta.
+          </p>
         </div>
+      </div>
 
-        <div>
-          <label className="text-sm font-medium text-slate-700">Tipo</label>
-          <select
-            value={form.commissionType}
-            onChange={(e) => setField("commissionType", e.target.value as CommissionType)}
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
-          >
-            <option value="PERCENT">Porcentaje</option>
-            <option value="FIXED">Fijo</option>
-          </select>
+      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+        <p className="text-sm font-semibold text-emerald-900">
+          Ganancia neta: {formatMoney(sellerNet.netAmount)}
+        </p>
+        <div className="mt-3 grid gap-3 text-sm text-emerald-950 sm:grid-cols-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+              Precio
+            </p>
+            <p className="mt-1 font-semibold">{formatMoney(price)}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+              Afiliado
+            </p>
+            <p className="mt-1 font-semibold">-{formatMoney(sellerNet.affiliateAmount)}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+              Plataforma
+            </p>
+            <p className="mt-1 font-semibold">-{formatMoney(sellerNet.platformAmount)}</p>
+          </div>
         </div>
       </div>
 

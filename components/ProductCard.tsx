@@ -15,18 +15,10 @@ const formatPrice = (amount: number) =>
   }).format(amount);
 
 const getCommissionLabel = (product: Product) => {
-  if (product.commissionType === "FIXED") {
-    return formatPrice(product.commissionValue);
-  }
-
   return `${product.commissionValue}%`;
 };
 
 const getCommissionEarning = (product: Product) => {
-  if (product.commissionType === "FIXED") {
-    return product.commissionValue;
-  }
-
   return Math.round((product.price * product.commissionValue) / 100);
 };
 
@@ -42,6 +34,7 @@ export default function ProductCard({
 
   const commissionLabel = getCommissionLabel(product);
   const commissionEarning = getCommissionEarning(product);
+  const hasStock = product.stock > 0;
 
   return (
     <article className="group overflow-hidden rounded-[28px] border border-orange-100 bg-white shadow-[0_15px_50px_-35px_rgba(15,23,42,0.45)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_30px_80px_-35px_rgba(249,115,22,0.45)]">
@@ -96,6 +89,9 @@ export default function ProductCard({
             <p className="mt-2 text-sm font-medium text-slate-500">
               Precio de venta {formatPrice(product.price)}
             </p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              {!hasStock && "Sin stock"}
+            </p>
           </div>
 
           {hasCommission && (
@@ -133,12 +129,18 @@ export default function ProductCard({
             Ver producto
           </Link>
 
-          <Link
-            href={`/products/${product.id}`}
-            className="inline-flex flex-1 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-500"
-          >
-            Comprar
-          </Link>
+          {hasStock ? (
+            <Link
+              href={`/products/${product.id}`}
+              className="inline-flex flex-1 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-500"
+            >
+              Comprar
+            </Link>
+          ) : (
+            <span className="inline-flex flex-1 items-center justify-center rounded-2xl bg-slate-200 px-4 py-3 text-sm font-semibold text-slate-500">
+              Sin stock
+            </span>
+          )}
         </div>
       </div>
     </article>

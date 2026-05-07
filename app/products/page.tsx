@@ -3,8 +3,14 @@ import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
+import type { Metadata } from "next";
+
+
+export const metadata: Metadata = {
+  title: "Productos - Afilink",
+  description: "Explora productos con alto potencial de conversion y, si eres afiliado, prioriza los que te dejan mejores comisiones por venta.",
+};
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("es-UY", {
@@ -16,13 +22,8 @@ const formatMoney = (value: number) =>
 
 const getCommissionEarning = (
   price: number,
-  commissionValue: number,
-  commissionType: "PERCENT" | "FIXED"
+  commissionValue: number
 ) => {
-  if (commissionType === "FIXED") {
-    return commissionValue;
-  }
-
   return Math.round((price * commissionValue) / 100);
 };
 
@@ -49,8 +50,7 @@ export default async function ProductsPage() {
         ...products.map((product) =>
           getCommissionEarning(
             Number(product.price || 0),
-            Number(product.commissionValue || 0),
-            product.commissionType
+            Number(product.commissionValue || 0)
           )
         )
       )

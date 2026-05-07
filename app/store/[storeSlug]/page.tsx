@@ -50,10 +50,6 @@ export default async function StorePage(props: {
     commissionValue: number;
     commissionType?: string | null;
   }) => {
-    if (product.commissionType === "FIXED") {
-      return `$${product.commissionValue}`;
-    }
-
     return `${product.commissionValue}%`;
   };
 
@@ -62,10 +58,6 @@ export default async function StorePage(props: {
     commissionValue: number;
     commissionType?: string | null;
   }) => {
-    if (product.commissionType === "FIXED") {
-      return `$${Number(product.commissionValue).toFixed(0)} por venta`;
-    }
-
     const estimated =
       (Number(product.price) * Number(product.commissionValue)) / 100;
 
@@ -86,13 +78,6 @@ export default async function StorePage(props: {
         "https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?auto=format&fit=crop&w=900&q=80",
       ][index % 3],
   }));
-
-  const resources = [
-    "Creatividades listas para historias y reels",
-    "Copys sugeridos para publicaciones",
-    "Videos demo cortos del producto",
-    "Argumentos de venta y preguntas frecuentes",
-  ];
 
   const maxCommission =
     seller.products.length > 0
@@ -124,10 +109,10 @@ export default async function StorePage(props: {
     },
   ];
 
-  const sellerName = seller.name || seller.username || "Store";
+  const sellerName = seller.name || seller.storeSlug || "Store";
   const sellerInitial = (
     seller.name?.[0] ||
-    seller.username?.[0] ||
+    seller.storeSlug?.[0] ||
     seller.email?.[0] ||
     "S"
   ).toUpperCase();
@@ -175,7 +160,7 @@ export default async function StorePage(props: {
               </p>
 
               <div className="mt-8 flex flex-wrap gap-4">
-                <ButtonScroll targetId="campanas" label="Ver campañas" />
+                <ButtonScroll targetId="campañas" label="Ver campañas" />
 
                 <button className="rounded-2xl border border-orange-200 bg-white px-6 py-3 text-sm font-medium text-slate-900 transition hover:bg-orange-50">
                   Unirme como afiliado
@@ -220,8 +205,8 @@ export default async function StorePage(props: {
               {storeSlug} tiene {seller.products.length}{" "}
               {seller.products.length === 1 ? "producto activo" : "productos activos"}{" "}
               dentro de Afilink. Los afiliados pueden descubrir qué conviene
-              promocionar, ver comisiones claras y acceder a materiales de apoyo
-              para vender mejor.
+              promocionar, ver comisiones claras y encontrar oportunidades de venta
+              activas.
             </p>
           </div>
 
@@ -234,7 +219,7 @@ export default async function StorePage(props: {
               {[
                 "Campañas organizadas por oportunidad de venta",
                 "Productos destacados listos para promocionar",
-                "Recursos visuales y copies para afiliados",
+                "Comisiones visibles antes de promocionar",
                 "Una página propia de marca dentro de tu plataforma",
               ].map((item) => (
                 <div
@@ -249,7 +234,7 @@ export default async function StorePage(props: {
           </div>
         </section>
 
-        <section className="mt-10" id="campanas">
+        <section className="mt-10" id="campañas">
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
               <p className="text-sm uppercase tracking-[0.2em] text-slate-500">
@@ -417,10 +402,9 @@ export default async function StorePage(props: {
                           </span>
                         </div>
                       </div>
-
-                      <button className="mt-5 w-full rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-slate-900 transition hover:bg-orange-100">
+<Link href={`/products/${product.id}`} className="mt-5 block w-full rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-slate-900 transition hover:bg-orange-100">
                         Ver producto
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 ))}
@@ -429,27 +413,6 @@ export default async function StorePage(props: {
           </div>
 
           <div className="space-y-8">
-            <div className="rounded-[28px] border border-orange-100 bg-white p-8 shadow-sm">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-500">
-                Recursos de venta
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-900">
-                Material listo para afiliados
-              </h2>
-
-              <div className="mt-6 space-y-3">
-                {resources.map((item) => (
-                  <div
-                  key={item}
-                  className="flex items-start gap-3 rounded-2xl border border-orange-100 bg-orange-50/60 p-4"
-                  >
-                    <span className="mt-1 h-2.5 w-2.5 rounded-full bg-orange-500" />
-                    <p className="text-slate-700">{item}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div className="rounded-[28px] border border-orange-200 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-8 text-slate-900 shadow-[0_20px_50px_rgba(251,146,60,0.12)]">
               <p className="text-sm uppercase tracking-[0.2em] text-slate-500">
                 CTA final
@@ -459,8 +422,7 @@ export default async function StorePage(props: {
               </h2>
               <p className="mt-3 leading-7 text-slate-600">
                 Explora campañas activas, elige productos alineados con tu
-                audiencia y genera ingresos con una marca que ya te da recursos
-                listos para vender.
+                audiencia y genera ingresos con comisiones claras desde el inicio.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-4">

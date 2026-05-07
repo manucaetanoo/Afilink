@@ -4,6 +4,13 @@ import Navbar from "@/components/Navbar";
 import Tabs from "@/components/Tabs";
 import GetCampaignAffiliateLinkButton from "@/components/campaigns/GetCampaignAffiliateLinkButton";
 import Sidebar from "@/components/Sidebar";
+import { Metadata } from "next";
+
+
+export const metadata: Metadata = {
+  title: "Campañas - Afilink",
+  description: "Explora campañas activas y descubre oportunidades de promoción para tus productos.",
+};
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("es-UY", {
@@ -126,7 +133,7 @@ export default async function CampaignsPage() {
                 </Link>
 
                 <Link
-                  href="/dashboard/seller/campaigns"
+                  href="/seller/campaigns"
                   className="rounded-2xl border border-orange-200 bg-white px-6 py-3 text-sm font-semibold text-orange-700 transition hover:bg-orange-50"
                   >
                   Crear una campaña
@@ -341,7 +348,7 @@ export default async function CampaignsPage() {
                 </p>
                 <div className="mt-8">
                   <Link
-                    href="/dashboard/seller/campaigns"
+                    href="/seller/campaigns"
                     className="rounded-2xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-600"
                     >
                     Crear la primera campaña

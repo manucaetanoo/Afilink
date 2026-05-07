@@ -8,8 +8,15 @@ import Navbar from "../components/Navbarv2"
 
 import { useState } from 'react'
 import { Dialog, DialogPanel } from '@headlessui/react'
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import {
+  Bars3Icon,
+  XMarkIcon,
+  UserIcon,
+  MegaphoneIcon,
+  ChartBarIcon,
+} from "@heroicons/react/24/outline";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { FlipWords } from "@/components/ui/FlipWords";
 
 type NavItem = {
@@ -169,6 +176,110 @@ export default function Home() {
           />
         </div>
       </div>
+<section className="relative isolate overflow-hidden px-6 py-24 sm:py-32 lg:px-8">
+  <div
+    aria-hidden="true"
+    className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl"
+  >
+    <div
+      style={{
+        clipPath:
+          "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)",
+      }}
+      className="relative left-[calc(50%-20rem)] aspect-1155/678 w-144.5 -translate-x-1/2 rotate-30 bg-linear-to-tr from-[#E89C51] to-[#E89C51] opacity-20 sm:w-288.75"
+    />
+  </div>
+
+  <div className="mx-auto max-w-2xl text-center">
+    <h2 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
+      ¿Cómo empezar?
+    </h2>
+    <p className="mt-6 text-lg text-gray-500">
+      Empezar en Afilink es simple. En pocos pasos podés vender productos o generar comisiones como afiliado.
+    </p>
+  </div>
+
+  <div className="mx-auto mt-20 max-w-5xl space-y-14">
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      viewport={{ once: true }}
+      className="rounded-3xl border border-orange-100 bg-white/80 p-8 shadow-sm backdrop-blur"
+    >
+      <div className="flex items-start gap-6">
+        <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+          <UserIcon className="size-7" />
+        </div>
+        <div>
+          <span className="text-sm font-semibold text-orange-600">Paso 1</span>
+          <h3 className="mt-2 text-2xl font-semibold text-gray-900">
+            Crea tu cuenta
+          </h3>
+          <p className="mt-3 text-gray-500">
+            Registrate gratis y elegí si querés vender tus productos o generar ingresos como afiliado.
+          </p>
+        </div>
+      </div>
+    </motion.div>
+
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.1 }}
+      viewport={{ once: true }}
+      className="rounded-3xl border border-orange-100 bg-white/80 p-8 shadow-sm backdrop-blur"
+    >
+      <div className="flex items-start gap-6">
+        <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+          <MegaphoneIcon className="size-7" />
+        </div>
+        <div>
+          <span className="text-sm font-semibold text-orange-600">Paso 2</span>
+          <h3 className="mt-2 text-2xl font-semibold text-gray-900">
+            Publica o elige una campaña
+          </h3>
+          <p className="mt-3 text-gray-500">
+            Si sos vendedor, creá una campaña para tus productos. Si sos afiliado, elegí una campaña para promocionar.
+          </p>
+        </div>
+      </div>
+    </motion.div>
+
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.2 }}
+      viewport={{ once: true }}
+      className="rounded-3xl border border-orange-100 bg-white/80 p-8 shadow-sm backdrop-blur"
+    >
+      <div className="flex items-start gap-6">
+        <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+          <ChartBarIcon className="size-7" />
+        </div>
+        <div>
+          <span className="text-sm font-semibold text-orange-600">Paso 3</span>
+          <h3 className="mt-2 text-2xl font-semibold text-gray-900">
+            Comparte tu link y genera ventas
+          </h3>
+          <p className="mt-3 text-gray-500">
+            Compartí tu link de afiliado, generá ventas y seguí tus comisiones desde el dashboard.
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  </div>
+
+  <div className="mt-16 flex justify-center">
+    <Link
+      href="/register"
+      className="rounded-md bg-orange-600 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-orange-500"
+    >
+      Empezar ahora
+    </Link>
+  </div>
+</section>
+
       
     </div>
     

@@ -114,6 +114,7 @@ export default function Navbar() {
 
     const response = await fetch("/api/checkout", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items }),
     });
@@ -196,7 +197,7 @@ export default function Navbar() {
                     <div className="max-h-96 overflow-auto py-2">
                       {items.map((item) => (
                         <div
-                          key={item.productId}
+                          key={item.lineId}
                           className="flex gap-3 rounded-xl px-2 py-3 hover:bg-slate-50"
                         >
                           <div className="h-14 w-14 overflow-hidden rounded-lg bg-slate-100">
@@ -216,13 +217,14 @@ export default function Navbar() {
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
                               ${item.price.toFixed(2)}
+                              {item.selectedSize && ` - Talle ${item.selectedSize}`}
                               {(item.clickId || item.campaignClickId) && " · referido"}
                             </p>
                             <div className="mt-2 flex items-center gap-2">
                               <button
                                 type="button"
                                 onClick={() =>
-                                  updateQuantity(item.productId, item.quantity - 1)
+                                  updateQuantity(item.lineId, item.quantity - 1)
                                 }
                                 className="h-7 w-7 rounded-md border border-slate-200 text-sm font-semibold"
                               >
@@ -234,7 +236,7 @@ export default function Navbar() {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  updateQuantity(item.productId, item.quantity + 1)
+                                  updateQuantity(item.lineId, item.quantity + 1)
                                 }
                                 className="h-7 w-7 rounded-md border border-slate-200 text-sm font-semibold"
                               >
@@ -244,7 +246,7 @@ export default function Navbar() {
                           </div>
                           <button
                             type="button"
-                            onClick={() => removeItem(item.productId)}
+                            onClick={() => removeItem(item.lineId)}
                             className="self-start rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                           >
                             <TrashIcon className="size-4" />

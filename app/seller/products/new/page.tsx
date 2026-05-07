@@ -8,9 +8,15 @@ import {
   DocumentTextIcon,
   PhotoIcon,
   Squares2X2Icon,
+  ArchiveBoxIcon,
 } from "@heroicons/react/24/outline";
 import Navbar from "@/components/Navbar";
 import { CommissionRange } from "@/components/CommissionRange";
+import {
+  DEFAULT_PLATFORM_COMMISSION_TYPE,
+  DEFAULT_PLATFORM_COMMISSION_VALUE,
+} from "@/lib/platform-commission";
+import { formatMoney, getSellerNetAmount } from "@/lib/pricing";
 
 const productCategories = [
   { value: "CLOTHING", label: "Ropa", sizes: ["XS", "S", "M", "L", "XL", "XXL"] },
@@ -51,9 +57,7 @@ export default function NewProductPage() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [customSize, setCustomSize] = useState("");
   const [commissionValue, setCommissionValue] = useState(10);
-  const [commissionType, setCommissionType] = useState<"PERCENT" | "FIXED">(
-    "PERCENT"
-  );
+  const [priceValue, setPriceValue] = useState("");
 
   const imagePreviews = useMemo(() => {
     return imageFiles.map((file) => ({
@@ -65,6 +69,12 @@ export default function NewProductPage() {
   const selectedCategory = productCategories.find((item) => item.value === category);
   const suggestedSizes = selectedCategory?.sizes ?? [];
   const shouldShowSizes = categoriesWithSizes.has(category);
+  const sellerNet = getSellerNetAmount({
+    price: Number(priceValue) || 0,
+    affiliateCommissionValue: commissionValue,
+    platformCommissionValue: DEFAULT_PLATFORM_COMMISSION_VALUE,
+    platformCommissionType: DEFAULT_PLATFORM_COMMISSION_TYPE,
+  });
 
   function toggleSize(size: string) {
     setSelectedSizes((current) =>
@@ -95,9 +105,13 @@ export default function NewProductPage() {
       const name = String(fd.get("name") || "").trim();
       const desc = String(fd.get("desc") || "").trim();
       const price = Number(fd.get("price") || 0);
+      const stock = Number(fd.get("stock") || 0);
 
       if (!name) throw new Error("Debes ingresar el nombre del producto");
       if (!price || price <= 0) throw new Error("Debes ingresar un precio valido");
+      if (!Number.isInteger(stock) || stock < 0) {
+        throw new Error("Debes ingresar un stock valido");
+      }
 
       const imageUrls =
         imageFiles.length > 0 ? await Promise.all(imageFiles.map(uploadImage)) : [];
@@ -106,10 +120,11 @@ export default function NewProductPage() {
         name,
         desc,
         price,
+        stock,
         category,
         sizes: shouldShowSizes ? selectedSizes : [],
         commissionValue,
-        commissionType,
+        commissionType: "PERCENT",
         imageUrls,
       };
 
@@ -402,11 +417,37 @@ export default function NewProductPage() {
                       type="number"
                       min="0"
                       step="1"
+                      value={priceValue}
+                      onChange={(e) => setPriceValue(e.target.value)}
                       required
                       placeholder="0"
                       className="w-full bg-transparent px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="stock"
+                    className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900"
+                  >
+                    <ArchiveBoxIcon className="h-4 w-4 text-orange-500" />
+                    Stock disponible
+                  </label>
+
+                  <input
+                    id="stock"
+                    name="stock"
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    placeholder="0"
+                    className="block w-full rounded-2xl border border-orange-200 bg-orange-50/40 px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                  />
+                  <p className="mt-2 text-sm text-slate-500">
+                    Se descuenta automaticamente cuando una compra queda aprobada.
+                  </p>
                 </div>
 
                 <div className="rounded-3xl border border-orange-100 bg-gradient-to-b from-orange-50 to-white p-5">
@@ -420,16 +461,50 @@ export default function NewProductPage() {
                   </div>
 
                   <CommissionRange
-                    type={commissionType}
+                    type="PERCENT"
                     min={5}
                     max={90}
                     step={5}
                     initialValue={commissionValue}
-                    onChange={(val, type) => {
+                    onChange={(val) => {
                       setCommissionValue(val);
-                      setCommissionType(type);
                     }}
                   />
+                </div>
+
+                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+                  <p className="text-sm font-semibold text-emerald-900">
+                    Ganancia neta: {formatMoney(sellerNet.netAmount)}
+                  </p>
+                  <div className="mt-4 grid gap-3 text-sm text-emerald-950 sm:grid-cols-3">
+                    <div className="rounded-2xl bg-white/70 px-4 py-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                        Precio
+                      </p>
+                      <p className="mt-1 font-semibold">
+                        {formatMoney(Number(priceValue) || 0)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white/70 px-4 py-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                        Afiliado
+                      </p>
+                      <p className="mt-1 font-semibold">
+                        -{formatMoney(sellerNet.affiliateAmount)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white/70 px-4 py-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                        Plataforma
+                      </p>
+                      <p className="mt-1 font-semibold">
+                        -{formatMoney(sellerNet.platformAmount)}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs text-emerald-700">
+                    Calculado como precio menos comision de afiliado menos comision de plataforma.
+                  </p>
                 </div>
               </div>
 

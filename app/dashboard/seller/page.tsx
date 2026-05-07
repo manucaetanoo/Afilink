@@ -16,6 +16,7 @@ import {
   FiUsers,
 } from "react-icons/fi";
 import Navbar from "@/components/Navbar";
+import PayoutRequestButton from "@/components/PayoutRequestButton";
 import Sidebar from "@/components/Sidebar";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -155,7 +156,15 @@ export default async function SellerDashboardPage() {
   const previousStart = new Date(now);
   previousStart.setDate(previousStart.getDate() - 60);
 
-  const [products, campaigns, orders, settlements, productLinks, campaignLinks] =
+  const [
+    products,
+    campaigns,
+    orderItems,
+    settlements,
+    productLinks,
+    campaignLinks,
+    pendingPayoutRequest,
+  ] =
     await Promise.all([
       prisma.product.findMany({
         where: { sellerId },
@@ -184,18 +193,18 @@ export default async function SellerDashboardPage() {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.order.findMany({
+      prisma.orderItem.findMany({
         where: { sellerId },
         select: {
           id: true,
           total: true,
-          status: true,
           sellerAmount: true,
           affiliateAmount: true,
           platformAmount: true,
           createdAt: true,
           product: { select: { id: true, name: true } },
           affiliate: { select: { id: true, name: true, email: true } },
+          order: { select: { id: true, status: true } },
         },
         orderBy: { createdAt: "desc" },
         take: 80,
@@ -209,16 +218,20 @@ export default async function SellerDashboardPage() {
           affiliateFee: true,
           netAmount: true,
           status: true,
+          fulfillmentStatus: true,
           createdAt: true,
           order: {
             select: {
               id: true,
-              product: { select: { name: true } },
+              items: {
+                where: { sellerId },
+                take: 3,
+                select: { product: { select: { name: true } } },
+              },
             },
           },
         },
         orderBy: { createdAt: "desc" },
-        take: 20,
       }),
       prisma.affiliateLink.findMany({
         where: { product: { sellerId } },
@@ -237,34 +250,45 @@ export default async function SellerDashboardPage() {
           _count: { select: { clicks: true } },
         },
       }),
+      prisma.payoutRequest.findFirst({
+        where: {
+          requesterId: sellerId,
+          kind: "SELLER",
+          status: "PENDING",
+        },
+        select: {
+          id: true,
+        },
+      }),
     ]);
 
-  const paidOrders = orders.filter((order) => order.status === "PAID");
-  const currentOrders = paidOrders.filter((order) => order.createdAt >= currentStart);
-  const previousOrders = paidOrders.filter(
-    (order) => order.createdAt >= previousStart && order.createdAt < currentStart
+  const paidItems = orderItems.filter((item) => item.order.status === "PAID");
+  const currentItems = paidItems.filter((item) => item.createdAt >= currentStart);
+  const previousItems = paidItems.filter(
+    (item) => item.createdAt >= previousStart && item.createdAt < currentStart
   );
-  const grossRevenue = paidOrders.reduce((total, order) => total + order.total, 0);
-  const currentGrossRevenue = currentOrders.reduce(
-    (total, order) => total + order.total,
+  const grossRevenue = paidItems.reduce((total, item) => total + item.total, 0);
+  const currentGrossRevenue = currentItems.reduce(
+    (total, item) => total + item.total,
     0
   );
-  const previousGrossRevenue = previousOrders.reduce(
-    (total, order) => total + order.total,
+  const previousGrossRevenue = previousItems.reduce(
+    (total, item) => total + item.total,
     0
   );
-  const netRevenue = paidOrders.reduce(
-    (total, order) => total + order.sellerAmount,
+  const netRevenue = paidItems.reduce(
+    (total, item) => total + item.sellerAmount,
     0
   );
-  const pendingSettlement = settlements
-    .filter((settlement) => settlement.status === "PENDING")
-    .reduce((total, settlement) => total + settlement.netAmount, 0);
   const availableSettlement = settlements
     .filter(
       (settlement) =>
-        settlement.status === "AVAILABLE" || settlement.status === "PAID"
+        settlement.status === "AVAILABLE" &&
+        settlement.fulfillmentStatus === "DELIVERED"
     )
+    .reduce((total, settlement) => total + settlement.netAmount, 0);
+  const paidSettlement = settlements
+    .filter((settlement) => settlement.status === "PAID")
     .reduce((total, settlement) => total + settlement.netAmount, 0);
   const totalClicks =
     productLinks.reduce((total, link) => total + link._count.clicks, 0) +
@@ -274,26 +298,26 @@ export default async function SellerDashboardPage() {
   const activeAffiliates = new Set([
     ...productLinks.map((link) => link.affiliateId),
     ...campaignLinks.map((link) => link.affiliateId),
-    ...orders
-      .map((order) => order.affiliate?.id ?? null)
+    ...orderItems
+      .map((item) => item.affiliate?.id ?? null)
       .filter((id): id is string => Boolean(id)),
   ]).size;
-  const averageOrder = paidOrders.length > 0 ? grossRevenue / paidOrders.length : 0;
-  const platformFees = paidOrders.reduce(
-    (total, order) => total + order.platformAmount,
+  const averageOrder = paidItems.length > 0 ? grossRevenue / paidItems.length : 0;
+  const platformFees = paidItems.reduce(
+    (total, item) => total + item.platformAmount,
     0
   );
-  const affiliateFees = paidOrders.reduce(
-    (total, order) => total + order.affiliateAmount,
+  const affiliateFees = paidItems.reduce(
+    (total, item) => total + item.affiliateAmount,
     0
   );
 
   const productStats = products
     .map((product) => {
-      const productOrders = paidOrders.filter(
-        (order) => order.product.id === product.id
+      const productOrders = paidItems.filter(
+        (item) => item.product.id === product.id
       );
-      const revenue = productOrders.reduce((total, order) => total + order.total, 0);
+      const revenue = productOrders.reduce((total, item) => total + item.total, 0);
       const clicks = productLinks
         .filter((link) => link.productId === product.id)
         .reduce((total, link) => total + link._count.clicks, 0);
@@ -314,8 +338,8 @@ export default async function SellerDashboardPage() {
     ...productStats.map((product) => product.revenue),
     0
   );
-  const recentOrders = orders.slice(0, 6);
-  const recentSettlements = settlements.slice(0, 5);
+  const recentOrders = orderItems.slice(0, 6);
+  const recentSettlements = settlements;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
@@ -335,12 +359,16 @@ export default async function SellerDashboardPage() {
                   Control comercial de tu tienda
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                  Ventas, productos, campanas, afiliados y liquidaciones en una
+                  Ventas, productos, campañas, afiliados y liquidaciones en una
                   vista lista para operar.
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-3">
+                <PayoutRequestButton
+                  disabled={availableSettlement <= 0}
+                  pending={Boolean(pendingPayoutRequest)}
+                />
                 <Link
                   href="/seller/products/new"
                   className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -349,11 +377,11 @@ export default async function SellerDashboardPage() {
                   Crear producto
                 </Link>
                 <Link
-                  href="/dashboard/seller/campaigns/new"
+                  href="/seller/campaigns/new"
                   className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                 >
                   <FiLayers />
-                  Nueva campana
+                  Nueva campaña
                 </Link>
               </div>
             </div>
@@ -376,15 +404,15 @@ export default async function SellerDashboardPage() {
               <StatCard
                 icon={<FiShoppingCart />}
                 label="Ordenes pagas"
-                value={number(paidOrders.length)}
-                detail={`${delta(currentOrders.length, previousOrders.length)} vs. periodo anterior`}
+                value={number(paidItems.length)}
+                detail={`${delta(currentItems.length, previousItems.length)} vs. periodo anterior`}
                 tone="slate"
               />
               <StatCard
                 icon={<FiClock />}
                 label="Por liquidar"
-                value={money(pendingSettlement)}
-                detail={`${money(availableSettlement)} disponible o pagado`}
+                value={money(availableSettlement)}
+                detail={`${money(paidSettlement)} ya liquidado`}
                 tone="violet"
               />
             </section>
@@ -406,12 +434,12 @@ export default async function SellerDashboardPage() {
 
               <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-slate-500">Campanas activas</p>
+                  <p className="text-sm font-medium text-slate-500">Campañas activas</p>
                   <FiLayers className="text-sky-500" />
                 </div>
                 <p className="mt-3 text-2xl font-semibold">{number(activeCampaigns)}</p>
                 <p className="mt-2 text-sm text-slate-500">
-                  {number(campaigns.length)} campanas creadas
+                  {number(campaigns.length)} campañas creadas
                 </p>
               </div>
 
@@ -424,7 +452,7 @@ export default async function SellerDashboardPage() {
                   {number(activeAffiliates)}
                 </p>
                 <p className="mt-2 text-sm text-slate-500">
-                  Con links, campanas o ventas
+                  Con links, campañas o ventas
                 </p>
               </div>
 
@@ -579,10 +607,10 @@ export default async function SellerDashboardPage() {
                             <td className="px-5 py-4">
                               <span
                                 className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${statusClasses(
-                                  order.status
+                                  order.order.status
                                 )}`}
                               >
-                                {statusLabel(order.status)}
+                                {statusLabel(order.order.status)}
                               </span>
                             </td>
                           </tr>
@@ -606,7 +634,7 @@ export default async function SellerDashboardPage() {
                   </p>
                 </div>
 
-                <div className="divide-y divide-slate-100">
+                <div className="max-h-[460px] divide-y divide-slate-100 overflow-y-auto">
                   {recentSettlements.length === 0 ? (
                     <p className="px-5 py-8 text-sm text-slate-500">
                       Todavia no hay liquidaciones.
@@ -619,7 +647,9 @@ export default async function SellerDashboardPage() {
                       >
                         <div className="min-w-0">
                           <p className="truncate font-medium text-slate-900">
-                            {settlement.order.product.name}
+                            {settlement.order.items
+                              .map((item) => item.product.name)
+                              .join(", ") || "Orden"}
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
                             {formatDate(settlement.createdAt)} · bruto{" "}

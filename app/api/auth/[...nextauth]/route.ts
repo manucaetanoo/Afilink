@@ -65,14 +65,34 @@ export const authOptions: NextAuthOptions = {
         token.storeSlug = (user as any).storeSlug;
       }
 
+      if (token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: {
+            role: true,
+            email: true,
+            name: true,
+            image: true,
+            storeSlug: true,
+            isActive: true,
+          },
+        });
+
+        if (!dbUser?.isActive) return token;
+
+        token.role = dbUser.role;
+        token.email = dbUser.email;
+        token.name = dbUser.name ?? "";
+        token.picture = dbUser.image;
+        token.storeSlug = dbUser.storeSlug;
+      }
+
         // updateSession() desde el client
     if (trigger === "update" && session?.user) {
     // solo actualizamos lo que venga
     if (session.user.name !== undefined) token.name = session.user.name;
     if ((session.user as any).image !== undefined) token.picture = (session.user as any).image;
     if (session.user.email !== undefined) token.email = session.user.email;
-    if ((session.user as any).role !== undefined) token.role = (session.user as any).role;
-    if ((session.user as any).storeSlug !== undefined) token.storeSlug = (session.user as any).storeSlug;
   }
 
 

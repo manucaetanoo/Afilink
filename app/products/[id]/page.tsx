@@ -10,13 +10,13 @@ import {
   FiTag,
   FiTruck,
 } from "react-icons/fi";
-import AddToCartButton from "@/components/cart/AddToCartButton";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { BuyButton } from "@/components/BuyButton";
 import GetAffiliateLinkButton from "@/components/GetAffiliateLinkButton";
 import Navbar from "@/components/Navbar";
 import ProductGallery from "@/components/ProductGallery";
+import ProductPurchaseActions from "@/components/ProductPurchaseActions";
 import { prisma } from "@/lib/prisma";
+import { getSellerNetAmount } from "@/lib/pricing";
 
 const categoryLabels: Record<string, string> = {
   ACCESSORIES: "Accesorios",
@@ -41,7 +41,6 @@ function commissionLabel(product: {
   commissionType: "PERCENT" | "FIXED";
   commissionValue: number;
 }) {
-  if (product.commissionType === "FIXED") return money(product.commissionValue);
   return `${product.commissionValue}%`;
 }
 
@@ -50,16 +49,19 @@ function commissionEarning(product: {
   commissionValue: number;
   price: number;
 }) {
-  if (product.commissionType === "FIXED") return product.commissionValue;
   return Math.round((product.price * product.commissionValue) / 100);
 }
 
 export default async function ProductPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ ref?: string }>;
 }) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+  const refCode = resolvedSearchParams?.ref ?? null;
 
   const [product, session] = await Promise.all([
     prisma.product.findUnique({
@@ -81,9 +83,18 @@ export default async function ProductPage({
 
   const userId = session?.user?.id ?? null;
   const isAffiliateViewer = session?.user?.role === "AFFILIATE";
-  const hasSizes = product.sizes.length > 0;
+  const isSellerOwnerViewer =
+    session?.user?.role === "SELLER" && userId === product.seller.id;
   const categoryName = categoryLabels[product.category] ?? "Producto";
   const earning = commissionEarning(product);
+  const hasStock = product.stock > 0;
+  const sellerNet = getSellerNetAmount({
+    price: product.price,
+    affiliateCommissionValue: product.commissionValue,
+    affiliateCommissionType: product.commissionType,
+    platformCommissionValue: product.platformCommissionValue,
+    platformCommissionType: product.platformCommissionType,
+  });
 
   return (
     <div className="min-h-screen bg-[#fffaf6] text-slate-950">
@@ -112,10 +123,16 @@ export default async function ProductPage({
                   <FiTag />
                   {categoryName}
                 </span>
-                {product.isActive && (
+                {product.isActive && hasStock && (
                   <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                     <FiCheckCircle />
                     Disponible
+                  </span>
+                )}
+                {!hasStock && (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                    <FiPackage />
+                    Sin stock
                   </span>
                 )}
               </div>
@@ -136,42 +153,49 @@ export default async function ProductPage({
                 </p>
               </div>
 
-              {hasSizes && (
-                <div className="mt-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <h2 className="text-sm font-semibold text-slate-950">
-                      Talles disponibles
-                    </h2>
-                    <span className="text-xs font-medium text-slate-500">
-                      {product.sizes.length} opciones
-                    </span>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {product.sizes.map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        className="min-w-12 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 transition hover:border-orange-400 hover:text-orange-700"
-                      >
-                        {size}
-                      </button>
-                    ))}
+              {isSellerOwnerViewer && (
+                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                  <p className="text-sm font-semibold text-emerald-900">
+                    Ganancia neta: {money(sellerNet.netAmount)}
+                  </p>
+                  <div className="mt-3 grid gap-3 text-sm text-emerald-950 sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                        Afiliado
+                      </p>
+                      <p className="mt-1 font-semibold">
+                        -{money(sellerNet.affiliateAmount)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                        Plataforma
+                      </p>
+                      <p className="mt-1 font-semibold">
+                        -{money(sellerNet.platformAmount)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                        Precio
+                      </p>
+                      <p className="mt-1 font-semibold">{money(product.price)}</p>
+                    </div>
                   </div>
                 </div>
               )}
 
-              <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                <BuyButton productId={product.id} />
-                <AddToCartButton
-                  product={{
-                    productId: product.id,
-                    name: product.name,
-                    price: product.price,
-                    imageUrl: product.imageUrls[0] ?? null,
-                  }}
-                />
-              </div>
+              <ProductPurchaseActions
+                disabled={!hasStock}
+                refCode={refCode}
+                product={{
+                  id: product.id,
+                  name: product.name,
+                  price: product.price,
+                  imageUrl: product.imageUrls[0] ?? null,
+                  sizes: product.sizes,
+                }}
+              />
 
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-slate-100 bg-white p-4">

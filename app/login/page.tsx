@@ -17,19 +17,20 @@ export default function Example() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setLoading(true);
-
+    
     const res = await signIn("credentials", {
       email,
       password,
       redirect: false,
     });
-
+    
     if (!res?.ok) {
       setError("Email o contraseña incorrectos.");
       return;
     }
-
+    
+    setLoading(true);
+    
     router.push("/products"); // la ruta real
   }
 
@@ -76,9 +77,9 @@ export default function Example() {
                 Contraseña
               </label>
               <div className="text-sm">
-                <a href="#" className="font-semibold text-orange-600 hover:text-orange-500">
-                  ¿Contraseña olvidada?
-                </a>
+                <Link href="/forgot-password" className="font-semibold text-orange-600 hover:text-orange-500">
+                  Olvide mi contrasena
+                </Link>
               </div>
             </div>
             <div className="mt-2">

@@ -1,7 +1,6 @@
 import {
   CommissionStatus,
   OrderStatus,
-  SettlementStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendTransactionalEmail } from "@/lib/email";
@@ -43,35 +42,34 @@ export async function markOrderPaidAndNotify({
     const order = await tx.order.findUnique({
       where: { id: orderId },
       include: {
-        product: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        seller: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            storeSlug: true,
-          },
-        },
-        affiliate: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        commission: {
-          select: {
-            id: true,
-          },
-        },
-        settlement: {
-          select: {
-            id: true,
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            seller: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                storeSlug: true,
+              },
+            },
+            affiliate: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            commission: {
+              select: {
+                id: true,
+              },
+            },
           },
         },
       },
@@ -85,88 +83,175 @@ export async function markOrderPaidAndNotify({
       return { alreadyPaid: true, order: null };
     }
 
+    const items = order.items;
+    const effectiveBuyerEmail = buyerEmail ?? order.buyerEmail;
+    const shippingAddress = [
+      order.shippingStreet && order.shippingNumber
+        ? `${order.shippingStreet} ${order.shippingNumber}`
+        : order.shippingStreet,
+      order.shippingApartment,
+      order.shippingCity,
+      order.shippingState,
+      order.shippingPostalCode,
+      order.shippingCountry,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
     await tx.order.update({
       where: { id: order.id },
       data: {
         status: OrderStatus.PAID,
         paymentStatus,
-        paymentProvider: paymentProvider ?? order.paymentProvider ?? "mercadopago",
+        paymentProvider: paymentProvider ?? order.paymentProvider ?? "dlocalgo",
         paymentId: paymentId ?? order.paymentId ?? `pay_${order.id}`,
       },
     });
 
-    if (order.affiliateId && order.affiliateAmount > 0) {
-      if (!order.commission) {
-        await tx.commission.create({
-          data: {
-            orderId: order.id,
-            affiliateId: order.affiliateId,
-            amount: order.affiliateAmount,
-            status: CommissionStatus.APPROVED,
+    const stockByProduct = new Map<string, { name: string; quantity: number }>();
+
+    for (const item of items) {
+      const current = stockByProduct.get(item.product.id) ?? {
+        name: item.product.name,
+        quantity: 0,
+      };
+
+      current.quantity += item.quantity;
+      stockByProduct.set(item.product.id, current);
+    }
+
+    for (const [productId, item] of stockByProduct) {
+      const updated = await tx.product.updateMany({
+        where: {
+          id: productId,
+          stock: {
+            gte: item.quantity,
           },
-        });
-      } else {
-        await tx.commission.updateMany({
-          where: { orderId: order.id },
-          data: { status: CommissionStatus.APPROVED },
-        });
+        },
+        data: {
+          stock: {
+            decrement: item.quantity,
+          },
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new Error(`Stock insuficiente para ${item.name}`);
       }
     }
 
-    if (!order.settlement) {
-      await tx.settlement.create({
-        data: {
-          orderId: order.id,
-          sellerId: order.sellerId,
-          grossAmount: order.total,
-          platformFee: order.platformAmount,
-          affiliateFee: order.affiliateAmount,
-          netAmount: order.sellerAmount,
-          status: SettlementStatus.AVAILABLE,
-        },
-      });
-    } else {
-      await tx.settlement.updateMany({
-        where: { orderId: order.id },
-        data: { status: SettlementStatus.AVAILABLE },
-      });
+    for (const item of items) {
+      if (item.affiliateId && item.affiliateAmount > 0) {
+        if (!item.commission) {
+          await tx.commission.create({
+            data: {
+              orderId: order.id,
+              orderItemId: item.id,
+              affiliateId: item.affiliateId,
+              amount: item.affiliateAmount,
+              status: CommissionStatus.APPROVED,
+            },
+          });
+        } else {
+          await tx.commission.update({
+            where: { id: item.commission.id },
+            data: { status: CommissionStatus.APPROVED },
+          });
+        }
+      }
+    }
+
+    await tx.commission.updateMany({
+      where: { orderId: order.id },
+      data: { status: CommissionStatus.APPROVED },
+    });
+
+    const sellerTotals = new Map<
+      string,
+      {
+        id: string;
+        name: string | null;
+        email: string | null;
+        total: number;
+        net: number;
+        products: string[];
+      }
+    >();
+    const affiliateTotals = new Map<
+      string,
+      {
+        id: string;
+        name: string | null;
+        email: string | null;
+        amount: number;
+        products: string[];
+      }
+    >();
+
+    for (const item of items) {
+      const seller = sellerTotals.get(item.seller.id) ?? {
+        id: item.seller.id,
+        name: item.seller.name,
+        email: item.seller.email,
+        total: 0,
+        net: 0,
+        products: [],
+      };
+      seller.total += item.total;
+      seller.net += item.sellerAmount;
+      seller.products.push(item.product.name);
+      sellerTotals.set(item.seller.id, seller);
+
+      if (item.affiliate?.id && item.affiliateAmount > 0) {
+        const affiliate = affiliateTotals.get(item.affiliate.id) ?? {
+          id: item.affiliate.id,
+          name: item.affiliate.name,
+          email: item.affiliate.email,
+          amount: 0,
+          products: [],
+        };
+        affiliate.amount += item.affiliateAmount;
+        affiliate.products.push(item.product.name);
+        affiliateTotals.set(item.affiliate.id, affiliate);
+      }
     }
 
     const notifications = [
-      {
-        userId: order.seller.id,
+      ...Array.from(sellerTotals.values()).map((seller) => ({
+        userId: seller.id,
         type: "ORDER_PAID",
         title: "Venta confirmada",
-        message: `Se confirmo una venta de ${order.product.name} por ${formatMoney(order.total)}.`,
+        message: `Se confirmo una venta por ${formatMoney(seller.total)}.`,
         orderId: order.id,
-      },
-    ];
-
-    if (order.affiliate?.id && order.affiliateAmount > 0) {
-      notifications.push({
-        userId: order.affiliate.id,
+      })),
+      ...Array.from(affiliateTotals.values()).map((affiliate) => ({
+        userId: affiliate.id,
         type: "AFFILIATE_COMMISSION_APPROVED",
         title: "Comision generada",
-        message: `Tu link genero una comision de ${formatMoney(order.affiliateAmount)} en ${order.product.name}.`,
+        message: `Tu link genero ${formatMoney(affiliate.amount)} en comisiones.`,
         orderId: order.id,
+      })),
+    ];
+
+    if (notifications.length) {
+      await tx.notification.createMany({
+        data: notifications,
       });
     }
-
-    await tx.notification.createMany({
-      data: notifications,
-    });
 
     return {
       alreadyPaid: false,
       order: {
         id: order.id,
         total: order.total,
-        affiliateAmount: order.affiliateAmount,
-        sellerAmount: order.sellerAmount,
-        productName: order.product.name,
-        seller: order.seller,
-        affiliate: order.affiliate,
-        buyerEmail,
+        buyerEmail: effectiveBuyerEmail,
+        buyerName: order.buyerName,
+        buyerPhone: order.buyerPhone,
+        shippingAddress,
+        shippingNotes: order.shippingNotes,
+        sellers: Array.from(sellerTotals.values()),
+        affiliates: Array.from(affiliateTotals.values()),
+        productNames: items.map((item) => item.product.name),
       },
     };
   });
@@ -178,6 +263,7 @@ export async function markOrderPaidAndNotify({
   const baseUrl = getBaseUrl();
   const orderUrl = `${baseUrl}/orders/${result.order.id}/success`;
   const emailJobs: Promise<unknown>[] = [];
+  const productList = result.order.productNames.join(", ");
 
   if (result.order.buyerEmail) {
     emailJobs.push(
@@ -186,42 +272,49 @@ export async function markOrderPaidAndNotify({
         subject: "Tu compra fue confirmada",
         html: `
           <h1>Compra confirmada</h1>
-          <p>Tu compra de <strong>${result.order.productName}</strong> fue aprobada.</p>
+          <p>Tu compra de <strong>${productList}</strong> fue aprobada.</p>
           <p>Total: <strong>${formatMoney(result.order.total)}</strong></p>
           <p>Puedes revisar el detalle aqui: <a href="${orderUrl}">${orderUrl}</a></p>
         `,
-        text: `Tu compra de ${result.order.productName} fue aprobada. Total: ${formatMoney(result.order.total)}. Detalle: ${orderUrl}`,
+        text: `Tu compra de ${productList} fue aprobada. Total: ${formatMoney(result.order.total)}. Detalle: ${orderUrl}`,
       })
     );
   }
 
-  if (result.order.seller.email) {
+  for (const seller of result.order.sellers) {
+    if (!seller.email) continue;
+
     emailJobs.push(
       sendTransactionalEmail({
-        to: result.order.seller.email,
+        to: seller.email,
         subject: "Nueva venta confirmada",
         html: `
           <h1>Venta confirmada</h1>
-          <p>Se aprobo una venta de <strong>${result.order.productName}</strong>.</p>
-          <p>Total cobrado: <strong>${formatMoney(result.order.total)}</strong></p>
-          <p>Importe para el vendedor: <strong>${formatMoney(result.order.sellerAmount)}</strong></p>
+          <p>Se aprobo una venta de <strong>${seller.products.join(", ")}</strong>.</p>
+          <p>Total cobrado para tus productos: <strong>${formatMoney(seller.total)}</strong></p>
+          <p>Importe para el vendedor: <strong>${formatMoney(seller.net)}</strong></p>
+          <p>Entrega: <strong>${result.order.shippingAddress}</strong></p>
+          <p>Cliente: <strong>${result.order.buyerName ?? "Sin nombre"} - ${result.order.buyerPhone ?? "Sin telefono"}</strong></p>
+          ${result.order.shippingNotes ? `<p>Indicaciones: ${result.order.shippingNotes}</p>` : ""}
         `,
-        text: `Se aprobo una venta de ${result.order.productName}. Total: ${formatMoney(result.order.total)}. Neto vendedor: ${formatMoney(result.order.sellerAmount)}.`,
+        text: `Se aprobo una venta de ${seller.products.join(", ")}. Total: ${formatMoney(seller.total)}. Neto vendedor: ${formatMoney(seller.net)}. Entrega: ${result.order.shippingAddress}. Cliente: ${result.order.buyerName ?? "Sin nombre"} - ${result.order.buyerPhone ?? "Sin telefono"}.`,
       })
     );
   }
 
-  if (result.order.affiliate?.email && result.order.affiliateAmount > 0) {
+  for (const affiliate of result.order.affiliates) {
+    if (!affiliate.email) continue;
+
     emailJobs.push(
       sendTransactionalEmail({
-        to: result.order.affiliate.email,
+        to: affiliate.email,
         subject: "Generaste una comision",
         html: `
           <h1>Comision generada</h1>
-          <p>Tu recomendacion cerro una venta de <strong>${result.order.productName}</strong>.</p>
-          <p>Tu comision aprobada es de <strong>${formatMoney(result.order.affiliateAmount)}</strong>.</p>
+          <p>Tu recomendacion cerro una venta de <strong>${affiliate.products.join(", ")}</strong>.</p>
+          <p>Tu comision aprobada es de <strong>${formatMoney(affiliate.amount)}</strong>.</p>
         `,
-        text: `Tu recomendacion cerro una venta de ${result.order.productName}. Comision aprobada: ${formatMoney(result.order.affiliateAmount)}.`,
+        text: `Tu recomendacion cerro una venta de ${affiliate.products.join(", ")}. Comision aprobada: ${formatMoney(affiliate.amount)}.`,
       })
     );
   }

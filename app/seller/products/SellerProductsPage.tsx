@@ -10,8 +10,11 @@ type SellerProduct = {
   name: string;
   desc: string | null;
   price: number;
+  stock: number;
   commissionValue: number;
   commissionType: "PERCENT" | "FIXED";
+  platformCommissionValue: number;
+  platformCommissionType: "PERCENT" | "FIXED";
   imageUrls: string[];
   isActive: boolean;
 };
@@ -26,18 +29,22 @@ export default function SellerProductsClient() {
   }, []);
 
   return (
-    <div>
+    <div className="min-h-screen bg-slate-50 text-slate-950">
       <Navbar />
-      <div className="mt-15 flex min-h-screen">
+      <div className="flex min-h-screen pt-16">
         <Sidebar />
 
-        <main className="flex-1 p-6">
-          <h1 className="mb-4 text-3xl font-semibold">Mis productos</h1>
+        <main className="min-w-0 flex-1">
+          <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mb-6 border-b border-slate-200 pb-6">
+              <h1 className="text-3xl font-semibold tracking-tight">Mis productos</h1>
+            </div>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {products.map((product) => (
-              <ItemSeller key={product.id} product={product} />
-            ))}
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {products.map((product) => (
+                <ItemSeller key={product.id} product={product} />
+              ))}
+            </div>
           </div>
         </main>
       </div>

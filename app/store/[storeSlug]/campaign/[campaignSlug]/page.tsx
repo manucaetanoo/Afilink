@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import Link from "next/link";
 import CampaignProductCard from "@/components/campaigns/CampaignProductCard";
 import GetCampaignAffiliateLinkButton from "@/components/campaigns/GetCampaignAffiliateLinkButton";
 
@@ -25,21 +26,13 @@ const formatMoney = (value: number) =>
 
 const getCommissionEarning = (
   price: number,
-  commissionValue: number,
-  commissionType: "PERCENT" | "FIXED"
+  commissionValue: number
 ) => {
-  if (commissionType === "FIXED") {
-    return commissionValue;
-  }
-
   return Math.round((price * commissionValue) / 100);
 };
 
 export default async function CampaignPublicPage(props: Props) {
   const { storeSlug, campaignSlug } = await props.params;
-  const resolvedSearchParams = props.searchParams
-    ? await props.searchParams
-    : undefined;
   const session = await getServerSession(authOptions);
 
   const campaign = await prisma.campaign.findFirst({
@@ -63,15 +56,20 @@ export default async function CampaignPublicPage(props: Props) {
   if (!campaign) return notFound();
 
   const products = campaign.products.map((cp) => cp.product);
-  const hasAffiliateReferralContext = Boolean(resolvedSearchParams?.ref);
-  const isAffiliateViewer = session?.user.role === "AFFILIATE";
+  const viewerRole = session?.user.role;
+  const isAffiliateViewer = viewerRole === "AFFILIATE";
+  const isSellerViewer = viewerRole === "SELLER";
+  const isPublicViewer = !viewerRole;
+  const isCampaignOwner = session?.user.id === campaign.sellerId;
   const canPromoteCampaign = Boolean(
     session?.user.id &&
     session.user.id !== campaign.sellerId &&
     isAffiliateViewer
   );
-  const showAffiliateHighlights =
-    isAffiliateViewer || !hasAffiliateReferralContext;
+  const showAffiliateHighlights = isAffiliateViewer;
+  const sellerCampaignHref = isCampaignOwner
+    ? `/seller/campaigns/${campaign.id}`
+    : "/seller/campaigns";
 
   const maxCommission = products.length
     ? Math.max(...products.map((product) => Number(product.commissionValue || 0)))
@@ -82,8 +80,7 @@ export default async function CampaignPublicPage(props: Props) {
         ...products.map((product) =>
           getCommissionEarning(
             Number(product.price || 0),
-            Number(product.commissionValue || 0),
-            product.commissionType
+            Number(product.commissionValue || 0)
           )
         )
       )
@@ -120,7 +117,7 @@ export default async function CampaignPublicPage(props: Props) {
             <div className="relative z-10 flex min-h-[320px] flex-col justify-end p-8 md:min-h-[420px] md:p-12">
               <div className="max-w-3xl">
                 <div className="mb-4 inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium text-white backdrop-blur">
-                  Campana activa
+                  Campaña activa
                 </div>
 
                 <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
@@ -142,7 +139,7 @@ export default async function CampaignPublicPage(props: Props) {
                     Tienda: {campaign.seller.storeSlug || campaign.seller.name || "Store"}
                   </div>
 
-                  {showAffiliateHighlights && (
+                  {isAffiliateViewer && (
                     <div className="rounded-full bg-orange-500/90 px-4 py-2 text-sm font-semibold text-white">
                       Hasta {maxCommission}% de comision
                     </div>
@@ -167,7 +164,7 @@ export default async function CampaignPublicPage(props: Props) {
                 {products.length}
               </p>
               <p className="mt-1 text-sm text-slate-600">
-                disponibles en esta campana
+                disponibles en esta campaña
               </p>
             </div>
 
@@ -179,11 +176,13 @@ export default async function CampaignPublicPage(props: Props) {
                 {products.length ? formatMoney(minPrice) : formatMoney(0)}
               </p>
               <p className="mt-1 text-sm text-slate-600">
-                precio base para empezar a vender
+                {isAffiliateViewer
+                  ? "precio base para empezar a vender"
+                  : "precio base publicado"}
               </p>
             </div>
 
-            {showAffiliateHighlights ? (
+            {isAffiliateViewer ? (
               <div className="rounded-2xl bg-slate-50 p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Mejor ganancia
@@ -195,6 +194,18 @@ export default async function CampaignPublicPage(props: Props) {
                   comision estimada por venta
                 </p>
               </div>
+            ) : isSellerViewer ? (
+              <div className="rounded-2xl bg-slate-50 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Incentivo afiliado
+                </p>
+                <p className="mt-2 text-lg font-semibold text-slate-900">
+                  Hasta {maxCommission}%
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  comision visible solo para afiliados
+                </p>
+              </div>
             ) : (
               <div className="rounded-2xl bg-slate-50 p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -204,7 +215,7 @@ export default async function CampaignPublicPage(props: Props) {
                   Activa
                 </p>
                 <p className="mt-1 text-sm text-slate-600">
-                  campana disponible para compra
+                  campaña disponible para compra
                 </p>
               </div>
             )}
@@ -221,14 +232,19 @@ export default async function CampaignPublicPage(props: Props) {
         <main className="mx-auto max-w-7xl">
           <div className="pt-16 text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-orange-600">
-              Catalogo de campana
+              Catalogo de campaña
             </p>
             <h2 className="mt-4 text-4xl font-bold tracking-tight text-slate-900">
-              Productos listos para promocionar
+              {isAffiliateViewer
+                ? "Productos listos para promocionar"
+                : "Productos disponibles en la campana"}
             </h2>
             <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-slate-600">
-              Elegi los productos con mejor encaje para tu audiencia y prioriza los
-              que tienen una comision mas atractiva para maximizar tus ingresos.
+              {isAffiliateViewer
+                ? "Elegi los productos con mejor encaje para tu audiencia y prioriza los que tienen una comision mas atractiva para maximizar tus ingresos."
+                : isSellerViewer
+                  ? "Revisa como se ve tu campana publica, controla que los productos clave esten activos y que la propuesta sea clara para quienes llegan a comprar."
+                  : "Explora los productos de esta campana y elegi el que mejor encaje con lo que estas buscando."}
             </p>
           </div>
 
@@ -258,7 +274,11 @@ export default async function CampaignPublicPage(props: Props) {
               </div>
 
               <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm">
-                Ordenados para inspirar accion y destacar la rentabilidad
+                {isAffiliateViewer
+                  ? "Ordenados para inspirar accion y destacar la rentabilidad"
+                  : isSellerViewer
+                    ? "Vista publica de campana para revisar conversion"
+                    : "Catalogo publico de productos activos"}
               </div>
             </div>
           </section>
@@ -270,7 +290,7 @@ export default async function CampaignPublicPage(props: Props) {
                   *
                 </div>
                 <h3 className="text-xl font-semibold text-slate-900">
-                  No hay productos en esta campana
+                  No hay productos en esta campaña
                 </h3>
                 <p className="mt-2 text-sm text-slate-500">
                   Cuando se agreguen productos, van a aparecer aca con un formato
@@ -298,6 +318,7 @@ export default async function CampaignPublicPage(props: Props) {
                         price: product.price,
                         desc: product.desc,
                         imageUrl: product.imageUrls?.[0] ?? null,
+                        stock: product.stock,
                         commissionValue: product.commissionValue,
                         commissionType: product.commissionType,
                       }}
@@ -335,10 +356,10 @@ export default async function CampaignPublicPage(props: Props) {
                         id="featured-heading"
                         className="mt-3 text-2xl font-bold text-white"
                       >
-                        Esta campana puede dejarte hasta {formatMoney(maxCommissionEarning)} por venta
+                        Esta campaña puede dejarte hasta {formatMoney(maxCommissionEarning)} por venta
                       </h3>
                       <p className="mt-3 text-sm leading-6 text-white/80">
-                        Usa el link de afiliado de la campana para mover trafico a una
+                        Usa el link de afiliado de la campaña para mover trafico a una
                         seleccion de productos que ya esta pensada para convertir.
                       </p>
                     </div>
@@ -349,6 +370,87 @@ export default async function CampaignPublicPage(props: Props) {
                       <div className="rounded-2xl border border-orange-300/30 bg-orange-500/90 px-4 py-3 text-sm font-semibold text-white">
                         Comision maxima de {maxCommission}%
                       </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {isSellerViewer && (
+                <section className="mt-16 rounded-[28px] border border-emerald-100 bg-white p-6 shadow-[0_20px_60px_-40px_rgba(16,185,129,0.45)] md:p-8">
+                  <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
+                    <div>
+                      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">
+                        Informacion para empresas
+                      </p>
+                      <h3 className="mt-3 text-2xl font-bold text-slate-900">
+                        {isCampaignOwner
+                          ? "Esta es la vista publica de tu campana"
+                          : "Estas viendo una campana desde una cuenta de empresa"}
+                      </h3>
+                      <p className="mt-3 text-sm leading-6 text-slate-600">
+                        Verifica que el catalogo, el stock y la imagen de la campana
+                        esten listos antes de enviarla a afiliados o clientes. Las
+                        comisiones y el link de afiliado quedan reservados para
+                        usuarios con rol afiliado.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Productos activos
+                        </p>
+                        <p className="mt-2 text-lg font-semibold text-slate-900">
+                          {products.length}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                          Incentivo maximo
+                        </p>
+                        <p className="mt-2 text-lg font-semibold text-emerald-900">
+                          {maxCommission}% para afiliados
+                        </p>
+                      </div>
+                      <Link
+                        href={sellerCampaignHref}
+                        className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600"
+                      >
+                        {isCampaignOwner ? "Gestionar campaña" : "Ir a mis campañas"}
+                      </Link>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {isPublicViewer && (
+                <section className="mt-16 rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.35)] md:p-8">
+                  <div className="grid gap-6 md:grid-cols-[1.3fr_1fr] md:items-center">
+                    <div>
+                      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Vista publica
+                      </p>
+                      <h3 className="mt-3 text-2xl font-bold text-slate-900">
+                        Compra desde la campana de {campaign.seller.storeSlug || campaign.seller.name || "esta tienda"}
+                      </h3>
+                      <p className="mt-3 text-sm leading-6 text-slate-600">
+                        Si llegaste por un enlace compartido, podes comprar los
+                        productos disponibles desde esta pagina. Los beneficios y
+                        links de afiliado se muestran solo cuando la cuenta tiene rol
+                        afiliado.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Estado
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900">
+                        Campana activa
+                      </p>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {products.length} {products.length === 1 ? "producto disponible" : "productos disponibles"}
+                      </p>
                     </div>
                   </div>
                 </section>

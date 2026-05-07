@@ -36,10 +36,10 @@ export default async function SellerCampaignsPage() {
                   Gestion
                 </p>
                 <h1 className="mt-3 text-3xl font-semibold tracking-tight">
-                  Campanas
+                  Campañas
                 </h1>
                 <p className="mt-2 text-sm text-slate-500">
-                  Mira tus campanas, edita su contenido y administra productos asociados.
+                  Mira tus campañas, edita su contenido y administra productos asociados.
                 </p>
               </div>
 
@@ -47,21 +47,21 @@ export default async function SellerCampaignsPage() {
                 href="/seller/campaigns/new"
                 className="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
               >
-                Nueva campana
+                Nueva campaña
               </Link>
             </div>
 
             {campaigns.length === 0 ? (
               <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-                <h2 className="text-xl font-semibold">Todavia no tenes campanas</h2>
+                <h2 className="text-xl font-semibold">Todavia no tenes campañas</h2>
                 <p className="mt-2 text-sm text-slate-500">
-                  Crea tu primera campana para destacar productos o promociones.
+                  Crea tu primera campaña para destacar productos o promociones.
                 </p>
                 <Link
                   href="/seller/campaigns/new"
                   className="mt-6 inline-flex rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600"
                 >
-                  Crear campana
+                  Crear campaña
                 </Link>
               </div>
             ) : (
@@ -108,6 +108,12 @@ export default async function SellerCampaignsPage() {
                           className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
                         >
                           Productos
+                        </Link>
+                        <Link
+                          href={`/store/${session.user.storeSlug}/campaign/${campaign.slug}`}
+                          className="rounded-lg bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+                        >
+                          Ver Campaña
                         </Link>
                       </div>
                     </div>

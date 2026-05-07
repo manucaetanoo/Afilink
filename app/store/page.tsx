@@ -2,6 +2,13 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import ButtonScroll from "@/components/ButtonScroll";
+import { Metadata } from "next";
+
+
+export const metadata: Metadata = {
+  title: "Empresas - Afilink",
+  description: "Explora empresas con alto potencial de conversion y, si eres afiliado, prioriza las que te dejan mejores comisiones por venta.",
+};
 
 export default async function StoresPage() {
   const stores = await prisma.user.findMany({

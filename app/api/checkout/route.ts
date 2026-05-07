@@ -1,19 +1,57 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createOrder } from "@/lib/payments/createOrder";
+import { createCheckoutOrder, createOrder } from "@/lib/payments/createOrder";
 import { prisma } from "@/lib/prisma";
 
 type CheckoutItem = {
   productId?: string;
   quantity?: number;
+  selectedSize?: string | null;
   clickId?: string;
   campaignClickId?: string;
 };
+
+async function createClickFromRef({
+  productId,
+  refCode,
+  req,
+}: {
+  productId: string;
+  refCode?: string;
+  req: Request;
+}) {
+  if (!refCode) return null;
+
+  const link = await prisma.affiliateLink.findUnique({
+    where: { code: refCode },
+    select: { id: true, productId: true },
+  });
+
+  if (!link || link.productId !== productId) return null;
+
+  const xff = req.headers.get("x-forwarded-for");
+  const ip = xff ? xff.split(",")[0].trim() : null;
+
+  const click = await prisma.click.create({
+    data: {
+      linkId: link.id,
+      ip,
+      userAgent: req.headers.get("user-agent"),
+    },
+    select: { id: true },
+  });
+
+  return click.id;
+}
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const productId: string | undefined = body?.productId;
+    const selectedSize: string | undefined =
+      typeof body?.selectedSize === "string" ? body.selectedSize : undefined;
+    const refCode: string | undefined =
+      typeof body?.refCode === "string" ? body.refCode : undefined;
     const items = Array.isArray(body?.items)
       ? (body.items as CheckoutItem[])
       : null;
@@ -27,57 +65,38 @@ export async function POST(req: Request) {
 
     const cookieStore = await cookies();
 
-    const clickId = cookieStore.get("aff_click_id")?.value;
+    const clickId =
+      cookieStore.get("aff_click_id")?.value ||
+      (productId
+        ? await createClickFromRef({ productId, refCode, req })
+        : null);
     const campaignClickId =
       cookieStore.get("aff_campaign_click_id")?.value;
 
     if (items?.length) {
-      const expandedItems = items.flatMap((item) => {
-        const quantity = Math.max(1, Math.min(20, Number(item.quantity || 1)));
-        return Array.from({ length: quantity }, () => item);
-      });
-
-      const orders = [];
-
-      for (const item of expandedItems) {
-        if (!item.productId) continue;
-
-        orders.push(
-          await createOrder({
-            productId: item.productId,
+      const order = await createCheckoutOrder(
+        items
+          .filter((item) => item.productId)
+          .map((item) => ({
+            productId: item.productId!,
+            quantity: item.quantity,
+            selectedSize:
+              typeof item.selectedSize === "string" ? item.selectedSize : undefined,
             clickId: item.clickId || undefined,
             campaignClickId: item.campaignClickId || undefined,
-          })
-        );
-      }
-
-      if (orders.length === 0) {
-        return NextResponse.json(
-          { ok: false, error: "El carrito no tiene productos validos" },
-          { status: 400 }
-        );
-      }
-
-      const checkoutId =
-        orders.length === 1 ? orders[0].id : `cart_${orders[0].id}`;
-
-      if (orders.length > 1) {
-        await prisma.order.updateMany({
-          where: { id: { in: orders.map((order) => order.id) } },
-          data: { paymentId: checkoutId },
-        });
-      }
+          }))
+      );
 
       return NextResponse.json(
         {
           ok: true,
           order: {
-            id: checkoutId,
-            total: orders.reduce((total, order) => total + order.total, 0),
-            createdAt: orders[0].createdAt,
+            id: order.id,
+            total: order.total,
+            createdAt: order.createdAt,
           },
           checkout: {
-            url: `/checkout/${checkoutId}`,
+            url: `/checkout/${order.id}`,
           },
         },
         { status: 201 }
@@ -86,6 +105,7 @@ export async function POST(req: Request) {
 
     const order = await createOrder({
         productId: productId!,
+        selectedSize,
         clickId: clickId || undefined,
         campaignClickId: campaignClickId || undefined,
       });

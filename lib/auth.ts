@@ -25,5 +25,6 @@ export async function requireUser(): Promise<AuthUser> {
 }
 
 export function requireRole(user: AuthUser, roles: Role[]) {
-  if (!roles.includes(user.role)) throw new Error("FORBIDDEN");
+  const normalizedRole = String(user.role).toUpperCase() as Role;
+  if (!roles.includes(normalizedRole)) throw new Error("FORBIDDEN");
 }

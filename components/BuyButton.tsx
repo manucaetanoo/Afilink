@@ -2,15 +2,29 @@
 
 type BuyButtonProps = {
   productId: string;
+  refCode?: string | null;
+  selectedSize?: string | null;
   className?: string;
+  disabled?: boolean;
+  disabledReason?: string;
 };
 
-export function BuyButton({ productId, className }: BuyButtonProps) {
+export function BuyButton({
+  productId,
+  refCode,
+  selectedSize,
+  className,
+  disabled = false,
+  disabledReason,
+}: BuyButtonProps) {
   const buy = async () => {
+    if (disabled) return;
+
     const response = await fetch("/api/checkout", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId }),
+      body: JSON.stringify({ productId, refCode, selectedSize }),
     });
 
     const data = await response.json();
@@ -32,12 +46,13 @@ export function BuyButton({ productId, className }: BuyButtonProps) {
     <button
       onClick={buy}
       type="button"
+      disabled={disabled}
       className={
         className ??
-        "w-full cursor-pointer rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600"
+        "w-full cursor-pointer rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
       }
     >
-      Comprar
+      {disabled ? disabledReason ?? "Sin stock" : "Comprar"}
     </button>
   );
 }

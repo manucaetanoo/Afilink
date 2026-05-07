@@ -44,12 +44,15 @@ export async function GET() {
         name: true,
         desc: true,
         price: true,
+        stock: true,
         category: true,
         sizes: true,
         createdAt: true,
         isActive: true,
         commissionValue: true,
         commissionType: true,
+        platformCommissionValue: true,
+        platformCommissionType: true,
         imageUrls: true,
       },
     });
@@ -74,8 +77,8 @@ export async function POST(req: Request) {
     const name = String(body.name ?? "").trim();
     const desc = String(body.desc ?? "").trim();
     const price = Number(body.price);
+    const stock = Number(body.stock ?? 0);
     const commissionValue = Number(body.commissionValue);
-    const commissionType = body.commissionType as "PERCENT" | "FIXED";
     const category = String(body.category ?? "OTHER").trim().toUpperCase();
     const sizes = normalizeSizes(body.sizes);
 
@@ -101,16 +104,16 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!Number.isFinite(commissionValue) || commissionValue <= 0) {
+    if (!Number.isInteger(stock) || stock < 0) {
       return NextResponse.json(
-        { ok: false, error: "Comision invalida" },
+        { ok: false, error: "Stock invalido" },
         { status: 400 }
       );
     }
 
-    if (!["PERCENT", "FIXED"].includes(commissionType)) {
+    if (!Number.isFinite(commissionValue) || commissionValue <= 0 || commissionValue > 100) {
       return NextResponse.json(
-        { ok: false, error: "Tipo de comision invalido" },
+        { ok: false, error: "Comision invalida" },
         { status: 400 }
       );
     }
@@ -128,16 +131,18 @@ export async function POST(req: Request) {
         name,
         desc: desc.length ? desc : null,
         price,
+        stock,
         category: category as (typeof productCategories)[number],
         sizes: categoriesWithSizes.has(category) ? sizes : [],
         commissionValue,
-        commissionType,
+        commissionType: "PERCENT",
         imageUrls,
       },
       select: {
         id: true,
         category: true,
         sizes: true,
+        stock: true,
         commissionValue: true,
         commissionType: true,
       },

@@ -10,6 +10,7 @@ type ProductCardProps = {
     price: number;
     desc: string | null;
     imageUrl: string | null;
+    stock?: number;
     commissionValue: number;
     commissionType: "PERCENT" | "FIXED";
   };
@@ -24,19 +25,11 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-function getCommissionLabel(price: number, value: number, type: "PERCENT" | "FIXED") {
-  if (type === "FIXED") {
-    return formatPrice(value);
-  }
-
+function getCommissionLabel(price: number, value: number) {
   return `${value}%`;
 }
 
-function getCommissionEarning(price: number, value: number, type: "PERCENT" | "FIXED") {
-  if (type === "FIXED") {
-    return value;
-  }
-
+function getCommissionEarning(price: number, value: number) {
   return Math.round((price * value) / 100);
 }
 
@@ -48,23 +41,25 @@ export default function CampaignProductCard({
 
   const commissionLabel = getCommissionLabel(
     product.price,
-    product.commissionValue,
-    product.commissionType
+    product.commissionValue
   );
   const commissionEarning = getCommissionEarning(
     product.price,
-    product.commissionValue,
-    product.commissionType
+    product.commissionValue
   );
   const hasAffiliateHighlights =
     showAffiliateHighlights && product.commissionValue > 0;
+  const hasStock = product.stock === undefined || product.stock > 0;
 
   const handleCheckout = async () => {
+    if (!hasStock) return;
+
     try {
       setLoading(true);
 
       const response = await fetch("/api/checkout", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
         },
@@ -139,6 +134,11 @@ export default function CampaignProductCard({
             <p className="mt-2 text-sm font-medium text-slate-500">
               Precio de venta {formatPrice(product.price)}
             </p>
+            {product.stock !== undefined && (
+              <p className="mt-1 text-xs font-semibold text-slate-500">
+                {hasStock ? `Stock: ${product.stock}` : "Sin stock"}
+              </p>
+            )}
           </div>
 
           {hasAffiliateHighlights ? (
@@ -188,10 +188,10 @@ export default function CampaignProductCard({
 
           <button
             onClick={handleCheckout}
-            disabled={loading}
+            disabled={loading || !hasStock}
             className="inline-flex flex-1 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Procesando..." : "Comprar ahora"}
+            {!hasStock ? "Sin stock" : loading ? "Procesando..." : "Comprar ahora"}
           </button>
         </div>
       </div>

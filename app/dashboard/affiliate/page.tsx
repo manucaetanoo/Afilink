@@ -14,6 +14,7 @@ import {
   FiTrendingUp,
 } from "react-icons/fi";
 import Navbar from "@/components/Navbar";
+import PayoutRequestButton from "@/components/PayoutRequestButton";
 import Sidebar from "@/components/Sidebar";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -64,7 +65,7 @@ function statusLabel(status: string) {
   const labels: Record<string, string> = {
     APPROVED: "Aprobada",
     CANCELED: "Cancelada",
-    PAID: "Pagada",
+    PAID: "Liquidada",
     PENDING: "Pendiente",
   };
 
@@ -148,7 +149,8 @@ export default async function AffiliateDashboardPage() {
   const previousStart = new Date(now);
   previousStart.setDate(previousStart.getDate() - 60);
 
-  const [links, campaignLinks, commissions, orders] = await Promise.all([
+  const [links, campaignLinks, commissions, orderItems, pendingPayoutRequest] =
+    await Promise.all([
     prisma.affiliateLink.findMany({
       where: { affiliateId },
       select: {
@@ -198,26 +200,39 @@ export default async function AffiliateDashboardPage() {
             id: true,
             total: true,
             status: true,
-            product: { select: { name: true } },
             campaign: { select: { title: true } },
+          },
+        },
+        orderItem: {
+          select: {
+            total: true,
+            product: { select: { name: true } },
           },
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 12,
     }),
-    prisma.order.findMany({
+    prisma.orderItem.findMany({
       where: { affiliateId },
       select: {
         id: true,
         total: true,
-        status: true,
         affiliateAmount: true,
         createdAt: true,
         product: { select: { name: true } },
+        order: { select: { status: true } },
       },
       orderBy: { createdAt: "desc" },
-      take: 50,
+    }),
+    prisma.payoutRequest.findFirst({
+      where: {
+        requesterId: affiliateId,
+        kind: "AFFILIATE",
+        status: "PENDING",
+      },
+      select: {
+        id: true,
+      },
     }),
   ]);
 
@@ -227,39 +242,41 @@ export default async function AffiliateDashboardPage() {
     0
   );
   const totalClicks = productClicks + campaignClicks;
-  const paidOrders = orders.filter((order) => order.status === "PAID");
-  const totalSales = paidOrders.length;
-  const salesVolume = paidOrders.reduce((total, order) => total + order.total, 0);
-  const totalCommission = commissions.reduce(
-    (total, commission) => total + commission.amount,
-    0
-  );
+  const paidItems = orderItems.filter((item) => item.order.status === "PAID");
+  const totalSales = paidItems.length;
   const pendingCommission = commissions
     .filter((commission) => commission.status === "PENDING")
     .reduce((total, commission) => total + commission.amount, 0);
-  const approvedCommission = commissions
-    .filter(
-      (commission) =>
-        commission.status === "APPROVED" || commission.status === "PAID"
-    )
+  const availableCommission = commissions
+    .filter((commission) => commission.status === "APPROVED")
     .reduce((total, commission) => total + commission.amount, 0);
+  const paidCommission = commissions
+    .filter((commission) => commission.status === "PAID")
+    .reduce((total, commission) => total + commission.amount, 0);
+  const generatedCommission = availableCommission + paidCommission;
 
-  const currentOrders = paidOrders.filter((order) => order.createdAt >= currentStart);
-  const previousOrders = paidOrders.filter(
-    (order) => order.createdAt >= previousStart && order.createdAt < currentStart
+  const currentItems = paidItems.filter((item) => item.createdAt >= currentStart);
+  const previousItems = paidItems.filter(
+    (item) => item.createdAt >= previousStart && item.createdAt < currentStart
   );
   const currentCommission = commissions
-    .filter((commission) => commission.createdAt >= currentStart)
+    .filter(
+      (commission) =>
+        commission.createdAt >= currentStart &&
+        (commission.status === "APPROVED" || commission.status === "PAID")
+    )
     .reduce((total, commission) => total + commission.amount, 0);
   const previousCommission = commissions
     .filter(
       (commission) =>
-        commission.createdAt >= previousStart && commission.createdAt < currentStart
+        commission.createdAt >= previousStart &&
+        commission.createdAt < currentStart &&
+        (commission.status === "APPROVED" || commission.status === "PAID")
     )
     .reduce((total, commission) => total + commission.amount, 0);
 
   const conversionRate = totalClicks > 0 ? (totalSales / totalClicks) * 100 : 0;
-  const earningsPerClick = totalClicks > 0 ? totalCommission / totalClicks : 0;
+  const earningsPerClick = totalClicks > 0 ? generatedCommission / totalClicks : 0;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   const topLinks = [
@@ -275,14 +292,14 @@ export default async function AffiliateDashboardPage() {
       label: link.campaign.title,
       href: `${baseUrl}/cl/${link.code}`,
       clicks: link._count.clicks,
-      type: "Campana",
+      type: "Campaña",
     })),
   ]
     .sort((a, b) => b.clicks - a.clicks)
     .slice(0, 5);
 
   const maxTopClicks = Math.max(...topLinks.map((link) => link.clicks), 0);
-  const recentCommissions = commissions.slice(0, 6);
+  const recentCommissions = commissions;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
@@ -308,6 +325,10 @@ export default async function AffiliateDashboardPage() {
               </div>
 
               <div className="flex flex-wrap gap-3">
+                <PayoutRequestButton
+                  disabled={availableCommission <= 0}
+                  pending={Boolean(pendingPayoutRequest)}
+                />
                 <Link
                   href="/products"
                   className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -320,7 +341,7 @@ export default async function AffiliateDashboardPage() {
                   className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                 >
                   <FiExternalLink />
-                  Ver campanas
+                  Ver campañas
                 </Link>
               </div>
             </div>
@@ -333,28 +354,28 @@ export default async function AffiliateDashboardPage() {
                 icon={<FiMousePointer />}
                 label="Clicks totales"
                 value={number(totalClicks)}
-                detail={`${number(productClicks)} en productos, ${number(campaignClicks)} en campanas`}
+                detail={`${number(productClicks)} en productos, ${number(campaignClicks)} en campañas`}
                 tone="orange"
               />
               <StatCard
                 icon={<FiShoppingBag />}
                 label="Ventas atribuidas"
                 value={number(totalSales)}
-                detail={`${delta(currentOrders.length, previousOrders.length)} vs. 30 dias previos`}
+                detail={`${delta(currentItems.length, previousItems.length)} vs. 30 dias previos`}
                 tone="slate"
               />
               <StatCard
                 icon={<FiDollarSign />}
-                label="Comision total"
-                value={money(totalCommission)}
+                label="Comision generada"
+                value={money(generatedCommission)}
                 detail={`${delta(currentCommission, previousCommission)} en los ultimos 30 dias`}
                 tone="emerald"
               />
               <StatCard
                 icon={<FiClock />}
-                label="Pendiente"
-                value={money(pendingCommission)}
-                detail={`${money(approvedCommission)} aprobadas o pagadas`}
+                label="Por liquidar"
+                value={money(availableCommission)}
+                detail={`${money(paidCommission)} ya liquidado`}
                 tone="sky"
               />
             </section>
@@ -381,12 +402,6 @@ export default async function AffiliateDashboardPage() {
                     </p>
                   </div>
                   <div className="rounded-lg bg-slate-50 p-4">
-                    <p className="text-sm text-slate-500">Venta generada</p>
-                    <p className="mt-2 text-2xl font-semibold">
-                      {money(salesVolume)}
-                    </p>
-                  </div>
-                  <div className="rounded-lg bg-slate-50 p-4">
                     <p className="text-sm text-slate-500">Ganancia/click</p>
                     <p className="mt-2 text-2xl font-semibold">
                       {money(earningsPerClick)}
@@ -399,8 +414,8 @@ export default async function AffiliateDashboardPage() {
                     <FiTrendingUp className="mt-0.5 text-orange-600" />
                     <p className="text-sm leading-6 text-orange-900">
                       Tus mejores oportunidades son los links con mayor volumen de
-                      clicks y comision aprobada. Si un link recibe clicks pero no
-                      vende, prueba cambiar el mensaje o promocionar otro producto.
+                      clicks y comision generada. Tienes {money(pendingCommission)} en
+                      comisiones pendientes de aprobacion.
                     </p>
                   </div>
                 </div>
@@ -418,7 +433,7 @@ export default async function AffiliateDashboardPage() {
                   {topLinks.length === 0 ? (
                     <p className="text-sm leading-6 text-slate-500">
                       Todavia no generaste links. Cuando compartas productos o
-                      campanas, vas a ver aca tus mejores fuentes de clicks.
+                      campañas, vas a ver aca tus mejores fuentes de clicks.
                     </p>
                   ) : (
                     topLinks.map((link) => (
@@ -445,7 +460,7 @@ export default async function AffiliateDashboardPage() {
                       Links recientes
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      Productos y campanas que ya puedes compartir.
+                      Productos y campañas que ya puedes compartir.
                     </p>
                   </div>
                   <Link
@@ -515,7 +530,7 @@ export default async function AffiliateDashboardPage() {
                   </p>
                 </div>
 
-                <div className="divide-y divide-slate-100">
+                <div className="max-h-[460px] divide-y divide-slate-100 overflow-y-auto">
                   {recentCommissions.length === 0 ? (
                     <p className="px-5 py-8 text-sm text-slate-500">
                       Todavia no tienes comisiones registradas.
@@ -528,11 +543,11 @@ export default async function AffiliateDashboardPage() {
                       >
                         <div className="min-w-0">
                           <p className="truncate font-medium text-slate-900">
-                            {commission.order.product.name}
+                            {commission.orderItem?.product.name ?? "Producto"}
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
                             {formatDate(commission.createdAt)} · venta{" "}
-                            {money(commission.order.total)}
+                            {money(commission.orderItem?.total ?? commission.order.total)}
                           </p>
                         </div>
                         <div className="shrink-0 text-right">

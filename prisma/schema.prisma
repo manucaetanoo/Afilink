@@ -13,8 +13,6 @@ model User {
 
   // Perfil
   name     String? @db.VarChar(60)
-  lastName String? @db.VarChar(60)
-  username String? @unique @db.VarChar(30)
   image    String?
   timezone String? @db.VarChar(64)
 
@@ -38,6 +36,7 @@ model User {
   bankAccountAlias     String?       @db.VarChar(120)
   bankBranch           String?       @db.VarChar(120)
   payoutNotes          String?       @db.Text
+  dlocalSplitCode      String?       @db.VarChar(191)
 
   // Auth / sistema
   passwordHash String?
@@ -48,38 +47,52 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relaciones
-  products        Product[]               @relation("SellerProducts")
-  campaigns       Campaign[]              @relation("SellerCampaigns")
-  links           AffiliateLink[]         @relation("AffiliateLinks")
-  campaignLinks   AffiliateCampaignLink[] @relation("AffiliateCampaignLinks")
-  commissions     Commission[]            @relation("AffiliateCommissions")
-  affiliateOrders Order[]                 @relation("OrderAffiliate")
-  sellerOrders    Order[]                 @relation("OrderSeller")
-  settlements     Settlement[]            @relation("SellerSettlements")
+  products            Product[]               @relation("SellerProducts")
+  campaigns           Campaign[]              @relation("SellerCampaigns")
+  links               AffiliateLink[]         @relation("AffiliateLinks")
+  campaignLinks       AffiliateCampaignLink[] @relation("AffiliateCampaignLinks")
+  commissions         Commission[]            @relation("AffiliateCommissions")
+  affiliateOrders     Order[]                 @relation("OrderAffiliate")
+  affiliateItems      OrderItem[]             @relation("OrderItemAffiliate")
+  sellerOrders        Order[]                 @relation("OrderSeller")
+  sellerItems         OrderItem[]             @relation("OrderItemSeller")
+  settlements         Settlement[]            @relation("SellerSettlements")
+  payoutRequests      PayoutRequest[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([role])
   @@index([isActive])
-  @@index([username])
   @@index([storeSlug])
 }
 
-model Notification {
-  id        String   @id @default(cuid())
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique @db.VarChar(191)
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
-  type      String   @db.VarChar(50)
-  title     String   @db.VarChar(140)
-  message   String   @db.Text
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Notification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      String    @db.VarChar(50)
+  title     String    @db.VarChar(140)
+  message   String    @db.Text
   readAt    DateTime?
-  orderId    String?
-  createdAt DateTime @default(now())
+  orderId   String?
+  createdAt DateTime  @default(now())
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
 }
-
-
 
 model Product {
   id String @id @default(cuid())
@@ -87,11 +100,12 @@ model Product {
   sellerId String
   seller   User   @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
 
-  name      String   @db.VarChar(140)
-  desc      String?  @db.Text
+  name      String          @db.VarChar(140)
+  desc      String?         @db.Text
   price     Int
+  stock     Int             @default(0)
   category  ProductCategory @default(OTHER)
-  sizes     String[] @default([])
+  sizes     String[]        @default([])
   imageUrls String[]
 
   isActive  Boolean  @default(true)
@@ -103,15 +117,17 @@ model Product {
   commissionType  CommissionType @default(PERCENT)
 
   // Comisión de la plataforma
-  platformCommissionValue Int            @default(10)
+  platformCommissionValue Int            @default(5)
   platformCommissionType  CommissionType @default(PERCENT)
 
   links            AffiliateLink[]
   orders           Order[]
+  orderItems       OrderItem[]
   campaignProducts CampaignProduct[]
 
   @@index([sellerId])
   @@index([isActive])
+  @@index([stock])
   @@index([sellerId, isActive])
 }
 
@@ -137,6 +153,7 @@ model Campaign {
   products       CampaignProduct[]
   affiliateLinks AffiliateCampaignLink[]
   orders         Order[]
+  orderItems     OrderItem[]
 
   @@unique([sellerId, slug])
   @@index([sellerId])
@@ -211,7 +228,8 @@ model Click {
   ip        String? @db.VarChar(64)
   userAgent String? @db.Text
 
-  orders Order[]
+  orders     Order[]
+  orderItems OrderItem[]
 
   @@index([linkId])
   @@index([createdAt])
@@ -229,7 +247,8 @@ model CampaignClick {
   ip        String? @db.VarChar(64)
   userAgent String? @db.Text
 
-  orders Order[]
+  orders     Order[]
+  orderItems OrderItem[]
 
   @@index([linkId])
   @@index([createdAt])
@@ -282,8 +301,22 @@ model Order {
   paymentId       String? @db.VarChar(191)
   paymentStatus   String? @db.VarChar(50)
 
-  commission Commission?
-  settlement Settlement?
+  // Datos de contacto y entrega
+  buyerName          String? @db.VarChar(140)
+  buyerEmail         String? @db.VarChar(191)
+  buyerPhone         String? @db.VarChar(40)
+  shippingStreet     String? @db.VarChar(160)
+  shippingNumber     String? @db.VarChar(30)
+  shippingApartment  String? @db.VarChar(60)
+  shippingCity       String? @db.VarChar(120)
+  shippingState      String? @db.VarChar(120)
+  shippingPostalCode String? @db.VarChar(20)
+  shippingCountry    String? @db.VarChar(2)
+  shippingNotes      String? @db.Text
+
+  commissions Commission[]
+  settlements Settlement[]
+  items       OrderItem[]
 
   @@index([productId])
   @@index([sellerId])
@@ -300,8 +333,11 @@ model Order {
 model Commission {
   id String @id @default(cuid())
 
-  orderId String @unique
+  orderId String
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  orderItemId String?    @unique
+  orderItem   OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
 
   affiliateId String
   affiliate   User   @relation("AffiliateCommissions", fields: [affiliateId], references: [id], onDelete: Cascade)
@@ -314,12 +350,13 @@ model Commission {
   @@index([affiliateId])
   @@index([status])
   @@index([affiliateId, status])
+  @@index([orderId])
 }
 
 model Settlement {
   id String @id @default(cuid())
 
-  orderId String @unique
+  orderId String
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   sellerId String
@@ -337,13 +374,105 @@ model Settlement {
   // Monto que le corresponde al seller
   netAmount Int
 
+  // Logistica gestionada por el seller
+  fulfillmentStatus FulfillmentStatus @default(PENDING)
+  shippingCarrier   String?           @db.VarChar(80)
+  trackingCode      String?           @db.VarChar(120)
+  trackingUrl       String?           @db.VarChar(300)
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+  sellerNotes       String?           @db.Text
+
   status    SettlementStatus @default(PENDING)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
+  @@unique([orderId, sellerId])
   @@index([sellerId])
   @@index([status])
+  @@index([fulfillmentStatus])
   @@index([sellerId, status])
+  @@index([orderId])
+}
+
+model OrderItem {
+  id String @id @default(cuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  sellerId String
+  seller   User   @relation("OrderItemSeller", fields: [sellerId], references: [id], onDelete: Restrict)
+
+  affiliateId String?
+  affiliate   User?   @relation("OrderItemAffiliate", fields: [affiliateId], references: [id], onDelete: SetNull)
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  // atribucion por link de producto
+  clickId String?
+  click   Click?  @relation(fields: [clickId], references: [id], onDelete: SetNull)
+
+  // atribucion por link de campana
+  campaignClickId String?
+  campaignClick   CampaignClick? @relation(fields: [campaignClickId], references: [id], onDelete: SetNull)
+
+  quantity     Int     @default(1)
+  selectedSize String? @db.VarChar(30)
+  unitPrice    Int
+  total        Int
+
+  // Snapshot de comision afiliado al momento de la compra
+  commissionValue Int
+  commissionType  CommissionType
+  affiliateAmount Int            @default(0)
+
+  // Snapshot de comision plataforma al momento de la compra
+  platformCommissionValue Int
+  platformCommissionType  CommissionType
+  platformAmount          Int            @default(0)
+
+  // Lo que le queda al seller
+  sellerAmount Int @default(0)
+
+  commission Commission?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([sellerId])
+  @@index([affiliateId])
+  @@index([campaignId])
+  @@index([clickId])
+  @@index([campaignClickId])
+  @@index([sellerId, createdAt])
+  @@index([affiliateId, createdAt])
+}
+
+model PayoutRequest {
+  id String @id @default(cuid())
+
+  requesterId String
+  requester   User   @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  kind   PayoutRequestKind
+  amount Int
+  status PayoutRequestStatus @default(PENDING)
+
+  requestedAt DateTime  @default(now())
+  paidAt      DateTime?
+  adminNotes  String?   @db.Text
+
+  @@index([requesterId])
+  @@index([kind])
+  @@index([status])
+  @@index([requestedAt])
 }
 
 enum Role {
@@ -387,8 +516,27 @@ enum SettlementStatus {
   CANCELED
 }
 
+enum FulfillmentStatus {
+  PENDING
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELED
+}
+
 enum PayoutMethod {
   BANK_TRANSFER
-  MERCADO_PAGO
+  DLOCAL_GO
   MANUAL
+}
+
+enum PayoutRequestKind {
+  SELLER
+  AFFILIATE
+}
+
+enum PayoutRequestStatus {
+  PENDING
+  PAID
+  CANCELED
 }

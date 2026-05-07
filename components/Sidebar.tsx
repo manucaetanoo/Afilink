@@ -18,6 +18,7 @@ import {
   FiLayers,
   FiPlus,
   FiShoppingBag,
+  FiTruck,
   FiUser,
   FiUsers,
 } from "react-icons/fi";
@@ -54,7 +55,7 @@ const menuAfiliado: Menu = {
     href: "/products",
     icon: <FiLink />,
   },
-  helpHref: "/dashboard/affiliate",
+  helpHref: "/contacto",
   sections: [
     {
       title: "PRINCIPAL",
@@ -86,15 +87,15 @@ const menuSeller: Menu = {
     href: "/seller/products/new",
     icon: <FiPlus />,
   },
-  helpHref: "/dashboard/seller",
+  helpHref: "/contacto",
   sections: [
     {
       title: "PRINCIPAL",
       items: [
         { title: "Dashboard", href: "/dashboard/seller", icon: <FiHome /> },
         { title: "Mis productos", href: "/seller/products", icon: <FiShoppingBag /> },
-        { title: "Campanas", href: "/seller/campaigns", icon: <FiLayers /> },
-        { title: "Ordenes", href: "/dashboard/seller#orders", icon: <FiFileText /> },
+        { title: "Campañas", href: "/seller/campaigns", icon: <FiLayers /> },
+        { title: "Ordenes", href: "/seller/orders", icon: <FiFileText /> },
       ],
     },
     {
@@ -103,6 +104,31 @@ const menuSeller: Menu = {
         { title: "Afiliados", href: "/dashboard/seller#affiliates", icon: <FiUsers /> },
         { title: "Pagos", href: "/dashboard/seller#payments", icon: <FiCreditCard /> },
         { title: "Reportes", href: "/dashboard/seller#reports", icon: <FiBarChart2 /> },
+      ],
+    },
+    {
+      title: "CUENTA",
+      items: [
+        { title: "Perfil y ajustes", href: "/perfil/config", icon: <FiUser /> },
+      ],
+    },
+  ],
+};
+
+const menuAdmin: Menu = {
+  cta: {
+    title: "Control entregas",
+    href: "/admin/orders",
+    icon: <FiFileText />,
+  },
+  helpHref: "/contacto",
+  sections: [
+    {
+      title: "PLATAFORMA",
+      items: [
+        { title: "Entregas", href: "/admin/orders", icon: <FiTruck /> },
+        { title: "Liquidaciones", href: "/admin/payouts", icon: <FiCreditCard /> },
+        { title: "Productos", href: "/seller/products", icon: <FiShoppingBag /> },
       ],
     },
     {
@@ -139,7 +165,7 @@ export default function Sidebar() {
 
   const user = (data?.user ?? null) as AppUser | null;
   const role = (user?.role ?? "").toUpperCase();
-  const menu = role === "SELLER" ? menuSeller : menuAfiliado;
+  const menu = role === "ADMIN" ? menuAdmin : role === "SELLER" ? menuSeller : menuAfiliado;
 
   return (
     <aside

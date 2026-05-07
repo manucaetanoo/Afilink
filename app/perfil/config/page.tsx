@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -23,13 +23,11 @@ const uploadAvatarToCloudinary = async (file: File) => {
   return data.secure_url as string;
 };
 
-type PayoutMethod = "BANK_TRANSFER" | "MERCADO_PAGO" | "MANUAL";
+type PayoutMethod = "BANK_TRANSFER" | "DLOCAL_GO" | "MANUAL";
 
 type ProfileForm = {
   Nombre: string;
-  Apellido: string;
   email: string;
-  username: string;
   timezone: string;
   avatarFile?: File | null;
   payoutMethod: PayoutMethod;
@@ -46,6 +44,7 @@ type ProfileForm = {
   bankAccountAlias: string;
   bankBranch: string;
   payoutNotes: string;
+  dlocalSplitCode: string;
 };
 
 const TIMEZONES = [
@@ -59,7 +58,7 @@ const TIMEZONES = [
 
 const PAYOUT_METHODS: Array<{ value: PayoutMethod; label: string }> = [
   { value: "BANK_TRANSFER", label: "Transferencia bancaria" },
-  { value: "MERCADO_PAGO", label: "Cuenta Mercado Pago" },
+  { value: "DLOCAL_GO", label: "Cuenta dLocal Go" },
   { value: "MANUAL", label: "Manual" },
 ];
 
@@ -72,9 +71,7 @@ export default function ProfileSettingsWarmPage() {
   const { update: updateSession } = useSession();
   const [form, setForm] = useState<ProfileForm>({
     Nombre: "",
-    Apellido: "",
     email: "",
-    username: "",
     timezone: "America/Montevideo",
     avatarFile: null,
     payoutMethod: "BANK_TRANSFER",
@@ -91,14 +88,13 @@ export default function ProfileSettingsWarmPage() {
     bankAccountAlias: "",
     bankBranch: "",
     payoutNotes: "",
+    dlocalSplitCode: "",
   });
 
   const [avatarPreview, setAvatarPreview] = useState<string>("/img/sin-foto.jpg");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
-
-  const usernameDisplay = useMemo(() => form.username.trim(), [form.username]);
 
   function update<K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -121,9 +117,7 @@ export default function ProfileSettingsWarmPage() {
         setForm((prev) => ({
           ...prev,
           Nombre: u.name ?? "",
-          Apellido: u.lastName ?? "",
           email: u.email ?? "",
-          username: u.username ?? "",
           timezone: u.timezone ?? "America/Montevideo",
           payoutMethod: (u.payoutMethod ?? "BANK_TRANSFER") as PayoutMethod,
           payoutHolderName: u.payoutHolderName ?? "",
@@ -139,6 +133,7 @@ export default function ProfileSettingsWarmPage() {
           bankAccountAlias: u.bankAccountAlias ?? "",
           bankBranch: u.bankBranch ?? "",
           payoutNotes: u.payoutNotes ?? "",
+          dlocalSplitCode: u.dlocalSplitCode ?? "",
         }));
 
         setAvatarPreview(u.image || "/img/sin-foto.jpg");
@@ -185,8 +180,6 @@ export default function ProfileSettingsWarmPage() {
 
       const payload = {
         name: form.Nombre,
-        lastName: form.Apellido,
-        username: form.username,
         timezone: form.timezone,
         payoutMethod: form.payoutMethod,
         payoutHolderName: form.payoutHolderName,
@@ -202,6 +195,7 @@ export default function ProfileSettingsWarmPage() {
         bankAccountAlias: form.bankAccountAlias,
         bankBranch: form.bankBranch,
         payoutNotes: form.payoutNotes,
+        dlocalSplitCode: form.dlocalSplitCode,
         ...(uploadedImageUrl ? { image: uploadedImageUrl } : {}),
       };
 
@@ -300,21 +294,12 @@ export default function ProfileSettingsWarmPage() {
                     </div>
 
                     <div className="grid gap-6 md:grid-cols-2">
-                      <Field label="Nombre">
+                      <Field label="Nombre" className="md:col-span-2">
                         <input
                           value={form.Nombre}
                           onChange={(e) => update("Nombre", e.target.value)}
                           className={inputClass}
                           autoComplete="given-name"
-                        />
-                      </Field>
-
-                      <Field label="Apellido">
-                        <input
-                          value={form.Apellido}
-                          onChange={(e) => update("Apellido", e.target.value)}
-                          className={inputClass}
-                          autoComplete="family-name"
                         />
                       </Field>
 
@@ -326,21 +311,6 @@ export default function ProfileSettingsWarmPage() {
                           className={cn(inputClass, "bg-slate-50 text-slate-600")}
                           autoComplete="email"
                         />
-                      </Field>
-
-                      <Field label="Username" className="md:col-span-2">
-                        <div className="relative">
-                          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">
-                            example.com/
-                          </span>
-                          <input
-                            value={usernameDisplay}
-                            onChange={(e) => update("username", e.target.value)}
-                            className={cn(inputClass, "pl-[112px]")}
-                            placeholder="janesmith"
-                            autoComplete="username"
-                          />
-                        </div>
                       </Field>
 
                       <Field label="Timezone" className="md:col-span-2">
@@ -487,6 +457,14 @@ export default function ProfileSettingsWarmPage() {
                         <input
                           value={form.bankBranch}
                           onChange={(e) => update("bankBranch", e.target.value)}
+                          className={inputClass}
+                        />
+                      </Field>
+
+                      <Field label="Codigo split dLocal Go" className="md:col-span-2">
+                        <input
+                          value={form.dlocalSplitCode}
+                          onChange={(e) => update("dlocalSplitCode", e.target.value)}
                           className={inputClass}
                         />
                       </Field>
