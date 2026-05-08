@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus } from "@/lib/prisma-enums";
 import { markOrderPaidAndNotify } from "@/lib/order-events";
 
 export async function POST(

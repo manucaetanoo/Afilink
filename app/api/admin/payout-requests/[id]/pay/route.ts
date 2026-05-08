@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
+import { type Prisma } from "@prisma/client";
+import { requireRole, requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import {
   CommissionStatus,
   FulfillmentStatus,
   PayoutRequestKind,
   PayoutRequestStatus,
   SettlementStatus,
-  type Prisma,
-} from "@prisma/client";
-import { requireRole, requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+} from "@/lib/prisma-enums";
 
 function cleanText(value: unknown) {
   if (typeof value !== "string") return null;

@@ -1,4 +1,4 @@
-import { CommissionType } from "@prisma/client";
+import type { CommissionType } from "@/lib/prisma-enums";
 
 type CalculateSplitInput = {
   total: number;

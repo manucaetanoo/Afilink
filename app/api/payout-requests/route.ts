@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { PayoutRequestStatus } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PayoutRequestStatus } from "@/lib/prisma-enums";
 import {
   getAvailablePayoutAmount,
   getMissingPayoutFields,

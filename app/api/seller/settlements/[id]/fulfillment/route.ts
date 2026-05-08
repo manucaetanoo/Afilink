@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
+import { type Prisma } from "@prisma/client";
+import { requireRole, requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import {
   FulfillmentStatus,
   SettlementStatus,
-  type Prisma,
-} from "@prisma/client";
-import { requireRole, requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+} from "@/lib/prisma-enums";
 
 const statusValues = new Set(Object.values(FulfillmentStatus));
 

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireRole, requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import {
   CommissionStatus,
   FulfillmentStatus,
   OrderStatus,
   SettlementStatus,
-} from "@prisma/client";
-import { requireRole, requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+} from "@/lib/prisma-enums";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "ERROR";

@@ -3,7 +3,7 @@ import {
   CommissionStatus,
   OrderStatus,
   SettlementStatus,
-} from "@prisma/client";
+} from "@/lib/prisma-enums";
 import { markOrderPaidAndNotify } from "@/lib/order-events";
 import { getCheckoutDraft } from "@/lib/payments/createOrder";
 import { prisma } from "@/lib/prisma";

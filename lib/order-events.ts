@@ -1,7 +1,7 @@
 import {
   CommissionStatus,
   OrderStatus,
-} from "@prisma/client";
+} from "@/lib/prisma-enums";
 import { prisma } from "@/lib/prisma";
 import { sendTransactionalEmail } from "@/lib/email";
 

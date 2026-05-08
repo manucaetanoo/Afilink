@@ -1,7 +1,7 @@
 // lib/auth.ts
 import { getServerSession } from "next-auth";
-import type { Role } from "@prisma/client";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"; 
+import type { Role } from "@/lib/prisma-enums";
 
 
 export type AuthUser = {

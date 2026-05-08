@@ -6,6 +6,8 @@ import {
   PayoutRequestStatus,
   Role,
   SettlementStatus,
+} from "@/lib/prisma-enums";
+import {
   type User,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
