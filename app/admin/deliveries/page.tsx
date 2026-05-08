@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import SellerOrdersClient from "@/components/seller/SellerOrdersClient";
+import SellerOrdersClient, {
+  type SellerOrder,
+} from "@/components/seller/SellerOrdersClient";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
@@ -143,11 +145,16 @@ export default async function AdminOrdersPage() {
     }),
   ]);
 
-  const orders = allOrders.map((order) => ({
-    ...order,
-    createdAt: order.createdAt.toISOString(),
-  }));
-  const deliveryOrders = settlements.map((settlement) => ({
+  type DeliverySettlement = Omit<
+    SellerOrder,
+    "createdAt" | "shippedAt" | "deliveredAt"
+  > & {
+    createdAt: Date;
+    shippedAt: Date | null;
+    deliveredAt: Date | null;
+  };
+
+  const deliveryOrders: SellerOrder[] = (settlements as DeliverySettlement[]).map((settlement) => ({
     ...settlement,
     createdAt: settlement.createdAt.toISOString(),
     shippedAt: settlement.shippedAt?.toISOString() ?? null,
@@ -178,7 +185,7 @@ export default async function AdminOrdersPage() {
               </div>
 
               <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-                {orders.length} ordenes registradas
+                {allOrders.length} ordenes registradas
               </div>
             </div>
 

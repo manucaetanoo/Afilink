@@ -18,7 +18,7 @@ type FulfillmentStatus =
 
 type SettlementStatus = "PENDING" | "AVAILABLE" | "PAID" | "CANCELED";
 
-type SellerOrder = {
+export type SellerOrder = {
   id: string;
   grossAmount: number;
   platformFee: number;
