@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { type Prisma } from "@prisma/client";
 import { requireRole, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -23,7 +24,7 @@ export async function PATCH(
     const { id } = await params;
     await req.json().catch(() => ({}));
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const order = await tx.order.findUnique({
         where: { id },
         select: {

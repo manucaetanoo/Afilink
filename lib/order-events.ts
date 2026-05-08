@@ -2,6 +2,7 @@ import {
   CommissionStatus,
   OrderStatus,
 } from "@/lib/prisma-enums";
+import { type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendTransactionalEmail } from "@/lib/email";
 
@@ -38,7 +39,7 @@ export async function markOrderPaidAndNotify({
   paymentProvider,
   paymentStatus = "approved",
 }: MarkOrderPaidInput) {
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
       include: {

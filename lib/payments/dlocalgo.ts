@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from "crypto";
+import { type Prisma } from "@prisma/client";
 import {
   CommissionStatus,
   OrderStatus,
@@ -451,7 +452,7 @@ export async function syncOrderWithDlocalGoPayment(payment: DlocalGoPaymentRespo
     payment.status === "CANCELLED" ||
     payment.status === "EXPIRED"
   ) {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.order.update({
         where: { id: orderId },
         data: {

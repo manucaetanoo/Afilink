@@ -1,14 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { calculateSplit } from "@/lib/payments/calculateSplit";
 import { getCheckoutTotalWithTax } from "@/lib/taxes";
+import { type Prisma } from "@prisma/client";
 import {
   OrderStatus,
   CommissionStatus,
   SettlementStatus,
 } from "@/lib/prisma-enums";
-import {
-  type Product,
-} from "@prisma/client";
+import { type Product } from "@prisma/client";
 
 type CheckoutItemInput = {
   productId: string;
@@ -273,7 +272,7 @@ export async function createCheckoutOrder(
     sellerTotals.set(item.product.sellerId, current);
   }
 
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const order = await tx.order.create({
       data: {
         productId: first.product.id,
