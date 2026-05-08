@@ -36,7 +36,6 @@ model User {
   bankAccountAlias     String?       @db.VarChar(120)
   bankBranch           String?       @db.VarChar(120)
   payoutNotes          String?       @db.Text
-  dlocalSplitCode      String?       @db.VarChar(191)
 
   // Auth / sistema
   passwordHash String?
@@ -417,7 +416,7 @@ model OrderItem {
   clickId String?
   click   Click?  @relation(fields: [clickId], references: [id], onDelete: SetNull)
 
-  // atribucion por link de campana
+  // atribucion por link de campaña
   campaignClickId String?
   campaignClick   CampaignClick? @relation(fields: [campaignClickId], references: [id], onDelete: SetNull)
 

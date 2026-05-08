@@ -183,3 +183,59 @@ export async function PATCH(
     return NextResponse.json({ ok: false, error: msg }, { status });
   }
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await requireUser();
+    requireRole(user, ["SELLER", "ADMIN"]);
+
+    const { id } = await params;
+    const where = user.role === "ADMIN" ? { id } : { id, sellerId: user.id };
+
+    const product = await prisma.product.findFirst({
+      where,
+      select: {
+        id: true,
+        _count: {
+          select: {
+            orders: true,
+            orderItems: true,
+          },
+        },
+      },
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { ok: false, error: "Producto no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    if (product._count.orders > 0 || product._count.orderItems > 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "No se puede eliminar un producto con ordenes registradas. Desactivalo para ocultarlo sin perder el historial.",
+        },
+        { status: 409 }
+      );
+    }
+
+    await prisma.product.delete({
+      where: { id: product.id },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e);
+    const status =
+      msg === "UNAUTHORIZED" ? 401 : msg === "FORBIDDEN" ? 403 : 400;
+
+    return NextResponse.json({ ok: false, error: msg }, { status });
+  }
+}

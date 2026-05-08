@@ -16,7 +16,17 @@ type Product = {
   isActive?: boolean;
 };
 
-export default function ItemSeller({ product, role }: { product: Product; role?: string }) {
+export default function ItemSeller({
+  product,
+  role,
+  onDelete,
+  deleting = false,
+}: {
+  product: Product;
+  role?: string;
+  onDelete?: (product: Product) => void;
+  deleting?: boolean;
+}) {
   const isAffiliate = role === "AFFILIATE";
   const sellerNet = getSellerNetAmount({
     price: product.price,
@@ -92,6 +102,17 @@ export default function ItemSeller({ product, role }: { product: Product; role?:
               >
                 Editar
               </Link>
+            )}
+
+            {!isAffiliate && onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(product)}
+                disabled={deleting}
+                className="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deleting ? "Eliminando..." : "Eliminar"}
+              </button>
             )}
 
             {isAffiliate && (

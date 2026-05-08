@@ -76,17 +76,42 @@ export async function getAvailablePayoutAmount(
     return result._sum.netAmount ?? 0;
   }
 
-  const result = await prisma.commission.aggregate({
+  const commissions = await prisma.commission.findMany({
     where: {
       affiliateId: userId,
       status: CommissionStatus.APPROVED,
     },
-    _sum: {
+    select: {
       amount: true,
+      orderItem: {
+        select: {
+          sellerId: true,
+        },
+      },
+      order: {
+        select: {
+          settlements: {
+            select: {
+              sellerId: true,
+              status: true,
+              fulfillmentStatus: true,
+            },
+          },
+        },
+      },
     },
   });
 
-  return result._sum.amount ?? 0;
+  return commissions
+    .filter((commission) =>
+      commission.order.settlements.some(
+        (settlement) =>
+          settlement.sellerId === commission.orderItem?.sellerId &&
+          settlement.status === SettlementStatus.AVAILABLE &&
+          settlement.fulfillmentStatus === FulfillmentStatus.DELIVERED
+      )
+    )
+    .reduce((total, commission) => total + commission.amount, 0);
 }
 
 export function getPayoutKindForRole(role: Role) {

@@ -3,6 +3,15 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import {
+  FiArrowLeft,
+  FiCamera,
+  FiCheckCircle,
+  FiCreditCard,
+  FiInfo,
+  FiLock,
+  FiUser,
+} from "react-icons/fi";
 
 const uploadAvatarToCloudinary = async (file: File) => {
   const formData = new FormData();
@@ -44,7 +53,6 @@ type ProfileForm = {
   bankAccountAlias: string;
   bankBranch: string;
   payoutNotes: string;
-  dlocalSplitCode: string;
 };
 
 const TIMEZONES = [
@@ -58,7 +66,7 @@ const TIMEZONES = [
 
 const PAYOUT_METHODS: Array<{ value: PayoutMethod; label: string }> = [
   { value: "BANK_TRANSFER", label: "Transferencia bancaria" },
-  { value: "DLOCAL_GO", label: "Cuenta dLocal Go" },
+  { value: "DLOCAL_GO", label: "dLocal Go (pago manual)" },
   { value: "MANUAL", label: "Manual" },
 ];
 
@@ -88,13 +96,13 @@ export default function ProfileSettingsWarmPage() {
     bankAccountAlias: "",
     bankBranch: "",
     payoutNotes: "",
-    dlocalSplitCode: "",
   });
 
   const [avatarPreview, setAvatarPreview] = useState<string>("/img/sin-foto.jpg");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
+  const isSuccessMessage = msg === "Guardado";
 
   function update<K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -133,7 +141,6 @@ export default function ProfileSettingsWarmPage() {
           bankAccountAlias: u.bankAccountAlias ?? "",
           bankBranch: u.bankBranch ?? "",
           payoutNotes: u.payoutNotes ?? "",
-          dlocalSplitCode: u.dlocalSplitCode ?? "",
         }));
 
         setAvatarPreview(u.image || "/img/sin-foto.jpg");
@@ -195,7 +202,6 @@ export default function ProfileSettingsWarmPage() {
         bankAccountAlias: form.bankAccountAlias,
         bankBranch: form.bankBranch,
         payoutNotes: form.payoutNotes,
-        dlocalSplitCode: form.dlocalSplitCode,
         ...(uploadedImageUrl ? { image: uploadedImageUrl } : {}),
       };
 
@@ -229,71 +235,120 @@ export default function ProfileSettingsWarmPage() {
   }
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-white text-slate-900">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-orange-200/70 blur-3xl" />
-        <div className="absolute left-40 top-24 h-[420px] w-[420px] rounded-full bg-amber-200/50 blur-3xl" />
-        <div className="absolute -right-52 -bottom-52 h-[640px] w-[640px] rounded-full bg-orange-200/60 blur-3xl" />
-      </div>
+    <div className="min-h-[100dvh] bg-slate-50 text-slate-950">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-600">
+              Ajustes de cuenta
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+              Mi perfil
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              Actualiza tu informacion personal y los datos que usamos para
+              procesar tus liquidaciones.
+            </p>
+          </div>
 
-      <div className="relative mx-auto max-w-6xl px-4 py-12">
-        <div className="rounded-2xl border border-slate-200 bg-white/80 shadow-[0_10px_30px_rgba(2,6,23,0.10)] backdrop-blur">
-          <div className="grid gap-10 p-8 md:grid-cols-[280px_1fr] md:p-10">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-                Mi perfil
-              </h1>
-              <p className="mt-2 text-sm text-slate-600">
-                Configura tu informacion personal y tus datos de cobro.
-              </p>
-              {msg && (
-                <div className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-                  {msg}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => router.push("/products")}
-                className="mt-4 inline-flex rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Volver
-              </button>
+          <button
+            type="button"
+            onClick={() => router.push("/products")}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100"
+          >
+            <FiArrowLeft />
+            Volver
+          </button>
+        </div>
+
+
+        <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
+          <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6 lg:self-start">
+            <div className="flex items-center gap-4">
+              <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={avatarPreview}
+                  alt="Avatar"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-slate-950">
+                  {form.Nombre || "Tu perfil"}
+                </p>
+                <p className="mt-1 truncate text-sm text-slate-500">
+                  {form.email || "Cuenta Afilink"}
+                </p>
+              </div>
             </div>
 
-            <form onSubmit={onSubmit} className="space-y-8">
+            <label className={cn(buttonSoft, "mt-5 w-full cursor-pointer gap-2")}>
+              <FiCamera />
+              Cambiar foto
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/gif"
+                className="hidden"
+                onChange={onPickAvatar}
+              />
+            </label>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              JPG, GIF o PNG. Tamano maximo: 1MB.
+            </p>
+
+            <div className="mt-6 space-y-3 border-t border-slate-100 pt-5">
+              <SideHint
+                icon={<FiUser />}
+                title="Perfil"
+                text="Nombre, email y zona horaria."
+              />
+              <SideHint
+                icon={<FiCreditCard />}
+                title="Cobros"
+                text="Datos necesarios para liquidarte saldos."
+              />
+              <SideHint
+                icon={<FiLock />}
+                title="Seguridad"
+                text="Tu email de acceso no se edita desde esta pantalla."
+              />
+            </div>
+            {msg && (
+          <div
+            className={cn(
+              "mb-5 mt-10 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-sm",
+              isSuccessMessage
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-amber-200 bg-amber-50 text-amber-900"
+            )}
+          >
+            {isSuccessMessage ? (
+              <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            ) : (
+              <FiInfo className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+            )}
+            <span>{msg}</span>
+          </div>
+        )}
+          </aside>
+
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <form onSubmit={onSubmit} className="divide-y divide-slate-100">
               {loading ? (
-                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                <div className="p-6 text-sm text-slate-600">
                   Cargando perfil...
                 </div>
               ) : (
                 <>
-                  <section className="space-y-6">
-                    <div className="flex items-center gap-5">
-                      <img
-                        src={avatarPreview}
-                        alt="Avatar"
-                        className="h-16 w-16 rounded-xl object-cover ring-1 ring-slate-200"
-                      />
+                  <section className="space-y-6 p-5 sm:p-6">
+                    <SectionHeader
+                      icon={<FiUser />}
+                      title="Informacion personal"
+                      description="Datos basicos visibles para identificar tu cuenta."
+                    />
 
-                      <div className="flex flex-col gap-1">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <label className={cn(buttonSoft, "cursor-pointer")}>
-                            Cambiar foto
-                            <input
-                              type="file"
-                              accept="image/png,image/jpeg,image/jpg,image/gif"
-                              className="hidden"
-                              onChange={onPickAvatar}
-                            />
-                          </label>
-                          <span className="text-xs text-slate-500">
-                            JPG, GIF o PNG. 1MB max.
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-6 md:grid-cols-2">
+                    <div className="grid gap-5 md:grid-cols-2">
                       <Field label="Nombre" className="md:col-span-2">
                         <input
                           value={form.Nombre}
@@ -329,17 +384,14 @@ export default function ProfileSettingsWarmPage() {
                     </div>
                   </section>
 
-                  <section className="space-y-6 rounded-2xl border border-slate-200 bg-[#fffaf6] p-6">
-                    <div>
-                      <h2 className="text-xl font-semibold text-slate-900">
-                        Datos de facturacion y cobro
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Estos datos se usaran para liquidarte comisiones o ventas.
-                      </p>
-                    </div>
+                  <section className="space-y-6 bg-slate-50/60 p-5 sm:p-6">
+                    <SectionHeader
+                      icon={<FiCreditCard />}
+                      title="Datos de facturacion y cobro"
+                      description="Estos datos se usaran para liquidarte comisiones o ventas."
+                    />
 
-                    <div className="grid gap-6 md:grid-cols-2">
+                    <div className="grid gap-5 md:grid-cols-2">
                       <Field label="Metodo de cobro">
                         <select
                           value={form.payoutMethod}
@@ -356,6 +408,17 @@ export default function ProfileSettingsWarmPage() {
                         </select>
                       </Field>
 
+                      {form.payoutMethod === "DLOCAL_GO" && (
+                        <div className="flex items-start gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm leading-6 text-orange-900 md:col-span-2">
+                          <FiInfo className="mt-1 h-4 w-4 shrink-0" />
+                          <span>
+                            Este metodo solo guarda tus datos para que Afilink pueda
+                            pagarte manualmente. El dinero de las ventas ingresa a la
+                            cuenta de la plataforma y luego se liquida segun tus saldos.
+                          </span>
+                        </div>
+                      )}
+
                       <Field label="Titular">
                         <input
                           value={form.payoutHolderName}
@@ -365,12 +428,15 @@ export default function ProfileSettingsWarmPage() {
                       </Field>
 
                       <Field label="Tipo de documento">
-                        <input
+                        <select
                           value={form.payoutDocumentType}
                           onChange={(e) => update("payoutDocumentType", e.target.value)}
-                          className={inputClass}
-                          placeholder="CI, DNI, RUT"
-                        />
+                          className={selectClass}
+                        >
+                          <option value="CI">CI</option>
+                          <option value="DNI">DNI</option>
+                          <option value="RUT">RUT</option>
+                        </select>
                       </Field>
 
                       <Field label="Numero de documento">
@@ -400,29 +466,35 @@ export default function ProfileSettingsWarmPage() {
                         />
                       </Field>
 
-                      <Field label="Pais">
-                        <input
+                      <Field label="País">
+                        <select
                           value={form.payoutCountry}
                           onChange={(e) => update("payoutCountry", e.target.value)}
                           className={inputClass}
-                          placeholder="UY"
-                        />
+                          
+                        >
+                          <option value="UY">Uruguay</option>
+                          <option value="AR">Argentina</option>
+                        </select>
                       </Field>
 
                       <Field label="Moneda">
-                        <input
+                        <select
                           value={form.payoutCurrency}
                           onChange={(e) => update("payoutCurrency", e.target.value)}
                           className={inputClass}
-                          placeholder="UYU"
-                        />
+                        >
+                          <option value="UYU">UYU</option>
+                          <option value="USD">USD</option>
+                        </select>
                       </Field>
 
-                      <Field label="Banco">
+                      <Field label="Banco * ">
                         <input
                           value={form.bankName}
                           onChange={(e) => update("bankName", e.target.value)}
                           className={inputClass}
+                          required
                         />
                       </Field>
 
@@ -435,12 +507,13 @@ export default function ProfileSettingsWarmPage() {
                         />
                       </Field>
 
-                      <Field label="Numero de cuenta">
+                      <Field label="Numero de cuenta *">
                         <input
                           value={form.bankAccountNumber}
                           onChange={(e) =>
                             update("bankAccountNumber", e.target.value)
                           }
+                          required
                           className={inputClass}
                         />
                       </Field>
@@ -461,14 +534,6 @@ export default function ProfileSettingsWarmPage() {
                         />
                       </Field>
 
-                      <Field label="Codigo split dLocal Go" className="md:col-span-2">
-                        <input
-                          value={form.dlocalSplitCode}
-                          onChange={(e) => update("dlocalSplitCode", e.target.value)}
-                          className={inputClass}
-                        />
-                      </Field>
-
                       <Field label="Notas" className="md:col-span-2">
                         <textarea
                           value={form.payoutNotes}
@@ -479,7 +544,11 @@ export default function ProfileSettingsWarmPage() {
                     </div>
                   </section>
 
-                  <div className="flex items-center gap-3 pt-2">
+                  <div className="flex flex-col gap-3 bg-white p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                    <p className="text-sm leading-6 text-slate-500">
+                      Revisa los datos antes de guardar. Los cambios se aplican a
+                      futuras solicitudes de liquidacion.
+                    </p>
                     <button
                       type="submit"
                       className={cn(buttonPrimary, saving && "cursor-not-allowed opacity-70")}
@@ -487,13 +556,54 @@ export default function ProfileSettingsWarmPage() {
                     >
                       {saving ? "Guardando..." : "Guardar cambios"}
                     </button>
-                    {msg && <span className="text-sm text-slate-700">{msg}</span>}
                   </div>
                 </>
               )}
             </form>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionHeader({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="rounded-xl bg-orange-100 p-2.5 text-orange-700">
+        {icon}
+      </div>
+      <div>
+        <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function SideHint({
+  icon,
+  title,
+  text,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="flex gap-3">
+      <div className="mt-0.5 text-slate-400">{icon}</div>
+      <div>
+        <p className="text-sm font-semibold text-slate-800">{title}</p>
+        <p className="mt-0.5 text-xs leading-5 text-slate-500">{text}</p>
       </div>
     </div>
   );
@@ -517,18 +627,18 @@ function Field({
 }
 
 const inputClass =
-  "w-full rounded-xl bg-white px-3 py-2.5 text-sm text-slate-900 " +
-  "ring-1 ring-slate-200 placeholder:text-slate-400 " +
-  "focus:outline-none focus:ring-2 focus:ring-orange-300/70";
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 shadow-sm " +
+  "placeholder:text-slate-400 transition hover:border-slate-300 " +
+  "focus:border-orange-400 focus:outline-none focus:ring-4 focus:ring-orange-100";
 
 const selectClass =
-  "w-full rounded-xl bg-white px-3 py-2.5 text-sm text-slate-900 " +
-  "ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-300/70";
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 shadow-sm " +
+  "transition hover:border-slate-300 focus:border-orange-400 focus:outline-none focus:ring-4 focus:ring-orange-100";
 
 const buttonSoft =
-  "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium " +
-  "bg-slate-50 text-slate-900 ring-1 ring-slate-200 hover:bg-slate-100";
+  "inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold " +
+  "bg-slate-950 text-white shadow-sm transition hover:bg-slate-800";
 
 const buttonPrimary =
-  "inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white " +
-  "bg-orange-500 hover:bg-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-300/70";
+  "inline-flex shrink-0 items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold text-white " +
+  "bg-orange-500 shadow-lg shadow-orange-500/20 transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-100";

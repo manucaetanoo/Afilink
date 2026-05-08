@@ -58,7 +58,7 @@ export default function CampaignForm({ storeSlug, defaultValues, campaignId }: P
     startsAt: defaultValues?.startsAt || "",
     endsAt: defaultValues?.endsAt || "",
   });
-  const previewSlug = form.slug.trim() || "slug-de-la-campana";
+  const previewSlug = form.slug.trim() || "slug-de-la-campaña";
   const previewStoreSlug = storeSlug?.trim() || "tu-tienda";
 
   const handleChange = (key: FormKey, value: string | boolean) => {
@@ -107,7 +107,7 @@ export default function CampaignForm({ storeSlug, defaultValues, campaignId }: P
     setLoading(false);
 
     if (!res.ok) {
-      setMessage(data?.error || "Error guardando campana");
+      setMessage(data?.error || "Error guardando campaña");
       return;
     }
 
@@ -131,7 +131,7 @@ export default function CampaignForm({ storeSlug, defaultValues, campaignId }: P
           </div>
           <div>
             <p className="text-sm font-medium text-orange-200">
-              {campaignId ? "Editar campana" : "Nueva campana"}
+              {campaignId ? "Editar campaña" : "Nueva campaña"}
             </p>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight">
               Detalles de la promocion
@@ -295,7 +295,7 @@ export default function CampaignForm({ storeSlug, defaultValues, campaignId }: P
             />
             <span className="inline-flex items-center gap-2">
               <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
-              Campana activa
+              Campaña activa
             </span>
           </label>
 
@@ -304,7 +304,7 @@ export default function CampaignForm({ storeSlug, defaultValues, campaignId }: P
             disabled={loading}
             className="inline-flex items-center justify-center rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Guardando..." : "Guardar campana"}
+            {loading ? "Guardando..." : "Guardar campaña"}
           </button>
         </div>
       </div>

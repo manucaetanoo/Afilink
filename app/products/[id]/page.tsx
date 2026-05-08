@@ -268,7 +268,7 @@ export default async function ProductPage({
             <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
               Vendido por{" "}
               <span className="font-semibold text-slate-950">
-                {product.seller.storeSlug ?? product.seller.name ?? "MarketFill seller"}
+                {product.seller.storeSlug ?? product.seller.name ?? "Afilink seller"}
               </span>
             </div>
           </section>

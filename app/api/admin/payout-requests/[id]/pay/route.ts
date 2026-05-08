@@ -69,10 +69,47 @@ export async function PATCH(
           },
         });
       } else {
-        await tx.commission.updateMany({
+        const eligibleCommissions = await tx.commission.findMany({
           where: {
             affiliateId: request.requesterId,
             status: CommissionStatus.APPROVED,
+          },
+          select: {
+            id: true,
+            orderItem: {
+              select: {
+                sellerId: true,
+              },
+            },
+            order: {
+              select: {
+                settlements: {
+                  select: {
+                    sellerId: true,
+                    status: true,
+                    fulfillmentStatus: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+        const eligibleCommissionIds = eligibleCommissions
+          .filter((commission) =>
+            commission.order.settlements.some(
+              (settlement) =>
+                settlement.sellerId === commission.orderItem?.sellerId &&
+                settlement.status === SettlementStatus.AVAILABLE &&
+                settlement.fulfillmentStatus === FulfillmentStatus.DELIVERED
+            )
+          )
+          .map((commission) => commission.id);
+
+        await tx.commission.updateMany({
+          where: {
+            id: {
+              in: eligibleCommissionIds,
+            },
           },
           data: {
             status: CommissionStatus.PAID,

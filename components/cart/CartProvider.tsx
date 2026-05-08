@@ -35,7 +35,7 @@ type CartContextValue = {
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
-const STORAGE_KEY = "marketfill_cart";
+const STORAGE_KEY = "Afilink_cart";
 
 function getLineId(productId: string, selectedSize?: string | null) {
   return `${productId}:${selectedSize?.trim() || "no-size"}`;

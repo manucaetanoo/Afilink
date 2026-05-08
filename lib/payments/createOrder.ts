@@ -16,6 +16,20 @@ type CheckoutItemInput = {
   campaignClickId?: string;
 };
 
+type CheckoutShippingData = {
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
+  shippingStreet: string;
+  shippingNumber: string;
+  shippingApartment: string | null;
+  shippingCity: string;
+  shippingState: string;
+  shippingPostalCode: string | null;
+  shippingCountry: string;
+  shippingNotes: string | null;
+};
+
 type CreateOrderInput = {
   productId: string;
   selectedSize?: string | null;
@@ -200,11 +214,25 @@ async function resolveCheckoutItems(items: CheckoutItemInput[]) {
   return resolved;
 }
 
-export async function createCheckoutOrder(items: CheckoutItemInput[]) {
+export async function getCheckoutDraft(items: CheckoutItemInput[]) {
   const resolvedItems = await resolveCheckoutItems(items);
-  const first = resolvedItems[0];
   const subtotal = resolvedItems.reduce((sum, item) => sum + item.total, 0);
-  const { total } = getCheckoutTotalWithTax(subtotal);
+  const { total, taxAmount } = getCheckoutTotalWithTax(subtotal);
+
+  return {
+    total,
+    subtotal,
+    taxAmount,
+    items: resolvedItems,
+  };
+}
+
+export async function createCheckoutOrder(
+  items: CheckoutItemInput[],
+  shippingData?: CheckoutShippingData
+) {
+  const { total, items: resolvedItems } = await getCheckoutDraft(items);
+  const first = resolvedItems[0];
   const affiliateAmount = resolvedItems.reduce(
     (sum, item) => sum + item.affiliateAmount,
     0
@@ -266,6 +294,7 @@ export async function createCheckoutOrder(items: CheckoutItemInput[]) {
         sellerAmount,
         paymentProvider: "dlocalgo",
         paymentStatus: "pending",
+        ...(shippingData ? shippingData : {}),
       },
     });
 

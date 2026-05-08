@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import AdminOrdersClient from "@/components/admin/AdminOrdersClient";
 import SellerOrdersClient from "@/components/seller/SellerOrdersClient";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
@@ -170,10 +169,11 @@ export default async function AdminOrdersPage() {
                   Plataforma
                 </p>
                 <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                  Ordenes
+                 Entregas
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                  Revisa todas las ordenes y cancela casos reembolsados cuando corresponda.
+                  Revisa todas las ordenes y confirma
+                  entregas cuando corresponda.
                 </p>
               </div>
 
@@ -182,18 +182,20 @@ export default async function AdminOrdersPage() {
               </div>
             </div>
 
-            <section className="mt-8">
+            
+
+            <section className="mt-10">
               <div className="mb-4">
                 <h2 className="text-xl font-semibold text-slate-950">
-                  Todas las ordenes
+                  Control de entregas
                 </h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Historial completo de compras, pagos, sellers y liquidaciones.
+                  Revisa el tracking cargado por sellers y confirma entregas. Al
+                  confirmar una entrega, el dinero queda por liquidar al seller.
                 </p>
               </div>
-              <AdminOrdersClient orders={orders} />
+              <SellerOrdersClient orders={deliveryOrders} canConfirmDelivery />
             </section>
-
           </div>
         </main>
       </div>

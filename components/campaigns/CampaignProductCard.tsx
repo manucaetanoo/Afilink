@@ -15,6 +15,7 @@ type ProductCardProps = {
     commissionType: "PERCENT" | "FIXED";
   };
   showAffiliateHighlights?: boolean;
+  showStock?: boolean;
 };
 
 function formatPrice(price: number) {
@@ -36,6 +37,7 @@ function getCommissionEarning(price: number, value: number) {
 export default function CampaignProductCard({
   product,
   showAffiliateHighlights = true,
+  showStock = false,
 }: ProductCardProps) {
   const [loading, setLoading] = useState(false);
 
@@ -134,20 +136,16 @@ export default function CampaignProductCard({
             <p className="mt-2 text-sm font-medium text-slate-500">
               Precio de venta {formatPrice(product.price)}
             </p>
-            {product.stock !== undefined && (
+            {showStock && product.stock !== undefined && (
               <p className="mt-1 text-xs font-semibold text-slate-500">
                 {hasStock ? `Stock: ${product.stock}` : "Sin stock"}
               </p>
             )}
           </div>
 
-          {hasAffiliateHighlights ? (
+          {hasAffiliateHighlights && (
             <div className="rounded-full bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 ring-1 ring-orange-100">
               Ideal para afiliados
-            </div>
-          ) : (
-            <div className="rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-100">
-              Listo para comprar
             </div>
           )}
         </div>
@@ -191,7 +189,13 @@ export default function CampaignProductCard({
             disabled={loading || !hasStock}
             className="inline-flex flex-1 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {!hasStock ? "Sin stock" : loading ? "Procesando..." : "Comprar ahora"}
+            {!hasStock
+              ? showStock
+                ? "Sin stock"
+                : "No disponible"
+              : loading
+                ? "Procesando..."
+                : "Comprar ahora"}
           </button>
         </div>
       </div>

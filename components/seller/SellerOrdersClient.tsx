@@ -96,7 +96,7 @@ function statusLabel(status: FulfillmentStatus) {
 
 function settlementLabel(status: SettlementStatus) {
   const labels: Record<SettlementStatus, string> = {
-    AVAILABLE: "Por liquidar",
+    AVAILABLE: "Disponible",
     CANCELED: "Cancelada",
     PAID: "Liquidada",
     PENDING: "Retenida",

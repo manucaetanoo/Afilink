@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
+import DeleteCampaignButton from "@/components/campaigns/DeleteCampaignButton";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
@@ -38,9 +39,10 @@ export default async function SellerCampaignsPage() {
                 <h1 className="mt-3 text-3xl font-semibold tracking-tight">
                   Campañas
                 </h1>
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm font-bold text-black">
                   Mira tus campañas, edita su contenido y administra productos asociados.
                 </p>
+                <h6 className=" mt-2 text-sm text-slate-600">Los afiliados que promocionen tu campaña recibirán un porcentaje de comisión por cada venta realizada de los productos.</h6>
               </div>
 
               <Link
@@ -110,11 +112,15 @@ export default async function SellerCampaignsPage() {
                           Productos
                         </Link>
                         <Link
-                          href={`/store/${session.user.storeSlug}/campaign/${campaign.slug}`}
+                          href={`/store/${session.user.storeSlug}/campaign/${campaign.slug}?preview=public`}
                           className="rounded-lg bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
                         >
-                          Ver Campaña
+                          Vista previa
                         </Link>
+                        <DeleteCampaignButton
+                          campaignId={campaign.id}
+                          campaignTitle={campaign.title}
+                        />
                       </div>
                     </div>
                   </div>

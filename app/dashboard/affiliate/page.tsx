@@ -201,10 +201,18 @@ export default async function AffiliateDashboardPage() {
             total: true,
             status: true,
             campaign: { select: { title: true } },
+            settlements: {
+              select: {
+                sellerId: true,
+                status: true,
+                fulfillmentStatus: true,
+              },
+            },
           },
         },
         orderItem: {
           select: {
+            sellerId: true,
             total: true,
             product: { select: { name: true } },
           },
@@ -244,37 +252,46 @@ export default async function AffiliateDashboardPage() {
   const totalClicks = productClicks + campaignClicks;
   const paidItems = orderItems.filter((item) => item.order.status === "PAID");
   const totalSales = paidItems.length;
-  const pendingCommission = commissions
-    .filter((commission) => commission.status === "PENDING")
+  const paidOrderCommissions = commissions.filter(
+    (commission) => commission.order.status === "PAID"
+  );
+  const isDeliveryConfirmedForCommission = (commission: (typeof commissions)[number]) =>
+    commission.order.settlements.some(
+      (settlement) =>
+        settlement.sellerId === commission.orderItem?.sellerId &&
+        settlement.status === "AVAILABLE" &&
+        settlement.fulfillmentStatus === "DELIVERED"
+    );
+  const availableCommission = paidOrderCommissions
+    .filter(
+      (commission) =>
+        commission.status === "APPROVED" &&
+        isDeliveryConfirmedForCommission(commission)
+    )
     .reduce((total, commission) => total + commission.amount, 0);
-  const availableCommission = commissions
-    .filter((commission) => commission.status === "APPROVED")
+  const retainedCommission = paidOrderCommissions
+    .filter(
+      (commission) =>
+        commission.status === "PENDING" ||
+        (commission.status === "APPROVED" &&
+          !isDeliveryConfirmedForCommission(commission))
+    )
     .reduce((total, commission) => total + commission.amount, 0);
-  const paidCommission = commissions
+  const retainedCommissionCount = paidOrderCommissions.filter(
+    (commission) =>
+      commission.status === "PENDING" ||
+      (commission.status === "APPROVED" &&
+        !isDeliveryConfirmedForCommission(commission))
+  ).length;
+  const paidCommission = paidOrderCommissions
     .filter((commission) => commission.status === "PAID")
     .reduce((total, commission) => total + commission.amount, 0);
-  const generatedCommission = availableCommission + paidCommission;
+  const generatedCommission = retainedCommission + availableCommission + paidCommission;
 
   const currentItems = paidItems.filter((item) => item.createdAt >= currentStart);
   const previousItems = paidItems.filter(
     (item) => item.createdAt >= previousStart && item.createdAt < currentStart
   );
-  const currentCommission = commissions
-    .filter(
-      (commission) =>
-        commission.createdAt >= currentStart &&
-        (commission.status === "APPROVED" || commission.status === "PAID")
-    )
-    .reduce((total, commission) => total + commission.amount, 0);
-  const previousCommission = commissions
-    .filter(
-      (commission) =>
-        commission.createdAt >= previousStart &&
-        commission.createdAt < currentStart &&
-        (commission.status === "APPROVED" || commission.status === "PAID")
-    )
-    .reduce((total, commission) => total + commission.amount, 0);
-
   const conversionRate = totalClicks > 0 ? (totalSales / totalClicks) * 100 : 0;
   const earningsPerClick = totalClicks > 0 ? generatedCommission / totalClicks : 0;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -346,9 +363,24 @@ export default async function AffiliateDashboardPage() {
               </div>
             </div>
 
+            {retainedCommission > 0 && (
+              <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-5 py-4">
+                <p className="text-sm font-medium text-amber-950">
+                  Liquidacion pendiente por entrega
+                </p>
+                <p className="mt-1 text-sm leading-6 text-amber-900">
+                  Tenes {money(retainedCommission)} retenidos en{" "}
+                  {number(retainedCommissionCount)} comisiones pendientes. La
+                  liquidacion del pago va a estar disponible 7 dias despues de la
+                  acreditacion y cuando se confirme la entrega.
+                
+                </p>
+              </div>
+            )}
+
             <section
               id="payments"
-              className="mt-8 grid scroll-mt-24 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+              className="mt-8 grid scroll-mt-24 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5"
             >
               <StatCard
                 icon={<FiMousePointer />}
@@ -368,14 +400,21 @@ export default async function AffiliateDashboardPage() {
                 icon={<FiDollarSign />}
                 label="Comision generada"
                 value={money(generatedCommission)}
-                detail={`${delta(currentCommission, previousCommission)} en los ultimos 30 dias`}
+                detail="Total entre retenido, por liquidar y ya liquidado"
                 tone="emerald"
+              />
+              <StatCard
+                icon={<FiClock />}
+                label="Retenido"
+                value={money(retainedCommission)}
+                detail={`${number(retainedCommissionCount)} comisiones pendientes de entrega`}
+                tone="slate"
               />
               <StatCard
                 icon={<FiClock />}
                 label="Por liquidar"
                 value={money(availableCommission)}
-                detail={`${money(paidCommission)} ya liquidado`}
+                detail={`Disponible para retirar. ${money(paidCommission)} ya retirado`}
                 tone="sky"
               />
             </section>
@@ -414,8 +453,8 @@ export default async function AffiliateDashboardPage() {
                     <FiTrendingUp className="mt-0.5 text-orange-600" />
                     <p className="text-sm leading-6 text-orange-900">
                       Tus mejores oportunidades son los links con mayor volumen de
-                      clicks y comision generada. Tienes {money(pendingCommission)} en
-                      comisiones pendientes de aprobacion.
+                      clicks y comision generada. Tenes {money(retainedCommission)} en
+                      comisiones retenidas hasta que se confirme la entrega.
                     </p>
                   </div>
                 </div>

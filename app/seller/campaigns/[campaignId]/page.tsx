@@ -39,9 +39,8 @@ export default async function EditSellerCampaignPage({ params }: Props) {
             <div className="mb-8">
               <Link
                 href="/seller/campaigns"
-                className="text-sm font-semibold text-orange-600 hover:text-orange-700"
-              >
-                Volver a campañas
+                className="inline-block text-sm font-semibold text-black-600 hover:text-gray-700"
+              >← Volver a campañas
               </Link>
               <h1 className="mt-4 text-3xl font-semibold tracking-tight">
                 Editar campaña

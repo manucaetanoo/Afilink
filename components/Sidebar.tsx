@@ -126,7 +126,8 @@ const menuAdmin: Menu = {
     {
       title: "PLATAFORMA",
       items: [
-        { title: "Entregas", href: "/admin/orders", icon: <FiTruck /> },
+        { title: "Entregas", href: "/admin/deliveries", icon: <FiTruck /> },
+        { title: "Ordenes", href: "/admin/orders", icon: <FiFileText /> },
         { title: "Liquidaciones", href: "/admin/payouts", icon: <FiCreditCard /> },
         { title: "Productos", href: "/seller/products", icon: <FiShoppingBag /> },
       ],
@@ -145,6 +146,7 @@ export default function Sidebar() {
   const { data, status } = useSession();
   const [collapsed, setCollapsed] = useState(true);
   const [currentHash, setCurrentHash] = useState("");
+  const [pendingSellerOrders, setPendingSellerOrders] = useState(0);
 
   useEffect(() => {
     const updateHash = () => setCurrentHash(window.location.hash);
@@ -159,13 +161,47 @@ export default function Sidebar() {
     };
   }, [pathname]);
 
-  if (status !== "authenticated") {
-    return null;
-  }
-
   const user = (data?.user ?? null) as AppUser | null;
   const role = (user?.role ?? "").toUpperCase();
   const menu = role === "ADMIN" ? menuAdmin : role === "SELLER" ? menuSeller : menuAfiliado;
+
+  useEffect(() => {
+    let alive = true;
+
+    if (status !== "authenticated" || role !== "SELLER") {
+      queueMicrotask(() => {
+        if (alive) setPendingSellerOrders(0);
+      });
+      return () => {
+        alive = false;
+      };
+    }
+
+    async function loadPendingOrders() {
+      try {
+        const res = await fetch("/api/seller/orders/pending-count", {
+          cache: "no-store",
+        });
+        const data = await res.json();
+
+        if (!alive) return;
+        setPendingSellerOrders(Number(data?.count ?? 0));
+      } catch {
+        if (!alive) return;
+        setPendingSellerOrders(0);
+      }
+    }
+
+    void loadPendingOrders();
+
+    return () => {
+      alive = false;
+    };
+  }, [role, status, pathname]);
+
+  if (status !== "authenticated") {
+    return null;
+  }
 
   return (
     <aside
@@ -231,7 +267,7 @@ export default function Sidebar() {
                     href={item.href}
                     title={collapsed ? item.title : undefined}
                     className={cn(
-                      "flex items-center rounded-xl px-3 py-2.5 transition",
+                      "relative flex items-center rounded-xl px-3 py-2.5 transition",
                       collapsed ? "justify-center" : "gap-3",
                       active
                         ? "bg-slate-900 text-white"
@@ -242,6 +278,18 @@ export default function Sidebar() {
                     {!collapsed && (
                       <span className="text-sm font-medium">{item.title}</span>
                     )}
+                    {role === "SELLER" &&
+                      item.href === "/seller/orders" &&
+                      pendingSellerOrders > 0 && (
+                        <span
+                          className={cn(
+                            "absolute h-2.5 w-2.5 rounded-full bg-orange-500 ring-2",
+                            active ? "ring-slate-900" : "ring-slate-50",
+                            collapsed ? "right-4 top-2.5" : "right-3 top-1/2 -translate-y-1/2"
+                          )}
+                          aria-label={`${pendingSellerOrders} ordenes pendientes de envio`}
+                        />
+                      )}
                   </Link>
                 );
               })}

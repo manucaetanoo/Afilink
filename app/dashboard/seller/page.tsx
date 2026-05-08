@@ -41,6 +41,25 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
+const PAYMENT_ACCREDITATION_DAYS = 7;
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function formatPaymentDate(date: Date) {
+  const parts = new Intl.DateTimeFormat("es-UY", {
+    day: "numeric",
+    month: "long",
+  }).formatToParts(date);
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+
+  return `${day} ${month}`.trim();
+}
+
 function delta(current: number, previous: number) {
   if (previous === 0) return current > 0 ? "+100%" : "0%";
   const change = ((current - previous) / previous) * 100;
@@ -48,8 +67,16 @@ function delta(current: number, previous: number) {
 }
 
 function statusClasses(status: string) {
-  if (status === "PAID" || status === "AVAILABLE") {
+  if (
+    status === "PAID" ||
+    status === "AVAILABLE" ||
+    status === "DELIVERED"
+  ) {
     return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (status === "PREPARING") {
+    return "border-sky-200 bg-sky-50 text-sky-700";
   }
 
   if (status === "CANCELED") {
@@ -65,6 +92,18 @@ function statusLabel(status: string) {
     CANCELED: "Cancelada",
     PAID: "Pagada",
     PENDING: "Pendiente",
+  };
+
+  return labels[status] ?? status;
+}
+
+function fulfillmentLabel(status: string) {
+  const labels: Record<string, string> = {
+    CANCELED: "Cancelado",
+    DELIVERED: "Entregado",
+    PENDING: "Pendiente",
+    PREPARING: "Preparando",
+    SHIPPED: "Enviado",
   };
 
   return labels[status] ?? status;
@@ -134,6 +173,30 @@ function ProductBar({
           style={{ width: `${width}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+function PaymentAvailabilityMeta({
+  saleDate,
+  grossAmount,
+}: {
+  saleDate: Date;
+  grossAmount: number;
+}) {
+  const availableAt = addDays(saleDate, PAYMENT_ACCREDITATION_DAYS);
+
+  return (
+    <div className="mt-2 space-y-1 text-xs leading-5 text-slate-500">
+      <p>
+        <span className="font-medium text-slate-700">Venta:</span>{" "}
+        {formatPaymentDate(saleDate)}
+      </p>
+      <p>
+        <span className="font-medium text-slate-700">Disponible el:</span>{" "}
+        {formatPaymentDate(availableAt)}
+      </p>
+      <p>Bruto {money(grossAmount)}</p>
     </div>
   );
 }
@@ -210,7 +273,12 @@ export default async function SellerDashboardPage() {
         take: 80,
       }),
       prisma.settlement.findMany({
-        where: { sellerId },
+        where: {
+          sellerId,
+          order: {
+            status: "PAID",
+          },
+        },
         select: {
           id: true,
           grossAmount: true,
@@ -223,10 +291,16 @@ export default async function SellerDashboardPage() {
           order: {
             select: {
               id: true,
+              status: true,
+              buyerName: true,
+              buyerEmail: true,
+              buyerPhone: true,
               items: {
                 where: { sellerId },
-                take: 3,
-                select: { product: { select: { name: true } } },
+                select: {
+                  quantity: true,
+                  product: { select: { name: true } },
+                },
               },
             },
           },
@@ -263,6 +337,16 @@ export default async function SellerDashboardPage() {
     ]);
 
   const paidItems = orderItems.filter((item) => item.order.status === "PAID");
+  const paidSellerOrders = settlements.filter(
+    (settlement) => settlement.status !== "CANCELED"
+  );
+  const currentSellerOrders = paidSellerOrders.filter(
+    (settlement) => settlement.createdAt >= currentStart
+  );
+  const previousSellerOrders = paidSellerOrders.filter(
+    (settlement) =>
+      settlement.createdAt >= previousStart && settlement.createdAt < currentStart
+  );
   const currentItems = paidItems.filter((item) => item.createdAt >= currentStart);
   const previousItems = paidItems.filter(
     (item) => item.createdAt >= previousStart && item.createdAt < currentStart
@@ -287,6 +371,22 @@ export default async function SellerDashboardPage() {
         settlement.fulfillmentStatus === "DELIVERED"
     )
     .reduce((total, settlement) => total + settlement.netAmount, 0);
+  const retainedSettlements = settlements.filter(
+    (settlement) => settlement.status === "PENDING"
+  );
+  const retainedAmount = retainedSettlements.reduce(
+    (total, settlement) => total + settlement.netAmount,
+    0
+  );
+  const deliveryPendingSettlements = settlements.filter(
+    (settlement) =>
+      settlement.status === "PENDING" &&
+      ["PENDING", "PREPARING", "SHIPPED"].includes(settlement.fulfillmentStatus)
+  );
+  const deliveryPendingAmount = deliveryPendingSettlements.reduce(
+    (total, settlement) => total + settlement.netAmount,
+    0
+  );
   const paidSettlement = settlements
     .filter((settlement) => settlement.status === "PAID")
     .reduce((total, settlement) => total + settlement.netAmount, 0);
@@ -302,7 +402,8 @@ export default async function SellerDashboardPage() {
       .map((item) => item.affiliate?.id ?? null)
       .filter((id): id is string => Boolean(id)),
   ]).size;
-  const averageOrder = paidItems.length > 0 ? grossRevenue / paidItems.length : 0;
+  const averageOrder =
+    paidSellerOrders.length > 0 ? grossRevenue / paidSellerOrders.length : 0;
   const platformFees = paidItems.reduce(
     (total, item) => total + item.platformAmount,
     0
@@ -338,7 +439,6 @@ export default async function SellerDashboardPage() {
     ...productStats.map((product) => product.revenue),
     0
   );
-  const recentOrders = orderItems.slice(0, 6);
   const recentSettlements = settlements;
 
   return (
@@ -386,7 +486,24 @@ export default async function SellerDashboardPage() {
               </div>
             </div>
 
-            <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {deliveryPendingAmount > 0 && (
+              <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-5 py-4">
+                <p className="text-sm font-medium text-amber-950">
+                  Liquidacion pendiente por entrega
+                </p>
+                <p className="mt-1 text-sm leading-6 text-amber-900">
+                  Tenes {money(deliveryPendingAmount)} retenidos en{" "}
+                  {number(deliveryPendingSettlements.length)} ordenes pendientes de entrega. La
+                  liquidacion del pago va a estar disponible 7 dias despues de la
+                  acreditacion y cuando se confirme la entrega.
+                </p>
+                <p className="mt-2 text-sm font-bold text-red-800">
+                  Ve a ordenes, revisa tus ordenes pendientes y coordina la entrega con el comprador para liberar tu pago.
+                </p>
+              </div>
+            )}
+
+            <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
               <StatCard
                 icon={<FiDollarSign />}
                 label="Ventas brutas"
@@ -404,15 +521,22 @@ export default async function SellerDashboardPage() {
               <StatCard
                 icon={<FiShoppingCart />}
                 label="Ordenes pagas"
-                value={number(paidItems.length)}
-                detail={`${delta(currentItems.length, previousItems.length)} vs. periodo anterior`}
+                value={number(paidSellerOrders.length)}
+                detail={`${delta(currentSellerOrders.length, previousSellerOrders.length)} vs. periodo anterior`}
                 tone="slate"
               />
+                <StatCard
+                  icon={<FiClock />}
+                  label="Retenido"
+                  value={money(retainedAmount)}
+                  detail={`${number(retainedSettlements.length)} ordenes retenidas`}
+                  tone="slate"
+                />
               <StatCard
                 icon={<FiClock />}
                 label="Por liquidar"
                 value={money(availableSettlement)}
-                detail={`${money(paidSettlement)} ya liquidado`}
+                detail={`Disponible para retirar. ${money(paidSettlement)} ya retirado`}
                 tone="violet"
               />
             </section>
@@ -558,7 +682,7 @@ export default async function SellerDashboardPage() {
                       Ordenes recientes
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      Ultimas compras registradas en tu tienda.
+                      Ultimas ventas pagas con cliente y estado de entrega.
                     </p>
                   </div>
                   <Link
@@ -569,48 +693,64 @@ export default async function SellerDashboardPage() {
                   </Link>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="max-h-[460px] overflow-auto">
                   <table className="min-w-full text-left text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                       <tr>
-                        <th className="px-5 py-3">Producto</th>
-                        <th className="px-5 py-3">Afiliado</th>
+                        <th className="px-5 py-3">Cliente</th>
+                        <th className="px-5 py-3">Productos</th>
                         <th className="px-5 py-3">Fecha</th>
-                        <th className="px-5 py-3 text-right">Total</th>
-                        <th className="px-5 py-3">Estado</th>
+                        <th className="px-5 py-3 text-right">Bruto / neto</th>
+                        <th className="px-5 py-3">Entrega</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {recentOrders.length === 0 ? (
+                      {recentSettlements.length === 0 ? (
                         <tr>
                           <td className="px-5 py-8 text-slate-500" colSpan={5}>
                             Todavia no hay ordenes registradas.
                           </td>
                         </tr>
                       ) : (
-                        recentOrders.map((order) => (
-                          <tr key={order.id} className="hover:bg-slate-50">
-                            <td className="px-5 py-4 font-medium text-slate-900">
-                              {order.product.name}
+                        recentSettlements.map((settlement) => (
+                          <tr key={settlement.id} className="hover:bg-slate-50">
+                            <td className="px-5 py-4">
+                              <p className="font-medium text-slate-900">
+                                {settlement.order.buyerName ?? "Sin nombre"}
+                              </p>
+                              <p className="mt-0.5 text-xs text-slate-500">
+                                {settlement.order.buyerPhone ??
+                                  settlement.order.buyerEmail ??
+                                  "Sin contacto"}
+                              </p>
+                            </td>
+                            <td className="px-5 py-4 text-slate-700">
+                              {settlement.order.items
+                                .map((item) =>
+                                  item.quantity > 1
+                                    ? `${item.product.name} x${item.quantity}`
+                                    : item.product.name
+                                )
+                                .join(", ") || "Orden"}
                             </td>
                             <td className="px-5 py-4 text-slate-600">
-                              {order.affiliate?.name ??
-                                order.affiliate?.email ??
-                                "Sin afiliado"}
+                              {formatDate(settlement.createdAt)}
                             </td>
-                            <td className="px-5 py-4 text-slate-600">
-                              {formatDate(order.createdAt)}
-                            </td>
-                            <td className="px-5 py-4 text-right font-semibold">
-                              {money(order.total)}
+                            <td className="px-5 py-4 text-right">
+                              <p className="font-semibold text-slate-950">
+                                {money(settlement.grossAmount)}
+                              </p>
+                              <p className="mt-0.5 text-xs text-slate-500">
+                                Neto {money(settlement.netAmount)}
+                              </p>
                             </td>
                             <td className="px-5 py-4">
                               <span
                                 className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${statusClasses(
-                                  order.order.status
+                                  settlement.fulfillmentStatus
                                 )}`}
                               >
-                                {statusLabel(order.order.status)}
+                                {fulfillmentLabel(settlement.fulfillmentStatus)}
                               </span>
                             </td>
                           </tr>
@@ -632,6 +772,12 @@ export default async function SellerDashboardPage() {
                   <p className="mt-1 text-sm text-slate-500">
                     Movimientos netos por cobrar.
                   </p>
+                  <div className="mt-4 rounded-lg border border-sky-100 bg-sky-50 px-4 py-3">
+                    <p className="text-sm leading-6 text-sky-900">
+                      Los pagos procesados con dLocal se acreditan automaticamente{" "}
+                      {PAYMENT_ACCREDITATION_DAYS} dias despues de la compra.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="max-h-[460px] divide-y divide-slate-100 overflow-y-auto">
@@ -651,7 +797,11 @@ export default async function SellerDashboardPage() {
                               .map((item) => item.product.name)
                               .join(", ") || "Orden"}
                           </p>
-                          <p className="mt-1 text-xs text-slate-500">
+                          <PaymentAvailabilityMeta
+                            saleDate={settlement.createdAt}
+                            grossAmount={settlement.grossAmount}
+                          />
+                          <p className="sr-only">
                             {formatDate(settlement.createdAt)} · bruto{" "}
                             {money(settlement.grossAmount)}
                           </p>

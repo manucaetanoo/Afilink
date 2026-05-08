@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createCheckoutOrder, createOrder } from "@/lib/payments/createOrder";
 import { prisma } from "@/lib/prisma";
 
 type CheckoutItem = {
@@ -10,6 +9,10 @@ type CheckoutItem = {
   clickId?: string;
   campaignClickId?: string;
 };
+
+function encodeCheckoutItems(items: CheckoutItem[]) {
+  return Buffer.from(JSON.stringify(items)).toString("base64url");
+}
 
 async function createClickFromRef({
   productId,
@@ -74,55 +77,47 @@ export async function POST(req: Request) {
       cookieStore.get("aff_campaign_click_id")?.value;
 
     if (items?.length) {
-      const order = await createCheckoutOrder(
-        items
-          .filter((item) => item.productId)
-          .map((item) => ({
-            productId: item.productId!,
-            quantity: item.quantity,
-            selectedSize:
-              typeof item.selectedSize === "string" ? item.selectedSize : undefined,
-            clickId: item.clickId || undefined,
-            campaignClickId: item.campaignClickId || undefined,
-          }))
-      );
+      const checkoutItems = items
+        .filter((item) => item.productId)
+        .map((item) => ({
+          productId: item.productId!,
+          quantity: item.quantity,
+          selectedSize:
+            typeof item.selectedSize === "string" ? item.selectedSize : undefined,
+          clickId: item.clickId || undefined,
+          campaignClickId: item.campaignClickId || undefined,
+        }));
 
       return NextResponse.json(
         {
           ok: true,
-          order: {
-            id: order.id,
-            total: order.total,
-            createdAt: order.createdAt,
-          },
           checkout: {
-            url: `/checkout/${order.id}`,
+            url: `/checkout?items=${encodeURIComponent(
+              encodeCheckoutItems(checkoutItems)
+            )}`,
           },
         },
-        { status: 201 }
+        { status: 200 }
       );
     }
-
-    const order = await createOrder({
-        productId: productId!,
-        selectedSize,
-        clickId: clickId || undefined,
-        campaignClickId: campaignClickId || undefined,
-      });
 
     return NextResponse.json(
       {
         ok: true,
-        order: {
-          id: order.id,
-          total: order.total,
-          createdAt: order.createdAt,
-        },
         checkout: {
-          url: `/checkout/${order.id}`,
+          url: `/checkout?items=${encodeURIComponent(
+            encodeCheckoutItems([
+              {
+                productId: productId!,
+                selectedSize,
+                clickId: clickId || undefined,
+                campaignClickId: campaignClickId || undefined,
+              },
+            ])
+          )}`,
         },
       },
-      { status: 201 }
+      { status: 200 }
     );
   } catch (e) {
     console.error(e);

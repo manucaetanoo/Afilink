@@ -47,7 +47,6 @@ export async function GET() {
       bankAccountAlias: true,
       bankBranch: true,
       payoutNotes: true,
-      dlocalSplitCode: true,
       updatedAt: true,
     },
   });
@@ -89,7 +88,6 @@ export async function POST(req: Request) {
   const bankAccountAlias = clean(body.bankAccountAlias);
   const bankBranch = clean(body.bankBranch);
   const payoutNotes = clean(body.payoutNotes);
-  const dlocalSplitCode = clean(body.dlocalSplitCode);
 
   if (name && name.length > 60) {
     return NextResponse.json({ error: "Nombre demasiado largo" }, { status: 400 });
@@ -124,7 +122,6 @@ export async function POST(req: Request) {
       bankAccountAlias,
       bankBranch,
       payoutNotes,
-      dlocalSplitCode,
     },
     select: {
       email: true,
@@ -145,7 +142,6 @@ export async function POST(req: Request) {
       bankAccountAlias: true,
       bankBranch: true,
       payoutNotes: true,
-      dlocalSplitCode: true,
       updatedAt: true,
     },
   });

@@ -104,9 +104,27 @@ export async function DELETE(_: Request, context: Context) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  await prisma.campaign.delete({
+  if (session.user.role !== "SELLER") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const campaign = await prisma.campaign.findFirst({
     where: {
       id: campaignId,
+      sellerId: session.user.id,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!campaign) {
+    return NextResponse.json({ error: "No encontrada" }, { status: 404 });
+  }
+
+  await prisma.campaign.delete({
+    where: {
+      id: campaign.id,
     },
   });
 

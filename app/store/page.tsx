@@ -284,12 +284,8 @@ export default async function StoresPage() {
             </div>
 
             <div className="flex flex-wrap gap-4 lg:justify-end">
-              <a
-                href="#stores-grid"
-                className="inline-flex items-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-100"
-                >
-                Ver stores
-              </a>
+               <ButtonScroll targetId="stores-grid" label="Ver empresas" classname="inline-flex items-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100" />
+              
             </div>
           </div>
         </div>

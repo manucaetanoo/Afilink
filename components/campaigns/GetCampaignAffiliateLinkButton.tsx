@@ -54,10 +54,10 @@ export default function GetCampaignAffiliateLinkButton({
             Link de afiliado
           </p>
           <h3 className="mt-2 text-lg font-semibold text-slate-900">
-            Promociona esta campana
+            Promociona esta campaña
           </h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Genera tu enlace personalizado y copialo al instante para compartir esta campana.
+            Genera tu enlace personalizado y copialo al instante para compartir esta campaña.
           </p>
         </div>
 

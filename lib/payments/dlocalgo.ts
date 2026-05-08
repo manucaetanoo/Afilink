@@ -5,6 +5,7 @@ import {
   SettlementStatus,
 } from "@prisma/client";
 import { markOrderPaidAndNotify } from "@/lib/order-events";
+import { getCheckoutDraft } from "@/lib/payments/createOrder";
 import { prisma } from "@/lib/prisma";
 
 type DlocalGoPaymentResponse = {
@@ -44,6 +45,14 @@ type ShippingData = {
   shippingPostalCode: string | null;
   shippingCountry: string;
   shippingNotes: string | null;
+};
+
+type CheckoutItemInput = {
+  productId: string;
+  quantity?: number;
+  selectedSize?: string | null;
+  clickId?: string;
+  campaignClickId?: string;
 };
 
 const DLOCALGO_SANDBOX_API_URL = "https://api-sbx.dlocalgo.com";
@@ -161,27 +170,15 @@ function getDescription(order: {
 }) {
   if (order.items.length === 1) return order.items[0].product.name.slice(0, 100);
   if (order.items.length > 1) {
-    return `Carrito MarketFill (${order.items.length} productos)`;
+    return `Carrito Afilink (${order.items.length} productos)`;
   }
 
   return order.product.name.slice(0, 100);
 }
 
-async function getOrderSplitCode(orderId: string) {
-  const sellers = await prisma.orderItem.findMany({
-    where: { orderId },
-    distinct: ["sellerId"],
-    select: {
-      seller: {
-        select: {
-          dlocalSplitCode: true,
-        },
-      },
-    },
-  });
-
-  if (sellers.length !== 1) return null;
-  return sellers[0].seller.dlocalSplitCode?.trim() || null;
+function getDraftDescription(items: Array<{ product: { name: string } }>) {
+  if (items.length === 1) return items[0].product.name.slice(0, 100);
+  return `Carrito Afilink (${items.length} productos)`;
 }
 
 export async function createDlocalGoPayment(
@@ -219,7 +216,6 @@ export async function createDlocalGoPayment(
   const { apiUrl } = getDlocalGoConfig();
   const baseUrl = resolveBaseUrl();
   const useNotificationUrl = !isLocalUrl(baseUrl);
-  const splitCode = await getOrderSplitCode(orderId);
   const country = (shippingData?.shippingCountry || order.shippingCountry || "UY")
     .slice(0, 2)
     .toUpperCase();
@@ -238,7 +234,6 @@ export async function createDlocalGoPayment(
       ? { notification_url: `${baseUrl}/api/payments/dlocalgo/webhook` }
       : {}),
     allow_transparent: true,
-    ...(splitCode ? { split_code: splitCode } : {}),
     payer: {
       id: order.id,
       name: payerName,
@@ -287,6 +282,66 @@ export async function createDlocalGoPayment(
   });
 
   return payment;
+}
+
+export async function createDlocalGoDraftPayment({
+  items,
+  shippingData,
+}: {
+  items: CheckoutItemInput[];
+  shippingData: ShippingData;
+}) {
+  const draft = await getCheckoutDraft(items);
+  const { apiUrl } = getDlocalGoConfig();
+  const baseUrl = resolveBaseUrl();
+  const useNotificationUrl = !isLocalUrl(baseUrl);
+  const country = (shippingData.shippingCountry || "UY").slice(0, 2).toUpperCase();
+  const [firstName, ...lastNameParts] = shippingData.buyerName.split(/\s+/);
+
+  const paymentPayload = cleanUndefined({
+    amount: Number(draft.total),
+    currency: process.env.DLOCALGO_CURRENCY || "UYU",
+    country,
+    description: getDraftDescription(draft.items),
+    success_url: `${baseUrl}/checkout`,
+    back_url: `${baseUrl}/checkout`,
+    ...(useNotificationUrl
+      ? { notification_url: `${baseUrl}/api/payments/dlocalgo/webhook` }
+      : {}),
+    allow_transparent: true,
+    payer: {
+      name: shippingData.buyerName,
+      first_name: firstName,
+      last_name: lastNameParts.join(" ") || undefined,
+      email: shippingData.buyerEmail,
+      phone: shippingData.buyerPhone,
+      address: {
+        state: shippingData.shippingState,
+        city: shippingData.shippingCity,
+        zip_code: shippingData.shippingPostalCode || undefined,
+        full_address: [
+          shippingData.shippingStreet,
+          shippingData.shippingNumber,
+          shippingData.shippingApartment,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      },
+    },
+  });
+
+  const response = await fetch(`${apiUrl}/v1/payments`, {
+    method: "POST",
+    headers: getDlocalGoHeaders(),
+    body: JSON.stringify(paymentPayload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`dLocal Go rechazo el pago: ${normalizeDlocalGoError(errorText)}`);
+  }
+
+  return (await response.json()) as DlocalGoPaymentResponse;
 }
 
 export async function confirmDlocalGoPayment({
