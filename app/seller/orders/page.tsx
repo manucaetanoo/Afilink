@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import SellerOrdersClient from "@/components/seller/SellerOrdersClient";
+import SellerOrdersClient, {
+  type SellerOrder,
+} from "@/components/seller/SellerOrdersClient";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
@@ -76,7 +78,16 @@ export default async function SellerOrdersPage() {
     },
   });
 
-  const orders = settlements.map((settlement) => ({
+  type SellerOrderRecord = Omit<
+    SellerOrder,
+    "createdAt" | "shippedAt" | "deliveredAt"
+  > & {
+    createdAt: Date;
+    shippedAt: Date | null;
+    deliveredAt: Date | null;
+  };
+
+  const orders: SellerOrder[] = (settlements as SellerOrderRecord[]).map((settlement) => ({
     ...settlement,
     createdAt: settlement.createdAt.toISOString(),
     shippedAt: settlement.shippedAt?.toISOString() ?? null,

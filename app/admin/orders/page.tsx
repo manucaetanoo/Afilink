@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import AdminOrdersClient from "@/components/admin/AdminOrdersClient";
-import SellerOrdersClient from "@/components/seller/SellerOrdersClient";
+import AdminOrdersClient, {
+  type AdminOrder,
+} from "@/components/admin/AdminOrdersClient";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
@@ -18,141 +19,76 @@ export default async function AdminOrdersPage() {
     redirect("/dashboard/seller");
   }
 
-  const [allOrders, settlements] = await Promise.all([
-    prisma.order.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 100,
-      select: {
-        id: true,
-        total: true,
-        status: true,
-        paymentStatus: true,
-        paymentProvider: true,
-        paymentId: true,
-        createdAt: true,
-        buyerName: true,
-        buyerEmail: true,
-        buyerPhone: true,
-        items: {
-          orderBy: { createdAt: "asc" },
-          select: {
-            id: true,
-            quantity: true,
-            selectedSize: true,
-            total: true,
-            sellerAmount: true,
-            affiliateAmount: true,
-            platformAmount: true,
-            product: {
-              select: {
-                name: true,
-              },
-            },
-            seller: {
-              select: {
-                name: true,
-                email: true,
-                storeSlug: true,
-              },
+  const allOrders = await prisma.order.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      total: true,
+      status: true,
+      paymentStatus: true,
+      paymentProvider: true,
+      paymentId: true,
+      createdAt: true,
+      buyerName: true,
+      buyerEmail: true,
+      buyerPhone: true,
+      items: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          quantity: true,
+          selectedSize: true,
+          total: true,
+          sellerAmount: true,
+          affiliateAmount: true,
+          platformAmount: true,
+          product: {
+            select: {
+              name: true,
             },
           },
-        },
-        commissions: {
-          select: {
-            id: true,
-            amount: true,
-            status: true,
-          },
-        },
-        settlements: {
-          select: {
-            id: true,
-            netAmount: true,
-            status: true,
-            fulfillmentStatus: true,
-            seller: {
-              select: {
-                name: true,
-                email: true,
-                storeSlug: true,
-              },
+          seller: {
+            select: {
+              name: true,
+              email: true,
+              storeSlug: true,
             },
           },
         },
       },
-    }),
-    prisma.settlement.findMany({
-      where: {
-        order: {
-          status: "PAID",
+      commissions: {
+        select: {
+          id: true,
+          amount: true,
+          status: true,
         },
       },
-      orderBy: [{ fulfillmentStatus: "asc" }, { createdAt: "desc" }],
-      select: {
-        id: true,
-        grossAmount: true,
-        platformFee: true,
-        affiliateFee: true,
-        netAmount: true,
-        status: true,
-        fulfillmentStatus: true,
-        shippingCarrier: true,
-        trackingCode: true,
-        trackingUrl: true,
-        sellerNotes: true,
-        shippedAt: true,
-        deliveredAt: true,
-        createdAt: true,
-        seller: {
-          select: {
-            name: true,
-            email: true,
-            storeSlug: true,
-          },
-        },
-        order: {
-          select: {
-            id: true,
-            status: true,
-            buyerName: true,
-            buyerEmail: true,
-            buyerPhone: true,
-            shippingStreet: true,
-            shippingNumber: true,
-            shippingApartment: true,
-            shippingCity: true,
-            shippingState: true,
-            shippingPostalCode: true,
-            shippingCountry: true,
-            shippingNotes: true,
-            items: {
-              select: {
-                id: true,
-                quantity: true,
-                selectedSize: true,
-                total: true,
-                product: {
-                  select: {
-                    name: true,
-                  },
-                },
-              },
+      settlements: {
+        select: {
+          id: true,
+          netAmount: true,
+          status: true,
+          fulfillmentStatus: true,
+          seller: {
+            select: {
+              name: true,
+              email: true,
+              storeSlug: true,
             },
           },
         },
       },
-    }),
-  ]);
+    },
+  });
 
-  const orders = allOrders.map((order) => ({
+  type AdminOrderRecord = Omit<AdminOrder, "createdAt"> & {
+    createdAt: Date;
+  };
+
+  const orders: AdminOrder[] = (allOrders as AdminOrderRecord[]).map((order) => ({
     ...order,
     createdAt: order.createdAt.toISOString(),
-  }));
-  const deliveryOrders = settlements.map((settlement) => ({
-    ...settlement,
-    createdAt: settlement.createdAt.toISOString(),
-    shippedAt: settlement.shippedAt?.toISOString() ?? null,
-    deliveredAt: settlement.deliveredAt?.toISOString() ?? null,
   }));
 
   return (

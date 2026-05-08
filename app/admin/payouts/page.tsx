@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import PayoutRequestsClient from "@/components/admin/PayoutRequestsClient";
+import PayoutRequestsClient, {
+  type PayoutRequest,
+} from "@/components/admin/PayoutRequestsClient";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
@@ -56,7 +58,12 @@ export default async function AdminPayoutsPage() {
     },
   });
 
-  const requests = payoutRequests.map((request) => ({
+  type PayoutRequestRecord = Omit<PayoutRequest, "requestedAt" | "paidAt"> & {
+    requestedAt: Date;
+    paidAt: Date | null;
+  };
+
+  const requests: PayoutRequest[] = (payoutRequests as PayoutRequestRecord[]).map((request) => ({
     ...request,
     requestedAt: request.requestedAt.toISOString(),
     paidAt: request.paidAt?.toISOString() ?? null,

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FiCheckCircle } from "react-icons/fi";
 
-type PayoutRequest = {
+export type PayoutRequest = {
   id: string;
   kind: "SELLER" | "AFFILIATE";
   amount: number;

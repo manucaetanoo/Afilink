@@ -20,7 +20,7 @@ type FulfillmentStatus =
   | "DELIVERED"
   | "CANCELED";
 
-type AdminOrder = {
+export type AdminOrder = {
   id: string;
   total: number;
   status: OrderStatus;
