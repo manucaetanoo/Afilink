@@ -262,7 +262,7 @@ export async function markOrderPaidAndNotify({
   }
 
   const baseUrl = getBaseUrl();
-  const orderUrl = `${baseUrl}/orders/${result.order.id}/success`;
+  const orderUrl = `${baseUrl}/pedido/${result.order.id}/`;
   const emailJobs: Promise<unknown>[] = [];
   const productList = result.order.productNames.join(", ");
 

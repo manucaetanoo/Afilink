@@ -39,7 +39,7 @@ export default function ContactMailForm({ supportEmail }: ContactMailFormProps) 
           <FiMail className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-slate-950">Submit ticket</h2>
+          <h2 className="text-lg font-semibold text-slate-950">Enviar ticket</h2>
           <p className="text-sm text-slate-500">{supportEmail}</p>
         </div>
       </div>

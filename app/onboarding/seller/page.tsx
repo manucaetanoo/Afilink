@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BuildingStorefrontIcon, PhotoIcon } from "@heroicons/react/24/outline";
-import ProgresBar from "@/components/ProgresBar";
+
 
 const uploadLogoToCloudinary = async (file: File) => {
   const formData = new FormData();
@@ -266,10 +266,6 @@ export default function SellerOnboardingPage() {
               </button>
             </div>
           </form>
-        </div>
-        <div className="mt-15 w-140 mx-auto">
-
-          <ProgresBar/>
         </div>
       </div>
     </div>

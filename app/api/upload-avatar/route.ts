@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     const uploaded = await new Promise<{ secure_url: string }>((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
-          folder: "marketafil/avatars",
+          folder: "Afilink/avatars",
           resource_type: "image",
         },
         (err, result) => {

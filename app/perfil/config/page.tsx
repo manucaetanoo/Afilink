@@ -32,7 +32,7 @@ const uploadAvatarToCloudinary = async (file: File) => {
   return data.secure_url as string;
 };
 
-type PayoutMethod = "BANK_TRANSFER" | "DLOCAL_GO" | "MANUAL";
+type PayoutMethod = "BANK_TRANSFER" | "DLOCAL_GO" ;
 
 type ProfileForm = {
   Nombre: string;
@@ -67,7 +67,6 @@ const TIMEZONES = [
 const PAYOUT_METHODS: Array<{ value: PayoutMethod; label: string }> = [
   { value: "BANK_TRANSFER", label: "Transferencia bancaria" },
   { value: "DLOCAL_GO", label: "dLocal Go (pago manual)" },
-  { value: "MANUAL", label: "Manual" },
 ];
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -414,7 +413,7 @@ export default function ProfileSettingsWarmPage() {
                           <span>
                             Este metodo solo guarda tus datos para que Afilink pueda
                             pagarte manualmente. El dinero de las ventas ingresa a la
-                            cuenta de la plataforma y luego se liquida segun tus saldos.
+                            la plataforma y luego se liquida segun tus saldos.
                           </span>
                         </div>
                       )}

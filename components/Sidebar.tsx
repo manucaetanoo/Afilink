@@ -206,7 +206,7 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
-        "h-dvh border-r border-slate-200 bg-slate-50 flex flex-col transition-all duration-200",
+        "sticky top-16 flex h-[calc(100dvh-4rem)] flex-col border-r border-slate-200 bg-slate-50 transition-all duration-200",
         collapsed ? "w-[72px]" : "w-[260px]"
       )}
     >
@@ -214,7 +214,7 @@ export default function Sidebar() {
         <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
           <Image
             src="/img/logosbg.png"
-            alt="Marketafil"
+            alt="Afilink"
             width={75}
             height={30}
             className={cn("h-10", collapsed && "hidden")}
