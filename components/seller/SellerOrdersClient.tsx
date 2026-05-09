@@ -400,7 +400,7 @@ export default function SellerOrdersClient({
                     className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                   >
                     <FiClock />
-                    Guardar
+                    Marcar Preparando
                   </button>
                   <button
                     type="button"

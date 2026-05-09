@@ -271,12 +271,74 @@ export async function markOrderPaidAndNotify({
       sendTransactionalEmail({
         to: result.order.buyerEmail,
         subject: "Tu compra fue confirmada",
-        html: `
-          <h1>Compra confirmada</h1>
-          <p>Tu compra de <strong>${productList}</strong> fue aprobada.</p>
-          <p>Total: <strong>${formatMoney(result.order.total)}</strong></p>
-          <p>Puedes revisar el detalle aqui: <a href="${orderUrl}">${orderUrl}</a></p>
-        `,
+       html: `
+  <div style="margin:0;padding:0;background:#f6f7fb;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+    <div style="max-width:620px;margin:0 auto;padding:32px 16px;">
+      
+      <div style="background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
+        
+        <div style="background:#111827;padding:28px 24px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">
+            Compra confirmada
+          </h1>
+          <p style="margin:8px 0 0;color:#d1d5db;font-size:15px;">
+            Tu pedido fue aprobado correctamente
+          </p>
+        </div>
+
+        <div style="padding:28px 24px;">
+          <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">
+            Hola, recibimos la confirmación de pago de tu compra.
+          </p>
+
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:18px;margin:20px 0;">
+            <p style="margin:0 0 8px;color:#6b7280;font-size:13px;text-transform:uppercase;letter-spacing:.04em;">
+              Productos
+            </p>
+            <p style="margin:0;font-size:16px;font-weight:700;color:#111827;">
+              ${productList}
+            </p>
+          </div>
+
+          <div style="background:#ecfdf5;border:1px solid #bbf7d0;border-radius:14px;padding:18px;margin:20px 0;">
+            <p style="margin:0 0 8px;color:#047857;font-size:13px;text-transform:uppercase;letter-spacing:.04em;">
+              Total pagado
+            </p>
+            <p style="margin:0;font-size:24px;font-weight:800;color:#065f46;">
+              ${formatMoney(result.order.total)}
+            </p>
+          </div>
+
+          <p style="margin:20px 0;font-size:15px;line-height:1.6;color:#374151;">
+            Puedes revisar el detalle de tu compra y hacer seguimiento a tu pedido desde el siguiente botón:
+          </p>
+
+          <div style="text-align:center;margin:28px 0;">
+            <a href="${orderUrl}" 
+              style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;
+              padding:14px 24px;border-radius:12px;font-size:15px;font-weight:700;">
+              Ver detalle del pedido
+            </a>
+          </div>
+
+          <p style="margin:0;font-size:13px;line-height:1.6;color:#6b7280;">
+            Si el botón no funciona, copia y pega este enlace en tu navegador:<br />
+            <a href="${orderUrl}" style="color:#2563eb;text-decoration:none;">
+              ${orderUrl}
+            </a>
+          </p>
+        </div>
+
+        <div style="background:#f9fafb;padding:18px 24px;text-align:center;border-top:1px solid #e5e7eb;">
+          <p style="margin:0;color:#6b7280;font-size:12px;">
+            Gracias por comprar en nuestra plataforma.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+`,
         text: `Tu compra de ${productList} fue aprobada. Total: ${formatMoney(result.order.total)}. Detalle: ${orderUrl}`,
       })
     );
@@ -290,14 +352,98 @@ export async function markOrderPaidAndNotify({
         to: seller.email,
         subject: "Nueva venta confirmada",
         html: `
-          <h1>Venta confirmada</h1>
-          <p>Se aprobo una venta de <strong>${seller.products.join(", ")}</strong>.</p>
-          <p>Total cobrado para tus productos: <strong>${formatMoney(seller.total)}</strong></p>
-          <p>Importe para el vendedor: <strong>${formatMoney(seller.net)}</strong></p>
-          <p>Entrega: <strong>${result.order.shippingAddress}</strong></p>
-          <p>Cliente: <strong>${result.order.buyerName ?? "Sin nombre"} - ${result.order.buyerPhone ?? "Sin telefono"}</strong></p>
-          ${result.order.shippingNotes ? `<p>Indicaciones: ${result.order.shippingNotes}</p>` : ""}
-        `,
+        <div style="margin:0;padding:0;background:#f6f7fb;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+    <div style="max-width:620px;margin:0 auto;padding:32px 16px;">
+      
+      <div style="background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
+        
+        <div style="background:#111827;padding:28px 24px;text-align:center;">
+        <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">
+            Nueva venta confirmada
+          </h1>
+
+<p style="margin:8px 0 0;color:#d1d5db;font-size:15px;">
+  Se registró una nueva orden para tu tienda.
+</p>
+</div>
+
+<!-- BODY -->
+<div style="padding:28px;">
+  <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#3f3f46;">
+    Una compra de tus productos fue aprobada correctamente. A continuación tienes el detalle de la operación.
+  </p>
+
+  <!-- RESUMEN ECONOMICO -->
+  <div style="border:1px solid #e4e4e7;border-radius:14px;overflow:hidden;margin-bottom:24px;">
+    <div style="padding:14px 18px;background:#fafafa;border-bottom:1px solid #e4e4e7;">
+      <p style="margin:0;font-size:13px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:.04em;">
+        Resumen de la venta
+      </p>
+    </div>
+    <div style="padding:18px;">
+      <div style="display:flex;justify-content:space-between;gap:16px;padding-bottom:14px;border-bottom:1px solid #eeeeee;">
+        <span style="font-size:14px;color:#71717a;">Total cobrado </span>
+        <strong style="font-size:15px;color:#18181b;">${formatMoney(seller.total)}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;gap:16px;padding-top:14px;">
+        <span style="font-size:14px;color:#71717a;">Importe para el vendedor </span>
+        <strong style="font-size:18px;color:#18181b;">${formatMoney(seller.net)}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTOS -->
+  <div style="border:1px solid #e4e4e7;border-radius:14px;padding:18px;margin-bottom:24px;">
+    <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:.04em;">
+      Productos vendidos
+    </p>
+    <p style="margin:0;font-size:15px;line-height:1.7;color:#18181b;font-weight:600;">
+      ${seller.products.join(", ")}
+    </p>
+  </div>
+
+  <!-- CLIENTE Y ENTREGA -->
+  <div style="border:1px solid #e4e4e7;border-radius:14px;overflow:hidden;">
+    <div style="padding:14px 18px;background:#fafafa;border-bottom:1px solid #e4e4e7;">
+      <p style="margin:0;font-size:13px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:.04em;">
+        Datos de entrega
+      </p>
+    </div>
+    <div style="padding:18px;">
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#18181b;">
+        <strong>Cliente:</strong> ${result.order.buyerName ?? "Sin nombre"}
+      </p>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#18181b;">
+        <strong>Teléfono:</strong> ${result.order.buyerPhone ?? "Sin teléfono"}
+      </p>
+      <p style="margin:0;font-size:15px;line-height:1.6;color:#18181b;">
+        <strong>Dirección:</strong> ${result.order.shippingAddress}
+      </p>
+      ${ result.order.shippingNotes ? `
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid #eeeeee;">
+          <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#52525b;">
+            Indicaciones adicionales
+          </p>
+          <p style="margin:0;font-size:15px;line-height:1.6;color:#18181b;">
+            ${result.order.shippingNotes}
+          </p>
+        </div>
+      ` : "" }
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div style="padding:18px 28px;background:#fafafa;border-top:1px solid #e4e4e7;text-align:center;">
+  <p style="margin:0;color:#71717a;font-size:12px;line-height:1.6;">
+    Esta notificación corresponde a una venta procesada por Afilink.
+  </p>
+</div>
+</div>
+</div>
+</div>
+
+            `,
         text: `Se aprobo una venta de ${seller.products.join(", ")}. Total: ${formatMoney(seller.total)}. Neto vendedor: ${formatMoney(seller.net)}. Entrega: ${result.order.shippingAddress}. Cliente: ${result.order.buyerName ?? "Sin nombre"} - ${result.order.buyerPhone ?? "Sin telefono"}.`,
       })
     );
@@ -311,9 +457,69 @@ export async function markOrderPaidAndNotify({
         to: affiliate.email,
         subject: "Generaste una comision",
         html: `
-          <h1>Comision generada</h1>
-          <p>Tu recomendacion cerro una venta de <strong>${affiliate.products.join(", ")}</strong>.</p>
-          <p>Tu comision aprobada es de <strong>${formatMoney(affiliate.amount)}</strong>.</p>
+                  <div style="margin:0;padding:0;background:#f6f7fb;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+    <div style="max-width:620px;margin:0 auto;padding:32px 16px;">
+      
+      <div style="background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
+        
+        <div style="background:#111827;padding:28px 24px;text-align:center;">
+        <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">
+            Nueva comisión confirmada
+          </h1>
+
+<p style="margin:8px 0 0;color:#d1d5db;font-size:15px;">
+  Tu recomendacion generó una venta.
+</p>
+</div>
+
+<!-- BODY -->
+<div style="padding:28px;">
+  <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#3f3f46;">
+    Se aprobó una compra realizada desde uno de tus enlaces de afiliado.
+  </p>
+
+  <!-- COMISION -->
+  <div style="border:1px solid #e4e4e7;border-radius:14px;overflow:hidden;margin-bottom:24px;">
+    <div style="padding:14px 18px;background:#fafafa;border-bottom:1px solid #e4e4e7;">
+      <p style="margin:0;font-size:13px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:.04em;">
+        Comisión aprobada
+      </p>
+    </div>
+    <div style="padding:24px 18px;text-align:center;">
+      <p style="margin:0;font-size:34px;font-weight:800;color:#18181b;letter-spacing:-0.03em;">
+        ${formatMoney(affiliate.amount)}
+      </p>
+    </div>
+  </div>
+
+  <!-- PRODUCTOS -->
+  <div style="border:1px solid #e4e4e7;border-radius:14px;padding:18px;">
+    <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:.04em;">
+      Productos vendidos
+    </p>
+    <p style="margin:0;font-size:15px;line-height:1.7;color:#18181b;font-weight:600;">
+      ${affiliate.products.join(", ")}
+    </p>
+  </div>
+
+  <!-- INFO -->
+  <div style="margin-top:24px;">
+    <p style="margin:0;font-size:14px;line-height:1.7;color:#71717a;">
+      La comisión quedará disponible según los tiempos de validación y liquidación configurados por la plataforma.
+    </p>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div style="padding:18px 28px;background:#fafafa;border-top:1px solid #e4e4e7;text-align:center;">
+  <p style="margin:0;font-size:12px;line-height:1.6;color:#71717a;">
+    Esta notificación corresponde a una comisión registrada en Afilink.
+  </p>
+</div>
+</div>
+</div>
+</div>
+
         `,
         text: `Tu recomendacion cerro una venta de ${affiliate.products.join(", ")}. Comision aprobada: ${formatMoney(affiliate.amount)}.`,
       })
