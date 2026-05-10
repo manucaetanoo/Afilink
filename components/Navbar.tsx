@@ -568,7 +568,7 @@ export default function Navbar() {
           {links.map((link) => (
             <DisclosureButton
               key={link.href}
-              as="a"
+              as={Link}
               href={link.href}
               className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             >
@@ -585,7 +585,7 @@ export default function Navbar() {
               {mobileDashboardLinks.map((link) => (
                 <DisclosureButton
                   key={link.href}
-                  as="a"
+                  as={Link}
                   href={link.href}
                   className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 >
@@ -613,14 +613,14 @@ export default function Navbar() {
               </div>
               <div className="mt-3 space-y-1">
                 <DisclosureButton
-                  as="a"
+                  as={Link}
                   href="/perfil/config"
                   className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                 >
                   Mi perfil
                 </DisclosureButton>
                 <DisclosureButton
-                  as="a"
+                  as={Link}
                   href="/perfil/config"
                   className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                 >
@@ -633,7 +633,7 @@ export default function Navbar() {
             </>
           ) : (
             <DisclosureButton
-              as="a"
+              as={Link}
               href="/login"
               className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
             >

@@ -34,7 +34,7 @@ const steps = [
   },
   {
     label: "Paso 3",
-    title: "Comparte tu link y genera ventas",
+    title: "Compartí tu link y genera ventas",
     description:
       "Compartí tu link de afiliado, generá ventas y seguí tus comisiones desde el dashboard.",
     icon: ChartBarIcon,

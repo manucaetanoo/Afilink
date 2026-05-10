@@ -1,6 +1,7 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 // Usamos JWT que es como una cookie segura, pero sin necesidad de guardar nada en el servidor
@@ -48,7 +49,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           storeSlug: user.storeSlug,
           image: user.image ?? null,
-        } as any;
+        } satisfies AppAuthUser;
       },
     }),
   ],
@@ -57,15 +58,21 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
-        token.id = (user as any).id;
-        token.role = (user as any).role;
-        token.email = (user as any).email;
-        token.name = (user as any).name;
-        token.picture = (user as any).image; // si lo devolvés en authorize
-        token.storeSlug = (user as any).storeSlug;
+        const appUser = user as AppAuthUser;
+        token.id = appUser.id;
+        token.role = appUser.role;
+        token.email = appUser.email;
+        token.name = appUser.name;
+        token.picture = appUser.image;
+        token.storeSlug = appUser.storeSlug;
+        token.authCheckedAt = Date.now();
       }
 
-      if (token.id) {
+      const lastAuthCheck = Number(token.authCheckedAt ?? 0);
+      const shouldRefreshAuth =
+        Boolean(token.id) && Date.now() - lastAuthCheck > 5 * 60 * 1000;
+
+      if (shouldRefreshAuth) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
           select: {
@@ -77,6 +84,8 @@ export const authOptions: NextAuthOptions = {
             isActive: true,
           },
         });
+
+        token.authCheckedAt = Date.now();
 
         if (!dbUser?.isActive) return token;
 
@@ -91,7 +100,7 @@ export const authOptions: NextAuthOptions = {
     if (trigger === "update" && session?.user) {
     // solo actualizamos lo que venga
     if (session.user.name !== undefined) token.name = session.user.name;
-    if ((session.user as any).image !== undefined) token.picture = (session.user as any).image;
+    if (session.user.image !== undefined) token.picture = session.user.image;
     if (session.user.email !== undefined) token.email = session.user.email;
   }
 
@@ -103,12 +112,12 @@ export const authOptions: NextAuthOptions = {
     // Se ejecuta cuando pedís la sesión (useSession / getServerSession)
     async session({ session, token }) {
       if (session.user) {
-    (session.user as any).id = token.id as string;
-    (session.user as any).role = token.role as string;
+    session.user.id = token.id as string;
+    session.user.role = token.role as string;
     session.user.email = token.email as string;
     session.user.name = token.name as string;
     session.user.storeSlug = token.storeSlug as string;
-    (session.user as any).image = token.picture as string;
+    session.user.image = token.picture as string;
       }
       return session;
     },
@@ -122,3 +131,11 @@ export const authOptions: NextAuthOptions = {
 
 const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
+type AppAuthUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  storeSlug: string | null;
+  image: string | null;
+};

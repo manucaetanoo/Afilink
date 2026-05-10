@@ -13,7 +13,6 @@ export const prisma =
   globalForPrisma.prisma ??
   (() => {
     const url = process.env.DATABASE_URL;
-    console.log("✅ Prisma (adapter-pg). DATABASE_URL set?", !!url);
     if (!url) throw new Error("Falta DATABASE_URL en el entorno del server");
 
     const pool = new Pool({
