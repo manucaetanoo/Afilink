@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -139,6 +140,11 @@ export async function POST(req: Request) {
         sellerId: session.user.id,
       },
     });
+
+    revalidateTag("campaigns", "max");
+    revalidateTag("stores", "max");
+    revalidatePath("/campaigns");
+    revalidatePath("/store");
 
     return NextResponse.json({ campaign }, { status: 201 });
   } catch (error) {

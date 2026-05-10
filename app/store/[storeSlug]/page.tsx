@@ -1,41 +1,48 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import ButtonScroll from "@/components/ButtonScroll";
-import GetAffiliateLinkButton from "@/components/GetAffiliateLinkButton";
-import GetCampaignAffiliateLinkButton from "@/components/campaigns/GetCampaignAffiliateLinkButton";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
+import { unstable_cache } from "next/cache";
+import {
+  StoreCampaignAffiliateAction,
+  StoreProductAffiliateAction,
+} from "@/components/StoreAffiliateActions";
+
+export const revalidate = 60;
+export const dynamic = "force-static";
+
+const getCachedSellerStore = unstable_cache(
+  async (storeSlug: string) =>
+    prisma.user.findUnique({
+      where: { storeSlug },
+      include: {
+        products: {
+          where: { isActive: true },
+          orderBy: { createdAt: "desc" },
+        },
+        campaigns: {
+          where: { isActive: true },
+          orderBy: { createdAt: "desc" },
+          include: {
+            products: {
+              include: {
+                product: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ["public-store-detail"],
+  { revalidate: 60, tags: ["stores", "products", "campaigns"] }
+);
 
 export default async function StorePage(props: {
   params: Promise<{ storeSlug: string }>;
 }) {
   const { storeSlug } = await props.params;
-  const session = await getServerSession(authOptions);
-  const viewerRole = session?.user?.role;
-  const viewerId = session?.user?.id ?? "";
-  const isAffiliateViewer = viewerRole === "AFFILIATE";
 
-  const seller = await prisma.user.findUnique({
-    where: { storeSlug },
-    include: {
-      products: {
-        where: { isActive: true },
-        orderBy: { createdAt: "desc" },
-      },
-      campaigns: {
-        where: { isActive: true },
-        orderBy: { createdAt: "desc" },
-        include: {
-          products: {
-            include: {
-              product: true,
-            },
-          },
-        },
-      },
-    },
-  });
+  const seller = await getCachedSellerStore(storeSlug);
 
   if (!seller || seller.role !== "SELLER") {
     return (
@@ -51,6 +58,8 @@ export default async function StorePage(props: {
       </div>
     );
   }
+
+  const isAffiliateViewer = false;
 
   const formatMoney = (value: number) => `$${Number(value).toFixed(0)}`;
 
@@ -87,11 +96,6 @@ export default async function StorePage(props: {
       ][index % 3],
   }));
 
-  const maxCommission =
-    seller.products.length > 0
-      ? Math.max(...seller.products.map((p) => Number(p.commissionValue)))
-      : 0;
-
   const averageTicket =
     seller.products.length > 0
       ? seller.products.reduce((acc, p) => acc + Number(p.price), 0) /
@@ -99,15 +103,10 @@ export default async function StorePage(props: {
       : 0;
 
   const metrics = [
-    isAffiliateViewer
-      ? {
-        label: "Comision maxima",
-        value: seller.products.length ? `${maxCommission}%` : "-",
-      }
-      : {
-        label: "Tienda",
-        value: "Publica",
-      },
+    {
+      label: "Tienda",
+      value: "Publica",
+    },
     {
       label: "Ticket promedio",
       value: seller.products.length ? formatMoney(averageTicket) : "—",
@@ -140,7 +139,7 @@ export default async function StorePage(props: {
               <div>
                 <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-700">
                   <span className="h-2 w-2 rounded-full bg-orange-500" />
-                  {isAffiliateViewer ? "Programa de partners activo" : "Tienda publica"}
+                  Tienda publica
                 </div>
 
                 <div className="mb-6 flex items-center gap-4">
@@ -373,12 +372,10 @@ export default async function StorePage(props: {
                           >
                             Ver detalles
                           </Link>
-                          {isAffiliateViewer && viewerId && (
-                            <GetCampaignAffiliateLinkButton
-                              campaignId={c.id}
-                              affiliateId={viewerId}
-                            />
-                          )}
+                          <StoreCampaignAffiliateAction
+                            campaignId={c.id}
+                            sellerId={seller.id}
+                          />
                         </div>
                       </div>
                     </article>
@@ -452,15 +449,10 @@ export default async function StorePage(props: {
                         <Link href={`/products/${product.id}`} className="mt-5 block w-full rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-center text-sm font-medium text-slate-900 transition hover:bg-orange-100">
                           Ver producto
                         </Link>
-                        {isAffiliateViewer && viewerId && (
-                          <div className="mt-3">
-                            <GetAffiliateLinkButton
-                              productId={product.id}
-                              affiliateId={viewerId}
-                              className="inline-flex w-full items-center justify-center rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
-                            />
-                          </div>
-                        )}
+                        <StoreProductAffiliateAction
+                          productId={product.id}
+                          sellerId={seller.id}
+                        />
                       </div>
                     </div>
                   ))}

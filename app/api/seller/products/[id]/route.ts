@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole, requireUser } from "@/lib/auth";
 
@@ -174,6 +175,14 @@ export async function PATCH(
       },
     });
 
+    revalidateTag("products", "max");
+    revalidateTag("campaigns", "max");
+    revalidateTag("stores", "max");
+    revalidatePath("/products");
+    revalidatePath("/campaigns");
+    revalidatePath("/store");
+    revalidatePath(`/products/${updated.id}`);
+
     return NextResponse.json({ ok: true, product: updated });
   } catch (e: unknown) {
     const msg = getErrorMessage(e);
@@ -229,6 +238,14 @@ export async function DELETE(
     await prisma.product.delete({
       where: { id: product.id },
     });
+
+    revalidateTag("products", "max");
+    revalidateTag("campaigns", "max");
+    revalidateTag("stores", "max");
+    revalidatePath("/products");
+    revalidatePath("/campaigns");
+    revalidatePath("/store");
+    revalidatePath(`/products/${product.id}`);
 
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {

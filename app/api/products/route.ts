@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export async function POST(req: Request) {
   try {
@@ -60,6 +61,13 @@ export async function POST(req: Request) {
         commissionValue: true, 
       },
     });
+
+    revalidateTag("products", "max");
+    revalidateTag("campaigns", "max");
+    revalidateTag("stores", "max");
+    revalidatePath("/products");
+    revalidatePath("/campaigns");
+    revalidatePath("/store");
 
     return NextResponse.json(product, { status: 201 });
   } catch (e) {

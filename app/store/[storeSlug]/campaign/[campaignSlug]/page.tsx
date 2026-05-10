@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Link from "next/link";
 import CampaignProductCard from "@/components/campaigns/CampaignProductCard";
-import GetCampaignAffiliateLinkButton from "@/components/campaigns/GetCampaignAffiliateLinkButton";
+import { unstable_cache } from "next/cache";
+import {
+  CampaignSummaryPanel,
+  SellerCampaignPanel,
+} from "@/components/CampaignPublicClient";
 
 type Props = {
   params: Promise<{
@@ -16,6 +18,9 @@ type Props = {
     preview?: string | string[];
   }>;
 };
+
+export const revalidate = 60;
+export const dynamic = "force-static";
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat("es-UY", {
@@ -32,55 +37,43 @@ const getCommissionEarning = (
   return Math.round((price * commissionValue) / 100);
 };
 
-export default async function CampaignPublicPage(props: Props) {
-  const { storeSlug, campaignSlug } = await props.params;
-  const searchParams = await props.searchParams;
-  const session = await getServerSession(authOptions);
-  const previewParam = Array.isArray(searchParams?.preview)
-    ? searchParams?.preview[0]
-    : searchParams?.preview;
-  const isPublicPreview = previewParam === "public";
-  const canPreviewInactive =
-    isPublicPreview && session?.user.role === "SELLER" && Boolean(session.user.id);
-
-  const campaign = await prisma.campaign.findFirst({
-    where: {
-      slug: campaignSlug,
-      seller: {
-        storeSlug,
+const getActiveCampaign = unstable_cache(
+  async (storeSlug: string, campaignSlug: string) =>
+    prisma.campaign.findFirst({
+      where: {
+        slug: campaignSlug,
+        seller: {
+          storeSlug,
+        },
+        isActive: true,
       },
-      OR: [
-        { isActive: true },
-        ...(canPreviewInactive ? [{ sellerId: session?.user.id }] : []),
-      ],
-    },
-    include: {
-      seller: true,
-      products: {
-        include: {
-          product: true,
+      include: {
+        seller: true,
+        products: {
+          include: {
+            product: true,
+          },
         },
       },
-    },
-  });
+    }),
+  ["active-campaign-detail"],
+  { revalidate: 60, tags: ["campaigns", "products"] }
+);
+
+export default async function CampaignPublicPage(props: Props) {
+  const { storeSlug, campaignSlug } = await props.params;
+  const campaign = await getActiveCampaign(storeSlug, campaignSlug);
 
   if (!campaign) return notFound();
 
   const products = campaign.products.map((cp) => cp.product);
-  const viewerRole = isPublicPreview ? undefined : session?.user.role;
-  const isAffiliateViewer = viewerRole === "AFFILIATE";
-  const isSellerViewer = viewerRole === "SELLER";
-  const isCampaignOwner = session?.user.id === campaign.sellerId;
-  const canPromoteCampaign = Boolean(
-    session?.user.id &&
-    session.user.id !== campaign.sellerId &&
-    isAffiliateViewer
-  );
+  const isAffiliateViewer = false;
+  const isSellerViewer = false;
+  const isCampaignOwner = false;
+  const canPromoteCampaign = false;
   const showAffiliateHighlights = isAffiliateViewer;
   const showInternalCampaignInfo = isAffiliateViewer || isSellerViewer;
-  const sellerCampaignHref = isCampaignOwner
-    ? `/seller/campaigns/${campaign.id}`
-    : "/seller/campaigns";
+  const sellerCampaignHref = `/seller/campaigns/${campaign.id}`;
 
   const maxCommission = products.length
     ? Math.max(...products.map((product) => Number(product.commissionValue || 0)))
@@ -100,6 +93,16 @@ export default async function CampaignPublicPage(props: Props) {
   const minPrice = products.length
     ? Math.min(...products.map((product) => Number(product.price || 0)))
     : 0;
+  const clientProducts = products.map((product) => ({
+    id: product.id,
+    name: product.name,
+    price: product.price,
+    desc: product.desc,
+    imageUrl: product.imageUrls?.[0] ?? null,
+    stock: product.stock,
+    commissionValue: product.commissionValue,
+    commissionType: product.commissionType,
+  }));
 
   return (
     <div className="min-h-screen bg-[#fffaf6] text-slate-900">
@@ -236,15 +239,19 @@ export default async function CampaignPublicPage(props: Props) {
               </div>
             )}
 
-            {canPromoteCampaign && (
-              <GetCampaignAffiliateLinkButton
-                campaignId={campaign.id}
-                affiliateId={session?.user.id ?? ""}
-              />
-            )}
           </div>
           </section>
         )}
+
+        <CampaignSummaryPanel
+          campaignId={campaign.id}
+          sellerId={campaign.sellerId}
+          products={clientProducts}
+          maxCommission={maxCommission}
+          maxCommissionEarningLabel={formatMoney(maxCommissionEarning)}
+          minPriceLabel={products.length ? formatMoney(minPrice) : formatMoney(0)}
+          sellerCampaignHref={sellerCampaignHref}
+        />
 
         <main className="mx-auto max-w-7xl">
           <div className="pt-16 text-center">
@@ -444,6 +451,13 @@ export default async function CampaignPublicPage(props: Props) {
                   </div>
                 </section>
               )}
+
+              <SellerCampaignPanel
+                sellerId={campaign.sellerId}
+                products={clientProducts}
+                maxCommission={maxCommission}
+                sellerCampaignHref={sellerCampaignHref}
+              />
 
             </>
           )}

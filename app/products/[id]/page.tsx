@@ -1,22 +1,23 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getServerSession } from "next-auth";
 import {
   FiArrowLeft,
   FiCheckCircle,
   FiDollarSign,
   FiPackage,
-  FiShare2,
   FiTag,
   FiTruck,
 } from "react-icons/fi";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import GetAffiliateLinkButton from "@/components/GetAffiliateLinkButton";
 import Navbar from "@/components/Navbar";
 import ProductGallery from "@/components/ProductGallery";
 import ProductPurchaseActions from "@/components/ProductPurchaseActions";
+import {
+  ProductAffiliatePanel,
+  SellerProductNetPanel,
+} from "@/components/ProductRolePanels";
 import { prisma } from "@/lib/prisma";
 import { getSellerNetAmount } from "@/lib/pricing";
+import { unstable_cache } from "next/cache";
 
 const categoryLabels: Record<string, string> = {
   ACCESSORIES: "Accesorios",
@@ -37,33 +38,11 @@ function money(value: number) {
   }).format(value);
 }
 
-function commissionLabel(product: {
-  commissionType: "PERCENT" | "FIXED";
-  commissionValue: number;
-}) {
-  return `${product.commissionValue}%`;
-}
+export const revalidate = 60;
+export const dynamic = "force-static";
 
-function commissionEarning(product: {
-  commissionType: "PERCENT" | "FIXED";
-  commissionValue: number;
-  price: number;
-}) {
-  return Math.round((product.price * product.commissionValue) / 100);
-}
-
-export default async function ProductPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams?: Promise<{ ref?: string }>;
-}) {
-  const { id } = await params;
-  const resolvedSearchParams = await searchParams;
-  const refCode = resolvedSearchParams?.ref ?? null;
-
-  const [product, session] = await Promise.all([
+const getCachedProduct = unstable_cache(
+  async (id: string) =>
     prisma.product.findUnique({
       where: { id },
       include: {
@@ -76,17 +55,22 @@ export default async function ProductPage({
         },
       },
     }),
-    getServerSession(authOptions),
-  ]);
+  ["product-detail"],
+  { revalidate: 60, tags: ["products"] }
+);
+
+export default async function ProductPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
+  const product = await getCachedProduct(id);
 
   if (!product) notFound();
 
-  const userId = session?.user?.id ?? null;
-  const isAffiliateViewer = session?.user?.role === "AFFILIATE";
-  const isSellerOwnerViewer =
-    session?.user?.role === "SELLER" && userId === product.seller.id;
   const categoryName = categoryLabels[product.category] ?? "Producto";
-  const earning = commissionEarning(product);
   const hasStock = product.stock > 0;
   const sellerNet = getSellerNetAmount({
     price: product.price,
@@ -153,41 +137,14 @@ export default async function ProductPage({
                 </p>
               </div>
 
-              {isSellerOwnerViewer && (
-                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-                  <p className="text-sm font-semibold text-emerald-900">
-                    Ganancia neta: {money(sellerNet.netAmount)}
-                  </p>
-                  <div className="mt-3 grid gap-3 text-sm text-emerald-950 sm:grid-cols-3">
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-                        Afiliado
-                      </p>
-                      <p className="mt-1 font-semibold">
-                        -{money(sellerNet.affiliateAmount)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-                        Plataforma
-                      </p>
-                      <p className="mt-1 font-semibold">
-                        -{money(sellerNet.platformAmount)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-                        Precio
-                      </p>
-                      <p className="mt-1 font-semibold">{money(product.price)}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <SellerProductNetPanel
+                sellerId={product.seller.id}
+                price={product.price}
+                sellerNet={sellerNet}
+              />
 
               <ProductPurchaseActions
                 disabled={!hasStock}
-                refCode={refCode}
                 product={{
                   id: product.id,
                   name: product.name,
@@ -219,51 +176,12 @@ export default async function ProductPage({
               </div>
             </div>
 
-            {isAffiliateViewer && userId && (
-              <div className="mt-5 overflow-hidden rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 via-white to-amber-50 shadow-sm">
-                <div className="p-6 sm:p-7">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-200">
-                      <FiShare2 className="text-xl" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-700">
-                        Herramienta de afiliado
-                      </p>
-                      <h2 className="mt-2 text-xl font-semibold text-slate-950">
-                        Promociona este producto
-                      </h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        Genera tu link personal, copialo automaticamente y comparte
-                        este producto con tu audiencia.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                    <div className="rounded-2xl border border-orange-100 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">
-                        Comision
-                      </p>
-                      <div className="mt-2 flex flex-wrap items-end gap-2">
-                        <p className="text-3xl font-bold text-slate-950">
-                          {commissionLabel(product)}
-                        </p>
-                        <p className="pb-1 text-sm text-slate-500">
-                          ganas aprox. {money(earning)} por venta
-                        </p>
-                      </div>
-                    </div>
-
-                    <GetAffiliateLinkButton
-                      productId={product.id}
-                      affiliateId={userId}
-                      className="inline-flex w-full items-center justify-center rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+            <ProductAffiliatePanel
+              productId={product.id}
+              sellerId={product.seller.id}
+              price={product.price}
+              commissionValue={product.commissionValue}
+            />
 
             <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
               Vendido por{" "}

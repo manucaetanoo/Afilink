@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole, requireUser } from "@/lib/auth";
 
@@ -147,6 +148,13 @@ export async function POST(req: Request) {
         commissionType: true,
       },
     });
+
+    revalidateTag("products", "max");
+    revalidateTag("campaigns", "max");
+    revalidateTag("stores", "max");
+    revalidatePath("/products");
+    revalidatePath("/campaigns");
+    revalidatePath("/store");
 
     return NextResponse.json({ ok: true, id: created.id }, { status: 201 });
   } catch (e: unknown) {

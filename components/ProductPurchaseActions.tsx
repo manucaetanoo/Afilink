@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import AddToCartButton from "@/components/cart/AddToCartButton";
 import { BuyButton } from "@/components/BuyButton";
 
@@ -21,7 +22,9 @@ export default function ProductPurchaseActions({
   refCode,
   disabled = false,
 }: Props) {
+  const searchParams = useSearchParams();
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const resolvedRefCode = refCode ?? searchParams.get("ref");
   const requiresSize = product.sizes.length > 0;
   const missingSize = requiresSize && !selectedSize;
   const actionsDisabled = disabled || missingSize;
@@ -74,7 +77,7 @@ export default function ProductPurchaseActions({
       <div className="mt-7 grid gap-3 sm:grid-cols-2">
         <BuyButton
           productId={product.id}
-          refCode={refCode}
+          refCode={resolvedRefCode}
           selectedSize={selectedSize}
           disabled={actionsDisabled}
           disabledReason={disabledReason}

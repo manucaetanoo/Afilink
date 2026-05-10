@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -91,6 +92,12 @@ export async function PATCH(req: Request, context: Context) {
     },
   });
 
+  revalidateTag("campaigns", "max");
+  revalidateTag("stores", "max");
+  revalidatePath("/campaigns");
+  revalidatePath("/store");
+  revalidatePath(`/store/${session.user.storeSlug}/campaign/${campaign.slug}`);
+
   return NextResponse.json({ campaign });
 }
 
@@ -127,6 +134,11 @@ export async function DELETE(_: Request, context: Context) {
       id: campaign.id,
     },
   });
+
+  revalidateTag("campaigns", "max");
+  revalidateTag("stores", "max");
+  revalidatePath("/campaigns");
+  revalidatePath("/store");
 
   return NextResponse.json({ ok: true });
 }
