@@ -406,8 +406,8 @@ export default function Navbar() {
                 )}
               </MenuButton>
 
-              <MenuItems className="absolute right-0 z-10 mt-2 w-80 max-w-[calc(100vw-1rem)] origin-top-right rounded-2xl bg-white p-3 shadow-lg outline outline-1 outline-black/5">
-                <div className="flex items-center justify-between border-b border-slate-100 px-2 pb-3">
+              <MenuItems className="fixed inset-x-2 top-16 z-10 flex max-h-[calc(100dvh-5rem)] origin-top-right flex-col overflow-hidden rounded-2xl bg-white p-3 shadow-lg outline outline-1 outline-black/5">
+                <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-2 pb-3">
                   <p className="text-sm font-semibold text-slate-900">Carrito</p>
                   {items.length > 0 && (
                     <button
@@ -426,13 +426,13 @@ export default function Navbar() {
                   </div>
                 ) : (
                   <>
-                    <div className="max-h-80 overflow-auto py-2">
+                    <div className="min-h-0 flex-1 overflow-auto py-2">
                       {items.map((item) => (
                         <div
                           key={item.lineId}
-                          className="flex gap-3 rounded-xl px-2 py-3 hover:bg-slate-50"
+                          className="flex min-w-0 gap-3 rounded-xl px-2 py-3 hover:bg-slate-50"
                         >
-                          <div className="h-14 w-14 overflow-hidden rounded-lg bg-slate-100">
+                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={
@@ -447,7 +447,7 @@ export default function Navbar() {
                             <p className="truncate text-sm font-semibold text-slate-900">
                               {item.name}
                             </p>
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 break-words text-xs leading-5 text-slate-500">
                               ${item.price.toFixed(2)}
                               {item.selectedSize && ` - Talle ${item.selectedSize}`}
                               {(item.clickId || item.campaignClickId) && " · - referido"}
@@ -479,7 +479,7 @@ export default function Navbar() {
                           <button
                             type="button"
                             onClick={() => removeItem(item.lineId)}
-                            className="self-start rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            className="shrink-0 self-start rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                           >
                             <TrashIcon className="size-4" />
                           </button>
@@ -487,7 +487,7 @@ export default function Navbar() {
                       ))}
                     </div>
 
-                    <div className="border-t border-slate-100 px-2 pt-3">
+                    <div className="shrink-0 border-t border-slate-100 px-2 pt-3">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-slate-500">Total</span>
                         <span className="font-semibold text-slate-900">

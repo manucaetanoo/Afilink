@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 
 type ProductCardProps = {
   product: {
@@ -39,8 +38,6 @@ export default function CampaignProductCard({
   showAffiliateHighlights = true,
   showStock = false,
 }: ProductCardProps) {
-  const [loading, setLoading] = useState(false);
-
   const commissionLabel = getCommissionLabel(
     product.price,
     product.commissionValue
@@ -52,44 +49,6 @@ export default function CampaignProductCard({
   const hasAffiliateHighlights =
     showAffiliateHighlights && product.commissionValue > 0;
   const hasStock = product.stock === undefined || product.stock > 0;
-
-  const handleCheckout = async () => {
-    if (!hasStock) return;
-
-    try {
-      setLoading(true);
-
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          productId: product.id,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data?.ok) {
-        alert(data?.error || "No se pudo iniciar el checkout");
-        return;
-      }
-
-      if (data?.checkout?.url) {
-        window.location.href = data.checkout.url;
-        return;
-      }
-
-      alert("El checkout no devolvio una URL valida");
-    } catch (error) {
-      console.error(error);
-      alert("Ocurrio un error inesperado");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <article className="group overflow-hidden rounded-[28px] border border-orange-100 bg-white shadow-[0_15px_50px_-35px_rgba(15,23,42,0.45)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_30px_80px_-35px_rgba(249,115,22,0.45)]">
@@ -184,19 +143,21 @@ export default function CampaignProductCard({
             Ver producto
           </Link>
 
-          <button
-            onClick={handleCheckout}
-            disabled={loading || !hasStock}
-            className="inline-flex flex-1 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
+          <Link
+            href={`/products/${product.id}`}
+            aria-disabled={!hasStock}
+            className={`inline-flex flex-1 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold text-white transition ${
+              hasStock
+                ? "bg-slate-900 hover:bg-orange-500"
+                : "pointer-events-none bg-slate-900 opacity-60"
+            }`}
           >
             {!hasStock
               ? showStock
                 ? "Sin stock"
                 : "No disponible"
-              : loading
-                ? "Procesando..."
-                : "Comprar ahora"}
-          </button>
+              : "Comprar ahora"}
+          </Link>
         </div>
       </div>
     </article>
