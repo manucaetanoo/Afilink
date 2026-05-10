@@ -130,7 +130,7 @@ function StatCard({
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-slate-500">{label}</p>
@@ -525,13 +525,13 @@ export default async function SellerDashboardPage() {
                 detail={`${delta(currentSellerOrders.length, previousSellerOrders.length)} vs. periodo anterior`}
                 tone="slate"
               />
-                <StatCard
-                  icon={<FiClock />}
-                  label="Retenido"
-                  value={money(retainedAmount)}
-                  detail={`${number(retainedSettlements.length)} ordenes retenidas`}
-                  tone="slate"
-                />
+              <StatCard
+                icon={<FiClock />}
+                label="Retenido"
+                value={money(retainedAmount)}
+                detail={`${number(retainedSettlements.length)} ordenes retenidas`}
+                tone="slate"
+              />
               <StatCard
                 icon={<FiClock />}
                 label="Por liquidar"
@@ -545,7 +545,7 @@ export default async function SellerDashboardPage() {
               id="affiliates"
               className="mt-6 grid scroll-mt-24 grid-cols-1 gap-4 lg:grid-cols-4"
             >
-              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-slate-500">Productos activos</p>
                   <FiPackage className="text-orange-500" />
@@ -556,7 +556,7 @@ export default async function SellerDashboardPage() {
                 </p>
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-slate-500">Campañas activas</p>
                   <FiLayers className="text-sky-500" />
@@ -567,7 +567,7 @@ export default async function SellerDashboardPage() {
                 </p>
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-slate-500">Afiliados activos</p>
                   <FiUsers className="text-emerald-500" />
@@ -580,7 +580,7 @@ export default async function SellerDashboardPage() {
                 </p>
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-slate-500">Ticket promedio</p>
                   <FiTrendingUp className="text-violet-500" />
@@ -596,7 +596,7 @@ export default async function SellerDashboardPage() {
               id="reports"
               className="mt-6 grid scroll-mt-24 grid-cols-1 gap-4 xl:grid-cols-5"
             >
-              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5 xl:col-span-3">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <h2 className="text-base font-semibold text-slate-950">
@@ -631,7 +631,7 @@ export default async function SellerDashboardPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5 xl:col-span-2">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <h2 className="text-base font-semibold text-slate-950">
@@ -645,7 +645,7 @@ export default async function SellerDashboardPage() {
                 </div>
 
                 <div className="mt-6 space-y-4">
-                  <div className="rounded-lg bg-slate-50 p-4">
+                  <div className="rounded-lg bg-slate-50 p-3 sm:p-4">
                     <p className="text-sm font-medium text-slate-700">
                       Productos sin ventas
                     </p>
@@ -653,7 +653,7 @@ export default async function SellerDashboardPage() {
                       {number(products.filter((product) => product._count.orders === 0).length)}
                     </p>
                   </div>
-                  <div className="rounded-lg bg-slate-50 p-4">
+                  <div className="rounded-lg bg-slate-50 p-3 sm:p-4">
                     <p className="text-sm font-medium text-slate-700">
                       Links de afiliados
                     </p>
@@ -661,7 +661,7 @@ export default async function SellerDashboardPage() {
                       {number(productLinks.length + campaignLinks.length)}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-orange-100 bg-orange-50 p-4">
+                  <div className="rounded-lg border border-orange-100 bg-orange-50 p-3 sm:p-4">
                     <p className="text-sm leading-6 text-orange-900">
                       Si tienes clicks pero pocas ordenes, revisa precio, comision
                       afiliada y claridad de la pagina de producto.

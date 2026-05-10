@@ -264,7 +264,7 @@ export default async function CampaignsPage({ searchParams }: Props) {
               </div>
 
               <div className="relative">
-                <div className="overflow-hidden rounded-[2rem] border border-orange-100 bg-white p-4 shadow-[0_25px_80px_-20px_rgba(251,146,60,0.25)]">
+                <div className="overflow-hidden rounded-2xl border border-orange-100 bg-white p-3 shadow-[0_25px_80px_-20px_rgba(251,146,60,0.25)] sm:rounded-[2rem] sm:p-4">
                   {featuredCampaign ? (
                     <Link
                       href={getCampaignUrl(
@@ -273,15 +273,15 @@ export default async function CampaignsPage({ searchParams }: Props) {
                       )}
                       className="block"
                     >
-                      <div className="relative overflow-hidden rounded-[1.5rem]">
+                      <div className="relative overflow-hidden rounded-2xl sm:rounded-[1.5rem]">
                         <img
                           src={featuredCampaign.mainImage}
                           alt={featuredCampaign.title}
-                          className="aspect-[4/4.2] w-full object-cover"
+                          className="aspect-[16/10] w-full object-cover sm:aspect-[4/4.2]"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/10 to-transparent" />
 
-                        <div className="absolute left-5 top-5 flex flex-wrap gap-2">
+                        <div className="absolute left-3 top-3 flex flex-wrap gap-2 sm:left-5 sm:top-5">
                           <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-orange-700">
                             Destacada
                           </span>
@@ -292,11 +292,11 @@ export default async function CampaignsPage({ searchParams }: Props) {
                           </span>
                         </div>
 
-                        <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                        <div className="absolute bottom-0 left-0 right-0 p-4 text-white sm:p-6">
                           <p className="text-sm font-medium text-orange-200">
                             {featuredCampaign.seller?.name ?? "Tienda"}
                           </p>
-                          <h2 className="mt-2 text-2xl font-bold">
+                          <h2 className="mt-1 text-xl font-bold sm:mt-2 sm:text-2xl">
                             {featuredCampaign.title}
                           </h2>
                           <p className="mt-2 line-clamp-2 text-sm text-white/80">
@@ -308,7 +308,7 @@ export default async function CampaignsPage({ searchParams }: Props) {
                                 : "Entra para descubrir los productos de esta campaña y cuanto podes ganar por venta.")}
                           </p>
 
-                          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
+                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs sm:mt-5 sm:gap-3 sm:text-sm">
                             <span className="rounded-full bg-white/10 px-3 py-1.5 text-white backdrop-blur">
                               {featuredCampaign.activeProducts.length} productos
                             </span>
@@ -325,7 +325,7 @@ export default async function CampaignsPage({ searchParams }: Props) {
                       </div>
                     </Link>
                   ) : (
-                    <div className="flex aspect-[4/4.2] items-center justify-center rounded-[1.5rem] bg-orange-50 text-center text-slate-500">
+                    <div className="flex aspect-[16/10] items-center justify-center rounded-2xl bg-orange-50 text-center text-slate-500 sm:aspect-[4/4.2] sm:rounded-[1.5rem]">
                       No hay campañas destacadas todavia.
                     </div>
                   )}
@@ -355,7 +355,7 @@ export default async function CampaignsPage({ searchParams }: Props) {
             </div>
 
             {sortedCampaigns.length > 0 ? (
-              <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-8 xl:grid-cols-3">
                 {sortedCampaigns.map((campaign) => {
                   const campaignUrl = getCampaignUrl(
                     campaign.seller?.storeSlug,
@@ -365,18 +365,18 @@ export default async function CampaignsPage({ searchParams }: Props) {
                   return (
                     <article
                       key={campaign.id}
-                      className="group overflow-hidden rounded-[2rem] border border-orange-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_-20px_rgba(251,146,60,0.30)]"
+                      className="group overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_-20px_rgba(251,146,60,0.30)] sm:rounded-[2rem]"
                     >
                       <Link href={campaignUrl} className="block">
                         <div className="relative overflow-hidden">
                           <img
                             alt={campaign.title}
                             src={campaign.mainImage}
-                            className="aspect-[16/11] w-full object-cover transition duration-500 group-hover:scale-105"
+                            className="aspect-[16/8.5] w-full object-cover transition duration-500 group-hover:scale-105 sm:aspect-[16/11]"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/35 to-transparent" />
 
-                          <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+                          <div className="absolute left-3 top-3 flex flex-wrap gap-2 sm:left-4 sm:top-4">
                             <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-orange-700 shadow-sm">
                               {showAffiliateHighlights
                                 ? `Hasta ${campaign.maxCommissionPercent}% comision`
@@ -391,7 +391,7 @@ export default async function CampaignsPage({ searchParams }: Props) {
                         </div>
                       </Link>
 
-                      <div className="p-6">
+                      <div className="p-4 sm:p-6">
                         <div className="flex flex-wrap items-center gap-2 text-xs">
                           <span className="rounded-full bg-orange-50 px-3 py-1.5 font-medium text-orange-700 ring-1 ring-orange-100">
                             {campaign.activeProducts.length} productos
@@ -401,11 +401,11 @@ export default async function CampaignsPage({ searchParams }: Props) {
                           </span>
                         </div>
 
-                        <h3 className="mt-4 text-xl font-bold leading-tight text-slate-900 transition group-hover:text-orange-700">
+                        <h3 className="mt-3 text-lg font-bold leading-tight text-slate-900 transition group-hover:text-orange-700 sm:mt-4 sm:text-xl">
                           <Link href={campaignUrl}>{campaign.title}</Link>
                         </h3>
 
-                        <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
+                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600 sm:mt-3 sm:line-clamp-3">
                           {campaign.description ||
                             (showPublicCampaignInfo
                               ? isSellerViewer
@@ -414,16 +414,16 @@ export default async function CampaignsPage({ searchParams }: Props) {
                               : "Campaña disponible para afiliados. Revisa los productos, la comision por venta y todo lo necesario para empezar a promocionarla.")}
                         </p>
 
-                        <div className="mt-6 flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3">
+                        <div className="mt-4 flex items-center justify-between gap-3 sm:mt-6 sm:gap-4">
+                          <div className="flex items-center gap-2 sm:gap-3">
                             {campaign.seller?.image ? (
                               <img
                                 alt={campaign.seller.name ?? "Seller"}
                                 src={campaign.seller.image}
-                                className="h-11 w-11 rounded-full object-cover ring-1 ring-orange-100"
+                                className="h-9 w-9 rounded-full object-cover ring-1 ring-orange-100 sm:h-11 sm:w-11"
                               />
                             ) : (
-                              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-700 ring-1 ring-orange-200">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-700 ring-1 ring-orange-200 sm:h-11 sm:w-11">
                                 {campaign.seller?.name?.charAt(0)?.toUpperCase() ?? "S"}
                               </div>
                             )}
@@ -448,7 +448,7 @@ export default async function CampaignsPage({ searchParams }: Props) {
                           </div>
                         </div>
 
-                        <div className="mt-6">
+                        <div className="mt-4 sm:mt-6">
                           <Link
                             href={campaignUrl}
                             className="inline-flex items-center text-sm font-semibold text-orange-600 transition hover:text-orange-700"

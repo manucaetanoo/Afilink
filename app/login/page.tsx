@@ -77,7 +77,7 @@ export default function Example() {
                 Contraseña
               </label>
               <div className="text-sm">
-                <Link href="/forgot-password" className="font-semibold text-orange-600 hover:text-orange-500">
+                <Link href="/forgot-password" className="font-semibold text-[#F78211] hover:text-orange-500">
                   Olvide mi contrasena
                 </Link>
               </div>
@@ -102,7 +102,7 @@ export default function Example() {
           <div>
             <button
               type="submit"
-              className="flex w-full justify-center rounded-md bg-orange-600 px-3 py-1.5 text-sm/6 font-semibold text-white shadow-xs hover:bg-orange-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
+              className="flex w-full justify-center rounded-md bg-[#F78211] px-3 py-1.5 text-sm/6 font-semibold text-white shadow-xs hover:bg-orange-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
               >
               
               Iniciar Sesión
@@ -112,7 +112,7 @@ export default function Example() {
 
         <p className="mt-10 text-center text-sm/6 text-gray-500">
          ¿No tienes cuenta?{" "}
-          <Link href="/register" className="font-semibold text-orange-600 hover:text-orange-500">
+          <Link href="/register" className="font-semibold text-[#F78211] hover:text-orange-500">
             Registrarse
           </Link>
      </p>

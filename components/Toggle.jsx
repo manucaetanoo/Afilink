@@ -19,7 +19,7 @@ const Toggle = ({ selected, setSelected }) => {
                 
             </button>
             <div className={`absolute inset-0 z-0 flex ${selected === "AFFILIATE" ? "justify-end" : "justify-start"}`} >
-                <motion.span layout transition={{ type: "spring", damping: 15, stiffness: 250 }} className="h-full w-1/2 rounded-full bg-orange-600" />
+                <motion.span layout transition={{ type: "spring", damping: 15, stiffness: 250 }} className="h-full w-1/2 rounded-full bg-[#F78211]" />
             </div>
         </div>
     );

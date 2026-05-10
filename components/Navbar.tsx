@@ -28,7 +28,7 @@ type AppUser = {
   email?: string | null;
   image?: string | null;
   name?: string | null;
-  role?: "SELLER" | "AFILIADO" | string | null;
+  role?: "SELLER" | "AFFILIATE" | "AFILIADO" | "ADMIN" | string | null;
 };
 
 export default function Navbar() {
@@ -50,6 +50,7 @@ export default function Navbar() {
   const user = (data?.user ?? null) as AppUser | null;
   const userImage = user?.image || "/img/sin-foto.jpg";
   const userName = user?.name || user?.storeSlug || "Usuario";
+  const role = (user?.role ?? "").toUpperCase();
 
   useEffect(() => {
     if (!user) return;
@@ -134,6 +135,29 @@ export default function Navbar() {
     { href: "/products", label: "Productos" },
     { href: "/store", label: "Empresas" },
   ];
+  const mobileDashboardLinks =
+    role === "SELLER"
+      ? [
+        { href: "/dashboard/seller", label: "Dashboard" },
+        { href: "/seller/products", label: "Mis productos" },
+        { href: "/seller/products/new", label: "Crear producto" },
+        { href: "/seller/campaigns", label: "Campanas" },
+        { href: "/seller/orders", label: "Ordenes" },
+      ]
+      : role === "ADMIN"
+        ? [
+          { href: "/admin/orders", label: "Ordenes" },
+          { href: "/admin/deliveries", label: "Entregas" },
+          { href: "/admin/payouts", label: "Liquidaciones" },
+        ]
+        : role === "AFFILIATE" || role === "AFILIADO"
+          ? [
+            { href: "/dashboard/affiliate", label: "Dashboard" },
+            { href: "/dashboard/affiliate#links", label: "Mis links" },
+            { href: "/dashboard/affiliate#commissions", label: "Comisiones" },
+            { href: "/dashboard/affiliate#payments", label: "Pagos" },
+          ]
+          : [];
 
   const activeClasses =
     "inline-flex items-center border-b-2 border-orange-600 px-1 pt-1 text-sm font-medium text-gray-900";
@@ -540,18 +564,37 @@ export default function Navbar() {
       </div>
 
       <DisclosurePanel className="sm:hidden">
-        <div className="space-y-1 pb-3 pt-2">
+        <div className="space-y-1 px-2 pb-3 pt-2">
           {links.map((link) => (
             <DisclosureButton
               key={link.href}
               as="a"
               href={link.href}
-              className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+              className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             >
               {link.label}
             </DisclosureButton>
           ))}
         </div>
+        {mobileDashboardLinks.length > 0 && (
+          <div className="border-t border-gray-200 px-2 py-3">
+            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              Panel
+            </p>
+            <div className="grid grid-cols-2 gap-1">
+              {mobileDashboardLinks.map((link) => (
+                <DisclosureButton
+                  key={link.href}
+                  as="a"
+                  href={link.href}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                >
+                  {link.label}
+                </DisclosureButton>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="border-t border-gray-200 pb-3 pt-4">
           {user ? (
             <>

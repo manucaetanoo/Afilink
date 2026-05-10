@@ -201,7 +201,7 @@ export default function NewProductPage() {
                         </div>
                       )}
 
-                      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                         <div className="mb-5">
                           <h2 className="text-base font-semibold text-slate-950">
                             Informacion principal
@@ -261,7 +261,7 @@ export default function NewProductPage() {
                             </select>
 
                             {shouldShowSizes && (
-                              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
                                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                                   <div>
                                     <h3 className="text-sm font-semibold text-slate-900">
@@ -357,7 +357,7 @@ export default function NewProductPage() {
                         </div>
                       </section>
 
-                      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                           <div>
                             <h2 className="text-base font-semibold text-slate-950">
@@ -386,7 +386,7 @@ export default function NewProductPage() {
                           </label>
                         </div>
 
-                        <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 transition hover:border-orange-300">
+                        <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3 sm:p-4 transition hover:border-orange-300">
                           {imageFiles.length === 0 ? (
                             <div className="flex min-h-48 flex-col items-center justify-center text-center">
                               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
@@ -449,7 +449,7 @@ export default function NewProductPage() {
                     </div>
 
                     <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-                      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                         <div className="mb-5">
                           <h2 className="text-base font-semibold text-slate-950">
                             Precio y stock
@@ -515,7 +515,7 @@ export default function NewProductPage() {
                         </div>
                       </section>
 
-                      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                         <div className="mb-3">
                           <h2 className="text-base font-semibold text-slate-950">
                             Comision para afiliados
@@ -537,7 +537,7 @@ export default function NewProductPage() {
                         />
                       </section>
 
-                      <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+                      <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm sm:p-5">
                         <p className="text-sm font-semibold text-emerald-950">
                           Ganancia neta: {formatMoney(sellerNet.netAmount)}
                         </p>

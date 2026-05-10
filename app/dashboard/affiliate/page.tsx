@@ -93,7 +93,7 @@ function StatCard({
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-slate-500">{label}</p>
@@ -151,98 +151,98 @@ export default async function AffiliateDashboardPage() {
 
   const [links, campaignLinks, commissions, orderItems, pendingPayoutRequest] =
     await Promise.all([
-    prisma.affiliateLink.findMany({
-      where: { affiliateId },
-      select: {
-        id: true,
-        code: true,
-        createdAt: true,
-        product: {
-          select: {
-            id: true,
-            name: true,
-            price: true,
-            commissionValue: true,
-            commissionType: true,
+      prisma.affiliateLink.findMany({
+        where: { affiliateId },
+        select: {
+          id: true,
+          code: true,
+          createdAt: true,
+          product: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              commissionValue: true,
+              commissionType: true,
+            },
           },
+          _count: { select: { clicks: true } },
         },
-        _count: { select: { clicks: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.affiliateCampaignLink.findMany({
-      where: { affiliateId },
-      select: {
-        id: true,
-        code: true,
-        createdAt: true,
-        campaign: {
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-            isActive: true,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.affiliateCampaignLink.findMany({
+        where: { affiliateId },
+        select: {
+          id: true,
+          code: true,
+          createdAt: true,
+          campaign: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              isActive: true,
+            },
           },
+          _count: { select: { clicks: true } },
         },
-        _count: { select: { clicks: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.commission.findMany({
-      where: { affiliateId },
-      select: {
-        id: true,
-        amount: true,
-        status: true,
-        createdAt: true,
-        order: {
-          select: {
-            id: true,
-            total: true,
-            status: true,
-            campaign: { select: { title: true } },
-            settlements: {
-              select: {
-                sellerId: true,
-                status: true,
-                fulfillmentStatus: true,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.commission.findMany({
+        where: { affiliateId },
+        select: {
+          id: true,
+          amount: true,
+          status: true,
+          createdAt: true,
+          order: {
+            select: {
+              id: true,
+              total: true,
+              status: true,
+              campaign: { select: { title: true } },
+              settlements: {
+                select: {
+                  sellerId: true,
+                  status: true,
+                  fulfillmentStatus: true,
+                },
               },
             },
           },
-        },
-        orderItem: {
-          select: {
-            sellerId: true,
-            total: true,
-            product: { select: { name: true } },
+          orderItem: {
+            select: {
+              sellerId: true,
+              total: true,
+              product: { select: { name: true } },
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.orderItem.findMany({
-      where: { affiliateId },
-      select: {
-        id: true,
-        total: true,
-        affiliateAmount: true,
-        createdAt: true,
-        product: { select: { name: true } },
-        order: { select: { status: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.payoutRequest.findFirst({
-      where: {
-        requesterId: affiliateId,
-        kind: "AFFILIATE",
-        status: "PENDING",
-      },
-      select: {
-        id: true,
-      },
-    }),
-  ]);
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.orderItem.findMany({
+        where: { affiliateId },
+        select: {
+          id: true,
+          total: true,
+          affiliateAmount: true,
+          createdAt: true,
+          product: { select: { name: true } },
+          order: { select: { status: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.payoutRequest.findFirst({
+        where: {
+          requesterId: affiliateId,
+          kind: "AFFILIATE",
+          status: "PENDING",
+        },
+        select: {
+          id: true,
+        },
+      }),
+    ]);
 
   const productClicks = links.reduce((total, link) => total + link._count.clicks, 0);
   const campaignClicks = campaignLinks.reduce(
@@ -373,7 +373,7 @@ export default async function AffiliateDashboardPage() {
                   {number(retainedCommissionCount)} comisiones pendientes. La
                   liquidacion del pago va a estar disponible 7 dias despues de la
                   acreditacion y cuando se confirme la entrega.
-                
+
                 </p>
               </div>
             )}
@@ -420,7 +420,7 @@ export default async function AffiliateDashboardPage() {
             </section>
 
             <section className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <h2 className="text-base font-semibold text-slate-950">
@@ -434,13 +434,13 @@ export default async function AffiliateDashboardPage() {
                 </div>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-lg bg-slate-50 p-4">
+                  <div className="rounded-lg bg-slate-50 p-3 sm:p-4">
                     <p className="text-sm text-slate-500">Conversion</p>
                     <p className="mt-2 text-2xl font-semibold">
                       {percent(conversionRate)}
                     </p>
                   </div>
-                  <div className="rounded-lg bg-slate-50 p-4">
+                  <div className="rounded-lg bg-slate-50 p-3 sm:p-4">
                     <p className="text-sm text-slate-500">Ganancia/click</p>
                     <p className="mt-2 text-2xl font-semibold">
                       {money(earningsPerClick)}
@@ -448,7 +448,7 @@ export default async function AffiliateDashboardPage() {
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-lg border border-orange-100 bg-orange-50 p-4">
+                <div className="mt-6 rounded-lg border border-orange-100 bg-orange-50 p-3 sm:p-4">
                   <div className="flex items-start gap-3">
                     <FiTrendingUp className="mt-0.5 text-orange-600" />
                     <p className="text-sm leading-6 text-orange-900">
@@ -460,7 +460,7 @@ export default async function AffiliateDashboardPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center justify-between">
                   <h2 className="text-base font-semibold text-slate-950">
                     Top links

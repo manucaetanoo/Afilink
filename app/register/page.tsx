@@ -169,7 +169,7 @@ export default function RegisterPage() {
               <label className="text-slate-600 ml-3 block text-sm">
                  Acepto{" "}
                  <Link href={"/terms"}>
-                <span className="text-orange-600 font-medium">
+                <span className="text-[#F78211] font-medium">
                   terminos y condiciones
                 </span>
                 </Link>
@@ -186,7 +186,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 text-sm tracking-wider font-medium rounded-md text-white bg-orange-600 hover:bg-orange-500 disabled:opacity-60"
+              className="w-full py-3 px-4 text-sm tracking-wider font-medium rounded-md text-white bg-[#F78211] hover:bg-orange-500 disabled:opacity-60"
             >
               {loading ? "Creando..." : "Crear cuenta"}
             </button>
@@ -196,7 +196,7 @@ export default function RegisterPage() {
             ¿Ya tienes cuenta?{" "}
             <Link
               href="/login"
-              className="text-orange-600 font-medium hover:underline ml-1"
+              className="text-[#F78211] font-medium hover:underline ml-1"
             >
               Iniciar sesion
             </Link>
