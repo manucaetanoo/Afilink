@@ -150,7 +150,8 @@ export default function NewProductPage() {
       }
 
       setMessage("Producto creado correctamente");
-      router.push("/seller/products");
+      router.push(`/seller/products?created=${data.id}`);
+      router.refresh();
     } catch (err: unknown) {
       setMessage(getErrorMessage(err));
     } finally {

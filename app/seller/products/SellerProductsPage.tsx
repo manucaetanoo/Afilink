@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import ItemSeller from "@/components/ItemSeller";
 import Navbar from "@/components/Navbar";
@@ -25,11 +25,23 @@ export default function SellerProductsClient() {
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/seller/products")
+  const loadProducts = useCallback(() => {
+    fetch("/api/seller/products", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => setProducts(Array.isArray(data.products) ? data.products : []));
   }, []);
+
+  useEffect(() => {
+    loadProducts();
+
+    window.addEventListener("focus", loadProducts);
+    window.addEventListener("pageshow", loadProducts);
+
+    return () => {
+      window.removeEventListener("focus", loadProducts);
+      window.removeEventListener("pageshow", loadProducts);
+    };
+  }, [loadProducts]);
 
   async function handleDeleteProduct(product: Pick<SellerProduct, "id" | "name">) {
     const result = await Swal.fire({
