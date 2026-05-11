@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Product } from "@prisma/client";
 
 type ProductCardProps = {
@@ -60,12 +61,14 @@ export default function ProductCard({
           </div>
         )}
 
-        <div className="aspect-[4/3.35] w-full overflow-hidden bg-slate-100 sm:aspect-[4/4.6]">
+        <div className="relative aspect-[4/3.35] w-full overflow-hidden bg-slate-100 sm:aspect-[4/4.6]">
           {imageUrl ? (
-            <img
+            <Image
               src={imageUrl}
               alt={product.name || "Producto"}
-              className="h-full w-full object-cover transition duration-500 group-hover:scale-105 group-hover:opacity-90"
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="object-cover transition duration-500 group-hover:scale-105 group-hover:opacity-90"
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-gradient-to-br from-orange-100 via-white to-amber-50 text-sm font-medium text-slate-500">
