@@ -37,11 +37,11 @@ function percent(value: number) {
   return `${value.toFixed(value >= 10 ? 0 : 1)}%`;
 }
 
-function formatDate(date: Date) {
+function formatDate(date: Date | string) {
   return new Intl.DateTimeFormat("es-UY", {
     day: "2-digit",
     month: "short",
-  }).format(date);
+  }).format(new Date(date));
 }
 
 function delta(current: number, previous: number) {
@@ -297,9 +297,9 @@ export default async function AffiliateDashboardPage() {
     .reduce((total, commission) => total + commission.amount, 0);
   const generatedCommission = retainedCommission + availableCommission + paidCommission;
 
-  const currentItems = paidItems.filter((item) => item.createdAt >= currentStart);
+  const currentItems = paidItems.filter((item) => new Date(item.createdAt) >= currentStart);
   const previousItems = paidItems.filter(
-    (item) => item.createdAt >= previousStart && item.createdAt < currentStart
+    (item) => new Date(item.createdAt) >= previousStart && new Date(item.createdAt) < currentStart
   );
   const conversionRate = totalClicks > 0 ? (totalSales / totalClicks) * 100 : 0;
   const earningsPerClick = totalClicks > 0 ? generatedCommission / totalClicks : 0;
