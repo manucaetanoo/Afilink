@@ -73,6 +73,7 @@ export async function POST(req: Request) {
       (productId
         ? await createClickFromRef({ productId, refCode, req })
         : null);
+        
     const campaignClickId =
       cookieStore.get("aff_campaign_click_id")?.value;
 
