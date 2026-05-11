@@ -175,9 +175,9 @@ export async function PATCH(
       },
     });
 
-    revalidateTag("products", "max");
-    revalidateTag("campaigns", "max");
-    revalidateTag("stores", "max");
+    revalidateTag("products");
+    revalidateTag("campaigns");
+    revalidateTag("stores");
     revalidatePath("/products");
     revalidatePath("/campaigns");
     revalidatePath("/store");
@@ -239,9 +239,9 @@ export async function DELETE(
       where: { id: product.id },
     });
 
-    revalidateTag("products", "max");
-    revalidateTag("campaigns", "max");
-    revalidateTag("stores", "max");
+    revalidateTag("products");
+    revalidateTag("campaigns");
+    revalidateTag("stores");
     revalidatePath("/products");
     revalidatePath("/campaigns");
     revalidatePath("/store");

@@ -141,8 +141,8 @@ export async function POST(req: Request) {
       },
     });
 
-    revalidateTag("campaigns", "max");
-    revalidateTag("stores", "max");
+    revalidateTag("campaigns");
+    revalidateTag("stores");
     revalidatePath("/campaigns");
     revalidatePath("/store");
 

@@ -92,8 +92,8 @@ export async function PATCH(req: Request, context: Context) {
     },
   });
 
-  revalidateTag("campaigns", "max");
-  revalidateTag("stores", "max");
+  revalidateTag("campaigns");
+  revalidateTag("stores");
   revalidatePath("/campaigns");
   revalidatePath("/store");
   revalidatePath(`/store/${session.user.storeSlug}/campaign/${campaign.slug}`);
@@ -135,8 +135,8 @@ export async function DELETE(_: Request, context: Context) {
     },
   });
 
-  revalidateTag("campaigns", "max");
-  revalidateTag("stores", "max");
+  revalidateTag("campaigns");
+  revalidateTag("stores");
   revalidatePath("/campaigns");
   revalidatePath("/store");
 

@@ -16,6 +16,7 @@ import {
 import Navbar from "@/components/Navbar";
 import PayoutRequestButton from "@/components/PayoutRequestButton";
 import Sidebar from "@/components/Sidebar";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -135,6 +136,106 @@ function MiniBar({
   );
 }
 
+const getAffiliateDashboardData = unstable_cache(
+  async (affiliateId: string) => {
+    const [links, campaignLinks, commissions, orderItems, pendingPayoutRequest] =
+      await Promise.all([
+        prisma.affiliateLink.findMany({
+          where: { affiliateId },
+          select: {
+            id: true,
+            code: true,
+            createdAt: true,
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                commissionValue: true,
+                commissionType: true,
+              },
+            },
+            _count: { select: { clicks: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.affiliateCampaignLink.findMany({
+          where: { affiliateId },
+          select: {
+            id: true,
+            code: true,
+            createdAt: true,
+            campaign: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                isActive: true,
+              },
+            },
+            _count: { select: { clicks: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.commission.findMany({
+          where: { affiliateId },
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+            createdAt: true,
+            order: {
+              select: {
+                id: true,
+                total: true,
+                status: true,
+                campaign: { select: { title: true } },
+                settlements: {
+                  select: {
+                    sellerId: true,
+                    status: true,
+                    fulfillmentStatus: true,
+                  },
+                },
+              },
+            },
+            orderItem: {
+              select: {
+                sellerId: true,
+                total: true,
+                product: { select: { name: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.orderItem.findMany({
+          where: { affiliateId },
+          select: {
+            id: true,
+            total: true,
+            affiliateAmount: true,
+            createdAt: true,
+            product: { select: { name: true } },
+            order: { select: { status: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.payoutRequest.findFirst({
+          where: {
+            requesterId: affiliateId,
+            kind: "AFFILIATE",
+            status: "PENDING",
+          },
+          select: { id: true },
+        }),
+      ]);
+    return { links, campaignLinks, commissions, orderItems, pendingPayoutRequest };
+  },
+  ["affiliate-dashboard"],
+  { revalidate: 30 }
+);
+
 export default async function AffiliateDashboardPage() {
   const session = await getServerSession(authOptions);
 
@@ -149,100 +250,8 @@ export default async function AffiliateDashboardPage() {
   const previousStart = new Date(now);
   previousStart.setDate(previousStart.getDate() - 60);
 
-  const [links, campaignLinks, commissions, orderItems, pendingPayoutRequest] =
-    await Promise.all([
-      prisma.affiliateLink.findMany({
-        where: { affiliateId },
-        select: {
-          id: true,
-          code: true,
-          createdAt: true,
-          product: {
-            select: {
-              id: true,
-              name: true,
-              price: true,
-              commissionValue: true,
-              commissionType: true,
-            },
-          },
-          _count: { select: { clicks: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.affiliateCampaignLink.findMany({
-        where: { affiliateId },
-        select: {
-          id: true,
-          code: true,
-          createdAt: true,
-          campaign: {
-            select: {
-              id: true,
-              title: true,
-              slug: true,
-              isActive: true,
-            },
-          },
-          _count: { select: { clicks: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.commission.findMany({
-        where: { affiliateId },
-        select: {
-          id: true,
-          amount: true,
-          status: true,
-          createdAt: true,
-          order: {
-            select: {
-              id: true,
-              total: true,
-              status: true,
-              campaign: { select: { title: true } },
-              settlements: {
-                select: {
-                  sellerId: true,
-                  status: true,
-                  fulfillmentStatus: true,
-                },
-              },
-            },
-          },
-          orderItem: {
-            select: {
-              sellerId: true,
-              total: true,
-              product: { select: { name: true } },
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.orderItem.findMany({
-        where: { affiliateId },
-        select: {
-          id: true,
-          total: true,
-          affiliateAmount: true,
-          createdAt: true,
-          product: { select: { name: true } },
-          order: { select: { status: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.payoutRequest.findFirst({
-        where: {
-          requesterId: affiliateId,
-          kind: "AFFILIATE",
-          status: "PENDING",
-        },
-        select: {
-          id: true,
-        },
-      }),
-    ]);
+  const { links, campaignLinks, commissions, orderItems, pendingPayoutRequest } =
+    await getAffiliateDashboardData(affiliateId);
 
   const productClicks = links.reduce((total, link) => total + link._count.clicks, 0);
   const campaignClicks = campaignLinks.reduce(

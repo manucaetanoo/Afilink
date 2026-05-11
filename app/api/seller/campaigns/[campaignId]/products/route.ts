@@ -144,8 +144,8 @@ export async function POST(req: Request, context: RouteContext) {
       },
     });
 
-    revalidateTag("campaigns", "max");
-    revalidateTag("stores", "max");
+    revalidateTag("campaigns");
+    revalidateTag("stores");
     revalidatePath("/campaigns");
     revalidatePath("/store");
 
@@ -228,8 +228,8 @@ export async function DELETE(req: Request, context: RouteContext) {
       },
     });
 
-    revalidateTag("campaigns", "max");
-    revalidateTag("stores", "max");
+    revalidateTag("campaigns");
+    revalidateTag("stores");
     revalidatePath("/campaigns");
     revalidatePath("/store");
 
