@@ -206,7 +206,7 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
-        "sticky top-16 hidden h-[calc(100dvh-4rem)] flex-col border-r border-slate-200 bg-slate-50 transition-all duration-200 sm:flex",
+        "sticky top-16 hidden max-h-[calc(100dvh-4rem)] flex-col self-start border-r border-slate-200 bg-slate-50 transition-all duration-200 sm:flex",
         collapsed ? "w-[72px]" : "w-[260px]"
       )}
     >

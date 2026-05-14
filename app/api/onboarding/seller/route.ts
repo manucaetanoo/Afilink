@@ -46,6 +46,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { storeSlug: true, role: true },
+  });
+
+  if (!currentUser) {
+    return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+  }
+
+  if (currentUser.role !== "SELLER") {
+    return NextResponse.json(
+      { error: "Solo los vendedores pueden configurar una tienda" },
+      { status: 403 }
+    );
+  }
+
+  if (currentUser.storeSlug) {
+    return NextResponse.json(
+      { error: "La cuenta ya fue configurada" },
+      { status: 409 }
+    );
+  }
+
   const body = await req.json().catch(() => null);
   if (!body) {
     return NextResponse.json({ error: "Body inválido" }, { status: 400 });

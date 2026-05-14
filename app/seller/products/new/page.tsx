@@ -9,6 +9,7 @@ import {
   PhotoIcon,
   Squares2X2Icon,
   ArchiveBoxIcon,
+  ArrowDownTrayIcon,
   PlusIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -61,6 +62,20 @@ export default function NewProductPage() {
   const [customSize, setCustomSize] = useState("");
   const [commissionValue, setCommissionValue] = useState(10);
   const [priceValue, setPriceValue] = useState("");
+  const [showShopifyImport, setShowShopifyImport] = useState(false);
+  const [shopifyDomain, setShopifyDomain] = useState("");
+  const [shopifyToken, setShopifyToken] = useState("");
+  const [shopifyCommissionValue, setShopifyCommissionValue] = useState(10);
+  const [shopifyDemoMode, setShopifyDemoMode] = useState(false);
+  const [importingShopify, setImportingShopify] = useState(false);
+  const [showFenicioImport, setShowFenicioImport] = useState(false);
+  const [fenicioDomain, setFenicioDomain] = useState("");
+  const [fenicioCommerceCode, setFenicioCommerceCode] = useState("");
+  const [fenicioCommissionValue, setFenicioCommissionValue] = useState(10);
+  const [fenicioDemoMode, setFenicioDemoMode] = useState(false);
+  const [importingFenicio, setImportingFenicio] = useState(false);
+  const canUseDemoImports =
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_IMPORTS === "true";
 
   const imagePreviews = useMemo(() => {
     return imageFiles.map((file) => ({
@@ -159,11 +174,84 @@ export default function NewProductPage() {
     }
   }
 
+  async function importFromShopify(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setImportingShopify(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/seller/products/shopify-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopDomain: shopifyDomain,
+          accessToken: shopifyToken,
+          commissionValue: shopifyCommissionValue,
+          demoMode: canUseDemoImports && shopifyDemoMode,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "Error importando productos desde Shopify");
+      }
+
+      setMessage(
+        `Importacion lista: ${data.imported} productos creados, ${data.skipped} omitidos.`
+      );
+      setShowShopifyImport(false);
+      setShopifyToken("");
+      router.push("/seller/products");
+      router.refresh();
+    } catch (err: unknown) {
+      setMessage(getErrorMessage(err));
+    } finally {
+      setImportingShopify(false);
+    }
+  }
+
+  async function importFromFenicio(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setImportingFenicio(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/seller/products/fenicio-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeDomain: fenicioDomain,
+          commerceCode: fenicioCommerceCode,
+          commissionValue: fenicioCommissionValue,
+          demoMode: canUseDemoImports && fenicioDemoMode,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "Error importando productos desde Fenicio");
+      }
+
+      setMessage(
+        `Importacion lista: ${data.imported} productos creados, ${data.skipped} omitidos.`
+      );
+      setShowFenicioImport(false);
+      router.push("/seller/products");
+      router.refresh();
+    } catch (err: unknown) {
+      setMessage(getErrorMessage(err));
+    } finally {
+      setImportingFenicio(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#faf7f2] text-slate-950">
       <Navbar />
 
-      <div className="flex min-h-screen pt-16">
+      <div className="flex min-h-[calc(100vh-4rem)] pt-16">
         <Sidebar />
 
         <main className="min-w-0 flex-1">
@@ -187,8 +275,40 @@ export default function NewProductPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-                      Publicacion nueva
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowShopifyImport(true)}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-orange-50"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/img/Shopify-Logo-PNG.png"
+                          alt=""
+                          className="h-5 w-auto object-contain"
+                        />
+                        Importar desde Shopify
+                        <ArrowDownTrayIcon className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowFenicioImport(true)}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-orange-50"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/img/fenicio-logo.png"
+                          alt=""
+                          className="h-6 max-w-[92px] object-contain"
+                        />
+                        Importar desde Fenicio
+                        <ArrowDownTrayIcon className="h-4 w-4" />
+                      </button>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
+                        Publicacion nueva
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -593,6 +713,279 @@ export default function NewProductPage() {
                     </button>
                   </div>
                 </form>
+
+                {showShopifyImport && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
+                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                      <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+                        <div>
+                          <h2 className="text-lg font-semibold text-slate-950">
+                            Importar productos desde Shopify
+                          </h2>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Se crearan productos nuevos con precio, stock, imagenes y descripcion.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowShopifyImport(false)}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                          aria-label="Cerrar importacion"
+                          title="Cerrar"
+                        >
+                          <XMarkIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      <form onSubmit={importFromShopify} className="space-y-5 px-5 py-5">
+                        {canUseDemoImports && (
+                          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={shopifyDemoMode}
+                              onChange={(e) => setShopifyDemoMode(e.target.checked)}
+                              className="mt-0.5"
+                            />
+                            <span>
+                              <span className="block font-semibold text-slate-900">
+                                Usar datos de prueba
+                              </span>
+                              <span className="mt-1 block text-xs text-slate-500">
+                                Crea productos demo sin conectar una tienda Shopify real.
+                              </span>
+                            </span>
+                          </label>
+                        )}
+
+                        <div>
+                          <label
+                            htmlFor="shopifyDomain"
+                            className="text-sm font-semibold text-slate-900"
+                          >
+                            Dominio de la tienda
+                          </label>
+                          <input
+                            id="shopifyDomain"
+                            type="text"
+                            value={shopifyDomain}
+                            onChange={(e) => setShopifyDomain(e.target.value)}
+                            placeholder="mitienda.myshopify.com"
+                            required={!(canUseDemoImports && shopifyDemoMode)}
+                            disabled={canUseDemoImports && shopifyDemoMode}
+                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="shopifyToken"
+                            className="text-sm font-semibold text-slate-900"
+                          >
+                            Admin API access token
+                          </label>
+                          <input
+                            id="shopifyToken"
+                            type="password"
+                            value={shopifyToken}
+                            onChange={(e) => setShopifyToken(e.target.value)}
+                            placeholder="shpat_..."
+                            required={!(canUseDemoImports && shopifyDemoMode)}
+                            disabled={canUseDemoImports && shopifyDemoMode}
+                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                          />
+                          <p className="mt-2 text-xs text-slate-500">
+                            El token se usa solo para esta importacion y no se guarda.
+                          </p>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                          Los productos con el mismo nombre ya existentes en tu cuenta se omiten
+                          para evitar duplicados.
+                        </div>
+
+                        <div className="border-t border-slate-200 pt-5">
+                          <div className="mb-3 flex items-center justify-between gap-4">
+                            <div>
+                              <h3 className="text-sm font-semibold text-slate-900">
+                                Comision de importacion
+                              </h3>
+                              <p className="mt-1 text-xs text-slate-500">
+                                Se aplicara a todos los productos importados.
+                              </p>
+                            </div>
+                            <span className="text-sm font-semibold text-slate-900">
+                              {shopifyCommissionValue}%
+                            </span>
+                          </div>
+
+                          <CommissionRange
+                            type="PERCENT"
+                            min={5}
+                            max={90}
+                            step={5}
+                            initialValue={shopifyCommissionValue}
+                            onChange={(value) => setShopifyCommissionValue(value)}
+                          />
+                        </div>
+
+                        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setShowShopifyImport(false)}
+                            className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            Cancelar
+                          </button>
+
+                          <button
+                            type="submit"
+                            disabled={importingShopify}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <ArrowDownTrayIcon className="h-4 w-4" />
+                            {importingShopify ? "Importando..." : "Importar productos"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+
+                {showFenicioImport && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
+                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                      <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+                        <div>
+                          <h2 className="text-lg font-semibold text-slate-950">
+                            Importar productos desde Fenicio
+                          </h2>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Se leeran los productos publicados en el feed Fenicio del comercio.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowFenicioImport(false)}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                          aria-label="Cerrar importacion"
+                          title="Cerrar"
+                        >
+                          <XMarkIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      <form onSubmit={importFromFenicio} className="space-y-5 px-5 py-5">
+                        {canUseDemoImports && (
+                          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={fenicioDemoMode}
+                              onChange={(e) => setFenicioDemoMode(e.target.checked)}
+                              className="mt-0.5"
+                            />
+                            <span>
+                              <span className="block font-semibold text-slate-900">
+                                Usar datos de prueba
+                              </span>
+                              <span className="mt-1 block text-xs text-slate-500">
+                                Crea productos demo sin conectar una tienda Fenicio real.
+                              </span>
+                            </span>
+                          </label>
+                        )}
+
+                        <div>
+                          <label
+                            htmlFor="fenicioDomain"
+                            className="text-sm font-semibold text-slate-900"
+                          >
+                            Dominio de la tienda
+                          </label>
+                          <input
+                            id="fenicioDomain"
+                            type="text"
+                            value={fenicioDomain}
+                            onChange={(e) => setFenicioDomain(e.target.value)}
+                            placeholder="mitienda.com.uy"
+                            required={!(canUseDemoImports && fenicioDemoMode)}
+                            disabled={canUseDemoImports && fenicioDemoMode}
+                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="fenicioCommerceCode"
+                            className="text-sm font-semibold text-slate-900"
+                          >
+                            Codigo de comercio
+                          </label>
+                          <input
+                            id="fenicioCommerceCode"
+                            type="text"
+                            value={fenicioCommerceCode}
+                            onChange={(e) => setFenicioCommerceCode(e.target.value)}
+                            placeholder="El mismo codigo usado para entrar al administrador"
+                            required={!(canUseDemoImports && fenicioDemoMode)}
+                            disabled={canUseDemoImports && fenicioDemoMode}
+                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                          />
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                          Fenicio no expone stock exacto en este feed. Se importara stock segun
+                          las presentaciones marcadas como disponibles.
+                        </div>
+
+                        <div className="border-t border-slate-200 pt-5">
+                          <div className="mb-3 flex items-center justify-between gap-4">
+                            <div>
+                              <h3 className="text-sm font-semibold text-slate-900">
+                                Comision de importacion
+                              </h3>
+                              <p className="mt-1 text-xs text-slate-500">
+                                Se aplicara a todos los productos importados.
+                              </p>
+                            </div>
+                            <span className="text-sm font-semibold text-slate-900">
+                              {fenicioCommissionValue}%
+                            </span>
+                          </div>
+
+                          <CommissionRange
+                            type="PERCENT"
+                            min={5}
+                            max={90}
+                            step={5}
+                            initialValue={fenicioCommissionValue}
+                            onChange={(value) => setFenicioCommissionValue(value)}
+                          />
+                        </div>
+
+                        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setShowFenicioImport(false)}
+                            className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            Cancelar
+                          </button>
+
+                          <button
+                            type="submit"
+                            disabled={importingFenicio}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <ArrowDownTrayIcon className="h-4 w-4" />
+                            {importingFenicio ? "Importando..." : "Importar productos"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

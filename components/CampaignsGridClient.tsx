@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -29,6 +30,8 @@ type Props = {
   campaigns: CampaignListItem[];
   emptyStateHref: string;
   emptyStateLabel: string;
+  pageSize: number;
+  hasMoreInitial: boolean;
 };
 
 const formatMoney = (value: number) =>
@@ -52,9 +55,14 @@ export default function CampaignsGridClient({
   campaigns,
   emptyStateHref,
   emptyStateLabel,
+  pageSize,
+  hasMoreInitial,
 }: Props) {
   const searchParams = useSearchParams();
   const { data } = useSession();
+  const [items, setItems] = useState(campaigns);
+  const [hasMore, setHasMore] = useState(hasMoreInitial);
+  const [loadingMore, setLoadingMore] = useState(false);
   const currentSort = parseSort(searchParams.get("sort"));
   const role = data?.user?.role;
   const isSellerViewer = role === "SELLER";
@@ -70,7 +78,7 @@ export default function CampaignsGridClient({
     : isSellerViewer
       ? "Revisa el catalogo publico de campanas activas y entra a gestionar las tuyas cuando quieras."
       : "Elegi una promocion, revisa sus productos y compra desde la tienda.";
-  const sortedCampaigns = [...campaigns].sort((a, b) => {
+  const sortedCampaigns = [...items].sort((a, b) => {
     if (currentSort === "newest") {
       return b.createdAtMs - a.createdAtMs;
     }
@@ -90,6 +98,28 @@ export default function CampaignsGridClient({
     );
   });
 
+  async function loadMore() {
+    setLoadingMore(true);
+
+    try {
+      const params = new URLSearchParams({
+        skip: String(items.length),
+        take: String(pageSize),
+      });
+      const res = await fetch(`/api/campaigns?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !Array.isArray(data?.campaigns)) return;
+
+      setItems((current) => [...current, ...data.campaigns]);
+      setHasMore(Boolean(data.hasMore));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   return (
     <section id="campaigns-grid" className="mx-auto max-w-7xl px-6 pb-24 lg:px-8">
       <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -107,8 +137,9 @@ export default function CampaignsGridClient({
       </div>
 
       {sortedCampaigns.length > 0 ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-8 xl:grid-cols-3">
-          {sortedCampaigns.map((campaign) => {
+        <>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-8 xl:grid-cols-3">
+            {sortedCampaigns.map((campaign) => {
             const campaignUrl = getCampaignUrl(campaign.seller?.storeSlug, campaign.slug);
 
             return (
@@ -211,8 +242,22 @@ export default function CampaignsGridClient({
                 </div>
               </article>
             );
-          })}
-        </div>
+            })}
+          </div>
+
+          {hasMore && (
+            <div className="mt-10 flex justify-center">
+              <button
+                type="button"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="rounded-2xl border border-orange-200 bg-white px-6 py-3 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loadingMore ? "Cargando..." : "Cargar mas campanas"}
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="rounded-[2rem] border border-orange-100 bg-white px-8 py-20 text-center shadow-sm">
           <div className="mx-auto max-w-xl">

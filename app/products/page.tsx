@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import type { Metadata } from "next";
-import { unstable_cache } from "next/cache";
 import ProductsCatalogClient from "@/components/ProductsCatalogClient";
 
 
@@ -12,21 +11,37 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 60;
+export const PRODUCTS_PAGE_LIMIT = 40;
 
-const getActiveProducts = unstable_cache(
-  async () =>
-    prisma.product.findMany({
-      where: {
-        isActive: true,
-      },
-      orderBy: [{ commissionValue: "desc" }, { createdAt: "desc" }],
-    }),
-  ["active-products"],
-  { revalidate: 60, tags: ["products"] }
-);
+async function getActiveProducts() {
+  const products = await prisma.product.findMany({
+    where: {
+      isActive: true,
+    },
+    orderBy: [{ commissionValue: "desc" }, { createdAt: "desc" }],
+    take: PRODUCTS_PAGE_LIMIT + 1,
+    select: {
+      id: true,
+      name: true,
+      desc: true,
+      price: true,
+      stock: true,
+      commissionValue: true,
+      imageUrls: true,
+    },
+  });
+
+  return {
+    hasMore: products.length > PRODUCTS_PAGE_LIMIT,
+    products: products.slice(0, PRODUCTS_PAGE_LIMIT).map((product) => ({
+      ...product,
+      imageUrls: product.imageUrls.slice(0, 1),
+    })),
+  };
+}
 
 export default async function ProductsPage() {
-  const products = await getActiveProducts();
+  const { products, hasMore } = await getActiveProducts();
 
   return (
     <div className="min-h-screen bg-[#fffaf6] text-slate-900">
@@ -54,7 +69,11 @@ export default async function ProductsPage() {
               </p>
             </div>
 
-            <ProductsCatalogClient products={products} />
+            <ProductsCatalogClient
+              products={products}
+              pageSize={PRODUCTS_PAGE_LIMIT}
+              hasMoreInitial={hasMore}
+            />
           </div>
         </main>
       </div>

@@ -14,6 +14,14 @@ const productCategories = [
 ] as const;
 
 const categoriesWithSizes = new Set(["CLOTHING", "SHOES"]);
+const SELLER_PRODUCTS_LIMIT = 100;
+const MAX_SELLER_PRODUCTS_TAKE = 100;
+
+function getPaginationValue(value: string | null, fallback: number, max: number) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) return fallback;
+  return Math.min(parsed, max);
+}
 
 function normalizeSizes(value: unknown) {
   if (!Array.isArray(value)) return [];
@@ -32,14 +40,23 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "ERROR";
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const url = new URL(req.url);
+    const skip = getPaginationValue(url?.searchParams.get("skip") ?? null, 0, 10_000);
+    const take = getPaginationValue(
+      url?.searchParams.get("take") ?? null,
+      SELLER_PRODUCTS_LIMIT,
+      MAX_SELLER_PRODUCTS_TAKE
+    );
     const user = await requireUser();
     requireRole(user, ["SELLER", "ADMIN"]);
 
     const products = await prisma.product.findMany({
       where: user.role === "ADMIN" ? {} : { sellerId: user.id },
       orderBy: { createdAt: "desc" },
+      skip,
+      take: take + 1,
       select: {
         id: true,
         name: true,
@@ -58,7 +75,11 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ ok: true, products });
+    return NextResponse.json({
+      ok: true,
+      hasMore: products.length > take,
+      products: products.slice(0, take),
+    });
   } catch (e: unknown) {
     const msg = getErrorMessage(e);
     const status =

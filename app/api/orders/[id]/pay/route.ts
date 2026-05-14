@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/lib/prisma-enums";
 import { markOrderPaidAndNotify } from "@/lib/order-events";
+import { requireUser, requireRole } from "@/lib/auth";
 
 export async function POST(
   _: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireUser();
+    requireRole(user, ["ADMIN"]);
+
     const { id: orderId } = await params;
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -42,10 +46,9 @@ export async function POST(
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (e) {
-    console.error(e);
-    return NextResponse.json(
-      { ok: false, error: "Error interno" },
-      { status: 500 }
-    );
+    const msg = e instanceof Error ? e.message : "ERROR";
+    const status = msg === "UNAUTHORIZED" ? 401 : msg === "FORBIDDEN" ? 403 : 500;
+    if (status === 500) console.error(e);
+    return NextResponse.json({ ok: false, error: msg }, { status });
   }
 }

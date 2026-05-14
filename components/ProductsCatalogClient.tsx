@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useSession } from "next-auth/react";
-import type { Product } from "@prisma/client";
-import ProductCard from "@/components/ProductCard";
+import ProductCard, { type ProductCardProduct } from "@/components/ProductCard";
 
 type Props = {
-  products: Product[];
+  products: ProductCardProduct[];
+  pageSize: number;
+  hasMoreInitial: boolean;
 };
 
 const formatMoney = (value: number) =>
@@ -20,15 +22,22 @@ const getCommissionEarning = (price: number, commissionValue: number) => {
   return Math.round((price * commissionValue) / 100);
 };
 
-export default function ProductsCatalogClient({ products }: Props) {
+export default function ProductsCatalogClient({
+  products,
+  pageSize,
+  hasMoreInitial,
+}: Props) {
   const { data } = useSession();
+  const [items, setItems] = useState(products);
+  const [hasMore, setHasMore] = useState(hasMoreInitial);
+  const [loadingMore, setLoadingMore] = useState(false);
   const showAffiliateHighlights = data?.user?.role === "AFFILIATE";
-  const topCommission = products.length
-    ? Math.max(...products.map((product) => Number(product.commissionValue || 0)))
+  const topCommission = items.length
+    ? Math.max(...items.map((product) => Number(product.commissionValue || 0)))
     : 0;
-  const topEarning = products.length
+  const topEarning = items.length
     ? Math.max(
-        ...products.map((product) =>
+        ...items.map((product) =>
           getCommissionEarning(
             Number(product.price || 0),
             Number(product.commissionValue || 0)
@@ -36,9 +45,31 @@ export default function ProductsCatalogClient({ products }: Props) {
         )
       )
     : 0;
-  const minPrice = products.length
-    ? Math.min(...products.map((product) => Number(product.price || 0)))
+  const minPrice = items.length
+    ? Math.min(...items.map((product) => Number(product.price || 0)))
     : 0;
+
+  async function loadMore() {
+    setLoadingMore(true);
+
+    try {
+      const params = new URLSearchParams({
+        skip: String(items.length),
+        take: String(pageSize),
+      });
+      const res = await fetch(`/api/products?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !Array.isArray(data?.products)) return;
+
+      setItems((current) => [...current, ...data.products]);
+      setHasMore(Boolean(data.hasMore));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   return (
     <>
@@ -50,7 +81,7 @@ export default function ProductsCatalogClient({ products }: Props) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
-              {products.length} {products.length === 1 ? "producto" : "productos"}
+              {items.length} {items.length === 1 ? "producto" : "productos"}
             </div>
             <div className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm">
               Desde {formatMoney(minPrice)}
@@ -73,7 +104,7 @@ export default function ProductsCatalogClient({ products }: Props) {
         </div>
       </section>
 
-      {products.length === 0 ? (
+      {items.length === 0 ? (
         <section className="mt-10 rounded-[28px] border border-dashed border-orange-200 bg-white p-12 text-center shadow-sm">
           <div className="mx-auto max-w-md">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
@@ -96,7 +127,7 @@ export default function ProductsCatalogClient({ products }: Props) {
             </h2>
 
             <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 sm:gap-y-10 xl:grid-cols-3 xl:gap-x-8 2xl:grid-cols-4">
-              {products.map((product) => (
+              {items.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -104,6 +135,18 @@ export default function ProductsCatalogClient({ products }: Props) {
                 />
               ))}
             </div>
+            {hasMore && (
+              <div className="mt-10 flex justify-center">
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="rounded-2xl border border-orange-200 bg-white px-6 py-3 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loadingMore ? "Cargando..." : "Cargar mas productos"}
+                </button>
+              </div>
+            )}
           </section>
 
           {showAffiliateHighlights && (

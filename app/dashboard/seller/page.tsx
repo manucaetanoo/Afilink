@@ -201,6 +201,11 @@ function PaymentAvailabilityMeta({
   );
 }
 
+const DASHBOARD_PRODUCTS_LIMIT = 100;
+const DASHBOARD_CAMPAIGNS_LIMIT = 50;
+const DASHBOARD_RECENT_ITEMS_LIMIT = 80;
+const DASHBOARD_RECENT_SETTLEMENTS_LIMIT = 80;
+
 export default async function SellerDashboardPage() {
   const session = await getServerSession(authOptions);
 
@@ -242,6 +247,7 @@ export default async function SellerDashboardPage() {
           _count: { select: { links: true, orders: true } },
         },
         orderBy: { createdAt: "desc" },
+        take: DASHBOARD_PRODUCTS_LIMIT,
       }),
       prisma.campaign.findMany({
         where: { sellerId },
@@ -255,6 +261,7 @@ export default async function SellerDashboardPage() {
           _count: { select: { products: true, affiliateLinks: true, orders: true } },
         },
         orderBy: { createdAt: "desc" },
+        take: DASHBOARD_CAMPAIGNS_LIMIT,
       }),
       prisma.orderItem.findMany({
         where: { sellerId },
@@ -270,7 +277,7 @@ export default async function SellerDashboardPage() {
           order: { select: { id: true, status: true } },
         },
         orderBy: { createdAt: "desc" },
-        take: 80,
+        take: DASHBOARD_RECENT_ITEMS_LIMIT,
       }),
       prisma.settlement.findMany({
         where: {
@@ -306,6 +313,7 @@ export default async function SellerDashboardPage() {
           },
         },
         orderBy: { createdAt: "desc" },
+        take: DASHBOARD_RECENT_SETTLEMENTS_LIMIT,
       }),
       prisma.affiliateLink.findMany({
         where: { product: { sellerId } },
@@ -445,11 +453,11 @@ export default async function SellerDashboardPage() {
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <Navbar />
 
-      <div className="flex min-h-screen pt-16">
-        <Sidebar />
+        <div className="flex min-h-[calc(100vh-4rem)] pt-16">
+          <Sidebar />
 
-        <main className="min-w-0 flex-1">
-          <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <main className="min-w-0 flex-1">
+            <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-600">
@@ -825,8 +833,8 @@ export default async function SellerDashboardPage() {
               </div>
             </section>
           </div>
-        </main>
-      </div>
+          </main>
+        </div>
     </div>
   );
 }

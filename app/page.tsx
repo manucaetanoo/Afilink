@@ -121,6 +121,19 @@ const stats: StatItem[] = [
   ["Comisiones aprobadas", "+$18.450", SparklesIcon],
 ];
 
+const integrations = [
+  {
+    name: "Shopify",
+    logo: "/img/Shopify-Logo-PNG.png",
+    description: "Importa productos, precios, imagenes y stock desde tu tienda.",
+  },
+  {
+    name: "Fenicio",
+    logo: "/img/fenicio-logo.png",
+    description: "Conecta catalogos Fenicio mediante el feed del comercio.",
+  },
+];
+
 export default function Home() {
   return (
     <div className="bg-white text-gray-900">
@@ -187,6 +200,50 @@ export default function Home() {
     </div>
   </div>
 </section>
+
+        <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+          <div className="grid items-center gap-10 rounded-3xl border border-orange-100 bg-white p-6 shadow-sm sm:p-10 lg:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <p className="text-base font-semibold text-[#F78211]">
+                Integraciones
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl">
+                Conectá tu tienda sin cargar todo a mano
+              </h2>
+              <p className="mt-4 text-base leading-7 text-gray-500">
+                Afilink permite importar productos desde tiendas Shopify y Fenicio
+                para publicar catalogos mas rapido y empezar a trabajar con
+                afiliados en menos pasos.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {integrations.map((integration) => (
+                <div
+                  key={integration.name}
+                  className="rounded-2xl border border-orange-100 bg-[#fffaf6] p-5"
+                >
+                  <div className="flex items-center">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {integration.name}
+                    </h3>
+                    <div className="h-8">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={integration.logo}
+                        alt={integration.name}
+                        className="max-h-8 max-w-[96px] object-contain"
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-gray-500">
+                    {integration.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <section id="como-funciona" className="relative px-6 py-24 sm:py-32 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">

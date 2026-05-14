@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 60;
+export const CAMPAIGNS_PAGE_LIMIT = 12;
 
 const fallbackImage =
   "https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1200&q=80";
@@ -33,10 +34,17 @@ function getCampaignUrl(storeSlug: string | null | undefined, slug: string) {
 }
 
 const getActiveCampaigns = unstable_cache(
-  async () =>
-    prisma.campaign.findMany({
-      where: { isActive: true },
+  async () => {
+    const now = new Date();
+
+    return prisma.campaign.findMany({
+      where: {
+        isActive: true,
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+        AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
+      },
       orderBy: { createdAt: "desc" },
+      take: CAMPAIGNS_PAGE_LIMIT + 1,
       include: {
         seller: {
           select: {
@@ -46,12 +54,22 @@ const getActiveCampaigns = unstable_cache(
           },
         },
         products: {
-          include: {
-            product: true,
+          select: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                isActive: true,
+                commissionValue: true,
+                imageUrls: true,
+              },
+            },
           },
         },
       },
-    }),
+    });
+  },
   ["active-campaigns"],
   { revalidate: 60, tags: ["campaigns", "products"] }
 );
@@ -63,8 +81,10 @@ export default async function CampaignsPage() {
   const showPublicCampaignInfo = !showAffiliateHighlights;
 
   const campaigns = await getActiveCampaigns();
+  const hasMoreCampaigns = campaigns.length > CAMPAIGNS_PAGE_LIMIT;
 
   const campaignsWithMetrics = campaigns
+    .slice(0, CAMPAIGNS_PAGE_LIMIT)
     .map((campaign) => {
       const activeProducts = campaign.products
         .map((item) => item.product)
@@ -313,6 +333,8 @@ export default async function CampaignsPage() {
             campaigns={campaignListItems}
             emptyStateHref={emptyStateHref}
             emptyStateLabel={emptyStateLabel}
+            pageSize={CAMPAIGNS_PAGE_LIMIT}
+            hasMoreInitial={hasMoreCampaigns}
           />
         </main>
       </div>

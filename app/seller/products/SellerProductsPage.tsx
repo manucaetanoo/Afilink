@@ -22,14 +22,41 @@ type SellerProduct = {
 
 export default function SellerProductsClient() {
   const [products, setProducts] = useState<SellerProduct[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const loadProducts = useCallback(() => {
     fetch("/api/seller/products", { cache: "no-store" })
       .then((res) => res.json())
-      .then((data) => setProducts(Array.isArray(data.products) ? data.products : []));
+      .then((data) => {
+        setProducts(Array.isArray(data.products) ? data.products : []);
+        setHasMore(Boolean(data.hasMore));
+      });
   }, []);
+
+  async function loadMoreProducts() {
+    setLoadingMore(true);
+
+    try {
+      const params = new URLSearchParams({
+        skip: String(products.length),
+        take: "100",
+      });
+      const res = await fetch(`/api/seller/products?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !Array.isArray(data?.products)) return;
+
+      setProducts((current) => [...current, ...data.products]);
+      setHasMore(Boolean(data.hasMore));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => {
     loadProducts();
@@ -107,7 +134,7 @@ export default function SellerProductsClient() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <Navbar />
-      <div className="flex min-h-screen pt-16">
+      <div className="flex min-h-[calc(100vh-4rem)] pt-16">
         <Sidebar />
 
         <main className="min-w-0 flex-1">
@@ -132,6 +159,19 @@ export default function SellerProductsClient() {
                 />
               ))}
             </div>
+
+            {hasMore && (
+              <div className="mt-8 flex justify-center">
+                <button
+                  type="button"
+                  onClick={loadMoreProducts}
+                  disabled={loadingMore}
+                  className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loadingMore ? "Cargando..." : "Cargar mas productos"}
+                </button>
+              </div>
+            )}
           </div>
         </main>
       </div>

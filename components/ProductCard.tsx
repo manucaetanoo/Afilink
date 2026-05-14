@@ -1,9 +1,18 @@
 import Link from "next/link";
 import Image from "next/image";
-import type { Product } from "@prisma/client";
+
+export type ProductCardProduct = {
+  id: string;
+  name: string;
+  desc: string | null;
+  price: number;
+  stock: number;
+  commissionValue: number;
+  imageUrls: string[];
+};
 
 type ProductCardProps = {
-  product: Product;
+  product: ProductCardProduct;
   showAffiliateHighlights?: boolean;
 };
 
@@ -15,11 +24,11 @@ const formatPrice = (amount: number) =>
     maximumFractionDigits: 0,
   }).format(amount);
 
-const getCommissionLabel = (product: Product) => {
+const getCommissionLabel = (product: ProductCardProduct) => {
   return `${product.commissionValue}%`;
 };
 
-const getCommissionEarning = (product: Product) => {
+const getCommissionEarning = (product: ProductCardProduct) => {
   return Math.round((product.price * product.commissionValue) / 100);
 };
 
@@ -28,6 +37,7 @@ export default function ProductCard({
   showAffiliateHighlights = false,
 }: ProductCardProps) {
   const imageUrl = product.imageUrls?.[0] ?? null;
+  const isInlineImage = imageUrl?.startsWith("data:") ?? false;
   const hasCommission =
     showAffiliateHighlights &&
     typeof product.commissionValue === "number" &&
@@ -62,7 +72,14 @@ export default function ProductCard({
         )}
 
         <div className="relative aspect-[4/3.35] w-full overflow-hidden bg-slate-100 sm:aspect-[4/4.6]">
-          {imageUrl ? (
+          {imageUrl && isInlineImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt={product.name || "Producto"}
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105 group-hover:opacity-90"
+            />
+          ) : imageUrl ? (
             <Image
               src={imageUrl}
               alt={product.name || "Producto"}

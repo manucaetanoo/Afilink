@@ -15,18 +15,49 @@ const getCachedSellerStore = unstable_cache(
   async (storeSlug: string) =>
     prisma.user.findUnique({
       where: { storeSlug },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+        role: true,
+        storeSlug: true,
         products: {
           where: { isActive: true },
           orderBy: { createdAt: "desc" },
+          take: 24,
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            commissionValue: true,
+            commissionType: true,
+            imageUrls: true,
+          },
         },
         campaigns: {
           where: { isActive: true },
           orderBy: { createdAt: "desc" },
-          include: {
+          take: 12,
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            description: true,
+            isActive: true,
             products: {
-              include: {
-                product: true,
+              select: {
+                product: {
+                  select: {
+                    id: true,
+                    name: true,
+                    price: true,
+                    commissionValue: true,
+                    commissionType: true,
+                    imageUrls: true,
+                    isActive: true,
+                  },
+                },
               },
             },
           },

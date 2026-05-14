@@ -15,8 +15,24 @@ function slugify(text: string) {
     .replace(/-+/g, "-");
 }
 
-export async function GET() {
+const SELLER_CAMPAIGNS_LIMIT = 50;
+const MAX_SELLER_CAMPAIGNS_TAKE = 100;
+
+function getPaginationValue(value: string | null, fallback: number, max: number) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) return fallback;
+  return Math.min(parsed, max);
+}
+
+export async function GET(req: Request) {
   try {
+    const url = new URL(req.url);
+    const skip = getPaginationValue(url.searchParams.get("skip"), 0, 10_000);
+    const take = getPaginationValue(
+      url.searchParams.get("take"),
+      SELLER_CAMPAIGNS_LIMIT,
+      MAX_SELLER_CAMPAIGNS_TAKE
+    );
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
@@ -31,19 +47,27 @@ export async function GET() {
       where: {
         sellerId: session.user.id,
       },
-      include: {
-        products: {
-          include: {
-            product: true,
-          },
-        },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        isActive: true,
+        startsAt: true,
+        endsAt: true,
+        _count: { select: { products: true } },
       },
       orderBy: {
         createdAt: "desc",
       },
+      skip,
+      take: take + 1,
     });
 
-    return NextResponse.json({ campaigns });
+    return NextResponse.json({
+      campaigns: campaigns.slice(0, take),
+      hasMore: campaigns.length > take,
+    });
   } catch (error) {
     console.error("GET /api/seller/campaigns error:", error);
     return NextResponse.json(

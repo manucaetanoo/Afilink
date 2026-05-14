@@ -128,6 +128,7 @@ model Product {
   @@index([isActive])
   @@index([stock])
   @@index([sellerId, isActive])
+  @@index([isActive, commissionValue, createdAt], map: "idx_product_active_commission_created")
 }
 
 model Campaign {
@@ -159,6 +160,8 @@ model Campaign {
   @@index([sellerId, isActive])
   @@index([startsAt])
   @@index([endsAt])
+  @@index([isActive, createdAt], map: "idx_campaign_active_created")
+  @@index([isActive, startsAt, endsAt], map: "idx_campaign_active_window")
 }
 
 model CampaignProduct {
@@ -392,6 +395,8 @@ model Settlement {
   @@index([fulfillmentStatus])
   @@index([sellerId, status])
   @@index([orderId])
+  @@index([sellerId, createdAt], map: "idx_settlement_seller_created")
+  @@index([sellerId, status, fulfillmentStatus], map: "idx_settlement_seller_status_fulfillment")
 }
 
 model OrderItem {

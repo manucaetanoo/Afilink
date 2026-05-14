@@ -47,11 +47,35 @@ const getActiveCampaign = unstable_cache(
         },
         isActive: true,
       },
-      include: {
-        seller: true,
+      select: {
+        id: true,
+        sellerId: true,
+        title: true,
+        slug: true,
+        description: true,
+        bannerUrl: true,
+        isActive: true,
+        seller: {
+          select: {
+            id: true,
+            name: true,
+            storeSlug: true,
+          },
+        },
         products: {
-          include: {
-            product: true,
+          select: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                desc: true,
+                imageUrls: true,
+                stock: true,
+                commissionValue: true,
+                commissionType: true,
+              },
+            },
           },
         },
       },

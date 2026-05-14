@@ -2,6 +2,45 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 
+const MAX_PRODUCTS_TAKE = 80;
+
+function getPaginationValue(value: string | null, fallback: number, max: number) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) return fallback;
+  return Math.min(parsed, max);
+}
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const skip = getPaginationValue(url.searchParams.get("skip"), 0, 10_000);
+  const take = getPaginationValue(url.searchParams.get("take"), 40, MAX_PRODUCTS_TAKE);
+
+  const products = await prisma.product.findMany({
+    where: { isActive: true },
+    orderBy: [{ commissionValue: "desc" }, { createdAt: "desc" }],
+    skip,
+    take: take + 1,
+    select: {
+      id: true,
+      name: true,
+      desc: true,
+      price: true,
+      stock: true,
+      commissionValue: true,
+      imageUrls: true,
+    },
+  });
+
+  return NextResponse.json({
+    ok: true,
+    hasMore: products.length > take,
+    products: products.slice(0, take).map((product) => ({
+      ...product,
+      imageUrls: product.imageUrls.slice(0, 1),
+    })),
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();

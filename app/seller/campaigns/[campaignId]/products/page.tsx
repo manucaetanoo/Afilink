@@ -20,9 +20,26 @@ export default async function SellerCampaignProductsPage({ params }: PageProps) 
 
   const campaign = await prisma.campaign.findFirst({
     where: { id: campaignId, sellerId: session.user.id },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      isActive: true,
       products: {
-        include: { product: true },
+        select: {
+          productId: true,
+          product: {
+            select: {
+              id: true,
+              name: true,
+              desc: true,
+              price: true,
+              imageUrls: true,
+              isActive: true,
+            },
+          },
+        },
         orderBy: { createdAt: "desc" },
       },
     },
@@ -33,6 +50,15 @@ export default async function SellerCampaignProductsPage({ params }: PageProps) 
   const sellerProducts = await prisma.product.findMany({
     where: { sellerId: session.user.id, isActive: true },
     orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      name: true,
+      desc: true,
+      price: true,
+      imageUrls: true,
+      isActive: true,
+    },
   });
 
   const linkedProductIds = new Set(campaign.products.map((item) => item.productId));
@@ -43,7 +69,7 @@ export default async function SellerCampaignProductsPage({ params }: PageProps) 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <Navbar />
-      <div className="flex min-h-screen pt-16">
+      <div className="flex min-h-[calc(100vh-4rem)] pt-16">
         <Sidebar />
         <main className="min-w-0 flex-1">
           <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">

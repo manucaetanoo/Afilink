@@ -52,7 +52,7 @@ export default async function EditProductPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <Navbar />
-      <div className="flex min-h-screen pt-16">
+      <div className="flex min-h-[calc(100vh-4rem)] pt-16">
         <Sidebar />
         <main className="min-w-0 flex-1">
           <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">

@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { requireUser, requireRole } from "@/lib/auth";
 
 function isValidEmail(email) {
   if (typeof email !== "string") return false;
@@ -35,9 +36,15 @@ export async function POST(req) {
     }
 
     const roleNorm = role ?? "AFFILIATE";
+    if (roleNorm === "ADMIN") {
+      return NextResponse.json(
+        { error: "No podés asignarte el rol ADMIN" },
+        { status: 403 }
+      );
+    }
     if (!isValidRole(roleNorm)) {
       return NextResponse.json(
-        { error: "Role inválido. Usá ADMIN, SELLER o AFFILIATE" },
+        { error: "Role inválido. Usá SELLER o AFFILIATE" },
         { status: 400 }
       );
     }
@@ -49,15 +56,12 @@ export async function POST(req) {
 
     return NextResponse.json(user, { status: 201 });
   } catch (e) {
-    // Duplicado (unique email)
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return NextResponse.json(
         { error: "Ya existe un usuario con ese email" },
         { status: 409 }
       );
     }
-
-    // No filtres detalles internos al cliente (lo logueás en server si querés)
     console.error(e);
     return NextResponse.json({ error: "Error interno" }, { status: 500 });
   }
@@ -66,6 +70,9 @@ export async function POST(req) {
 
 export async function GET(req) {
   try {
+    const user = await requireUser();
+    requireRole(user, ["ADMIN"]);
+
     const { searchParams } = new URL(req.url);
 
     const q = (searchParams.get("q") ?? "").trim().toLowerCase();
@@ -103,7 +110,9 @@ export async function GET(req) {
       { status: 200 }
     );
   } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    const msg = e instanceof Error ? e.message : "ERROR";
+    const status = msg === "UNAUTHORIZED" ? 401 : msg === "FORBIDDEN" ? 403 : 500;
+    if (status === 500) console.error(e);
+    return NextResponse.json({ error: msg }, { status });
   }
 }

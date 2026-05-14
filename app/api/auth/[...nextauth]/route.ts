@@ -87,7 +87,10 @@ export const authOptions: NextAuthOptions = {
 
         token.authCheckedAt = Date.now();
 
-        if (!dbUser?.isActive) return token;
+        if (!dbUser?.isActive) {
+          token.isActive = false;
+          return token;
+        }
 
         token.role = dbUser.role;
         token.email = dbUser.email;
@@ -102,6 +105,7 @@ export const authOptions: NextAuthOptions = {
     if (session.user.name !== undefined) token.name = session.user.name;
     if (session.user.image !== undefined) token.picture = session.user.image;
     if (session.user.email !== undefined) token.email = session.user.email;
+    if (session.user.storeSlug !== undefined) token.storeSlug = session.user.storeSlug;
   }
 
 
