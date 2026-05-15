@@ -610,7 +610,7 @@ export default function NewProductPage() {
                                 id="price"
                                 name="price"
                                 type="number"
-                                min="0"
+                                min="50"
                                 step="1"
                                 value={priceValue}
                                 onChange={(e) => setPriceValue(e.target.value)}

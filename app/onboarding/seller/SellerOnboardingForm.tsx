@@ -152,7 +152,6 @@ export default function SellerOnboardingForm() {
       }
 
       setMsg("Empresa guardada");
-      router.refresh();
       setCompletedStoreSlug(data?.user?.storeSlug ?? form.storeSlug);
     } catch (err: unknown) {
       setMsg(getErrorMessage(err));

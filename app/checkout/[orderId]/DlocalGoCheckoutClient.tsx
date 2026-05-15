@@ -64,6 +64,8 @@ type Props = {
 
 type DlocalField = {
   mount: (element: HTMLElement | null) => void;
+  unmount?: () => void;
+  destroy?: () => void;
 };
 
 type DlocalInstallment = {
@@ -158,6 +160,19 @@ export default function DlocalGoCheckoutClient({
   const [documentType, setDocumentType] = useState("CI");
   const [documentNumber, setDocumentNumber] = useState("");
 
+  const resetCardSession = (deliveryConfirmedValue = false) => {
+    cardFieldRef.current?.unmount?.();
+    cardFieldRef.current?.destroy?.();
+    cardContainerRef.current?.replaceChildren();
+    cardFieldRef.current = null;
+    initializedTokenRef.current = null;
+    setCheckoutToken(null);
+    setCardReady(false);
+    setInstallments([]);
+    setInstallmentsId("");
+    setDeliveryConfirmed(deliveryConfirmedValue);
+  };
+
   useEffect(() => {
     if (!sdkReady || !checkoutToken || initializedTokenRef.current === checkoutToken) {
       return;
@@ -186,6 +201,7 @@ export default function DlocalGoCheckoutClient({
           },
         });
 
+        cardContainerRef.current?.replaceChildren();
         cardField.mount(cardContainerRef.current);
         cardFieldRef.current = cardField;
         initializedTokenRef.current = checkoutToken;
@@ -208,11 +224,7 @@ export default function DlocalGoCheckoutClient({
 
   const setShippingField = (field: keyof ShippingData, value: string) => {
     setShipping((current) => ({ ...current, [field]: value }));
-    setDeliveryConfirmed(false);
-    setCheckoutToken(null);
-    setCardReady(false);
-    cardFieldRef.current = null;
-    initializedTokenRef.current = null;
+    resetCardSession(false);
   };
 
   const validateShipping = () => {
@@ -247,6 +259,7 @@ export default function DlocalGoCheckoutClient({
 
     setLoading(true);
     setError(null);
+    resetCardSession(false);
 
     try {
       const response = await fetch("/api/payments/dlocalgo/process", {
@@ -357,7 +370,11 @@ export default function DlocalGoCheckoutClient({
       setPaymentStatus(String(data.payment?.status ?? "PENDING"));
       setError(data.payment?.message ?? "El pago quedo pendiente de confirmacion.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo procesar el pago");
+      resetCardSession(false);
+      const message = err instanceof Error ? err.message : "No se pudo procesar el pago";
+      setError(
+        `${message} Revisa los datos y volve a presionar Continuar al pago para generar un nuevo intento.`
+      );
     } finally {
       setLoading(false);
     }
