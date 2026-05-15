@@ -79,6 +79,15 @@ export async function PATCH(req: Request, context: Context) {
     );
   }
 
+  const owned = await prisma.campaign.findFirst({
+    where: { id: campaignId, sellerId: session.user.id },
+    select: { id: true },
+  });
+
+  if (!owned) {
+    return NextResponse.json({ error: "No encontrada" }, { status: 404 });
+  }
+
   const campaign = await prisma.campaign.update({
     where: { id: campaignId },
     data: {

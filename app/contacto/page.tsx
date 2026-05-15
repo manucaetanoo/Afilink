@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 const supportEmail =
-  process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "soporte@afilink.com";
+  process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "infoafilink@gmail.com";
 
 export default function ContactPage() {
   return (

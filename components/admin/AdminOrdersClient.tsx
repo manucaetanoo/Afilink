@@ -17,6 +17,7 @@ type FulfillmentStatus =
   | "PENDING"
   | "PREPARING"
   | "SHIPPED"
+  | "DELIVERY_REQUESTED"
   | "DELIVERED"
   | "CANCELED";
 
@@ -88,6 +89,10 @@ function statusClasses(status: string) {
     return "border-emerald-200 bg-emerald-50 text-emerald-700";
   }
 
+  if (status === "DELIVERY_REQUESTED") {
+    return "border-violet-200 bg-violet-50 text-violet-700";
+  }
+
   if (status === "CANCELED") {
     return "border-rose-200 bg-rose-50 text-rose-700";
   }
@@ -100,6 +105,7 @@ function statusLabel(status: string) {
     APPROVED: "Aprobada",
     AVAILABLE: "Disponible",
     CANCELED: "Cancelada",
+    DELIVERY_REQUESTED: "Entregado por revisar",
     DELIVERED: "Entregada",
     PAID: "Pagada",
     PENDING: "Pendiente",

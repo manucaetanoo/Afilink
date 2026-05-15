@@ -9,7 +9,7 @@ import SellerOrdersClient, {
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
-export default async function SellerOrdersPage() {
+export default async function SettledSellerOrdersPage() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
@@ -23,14 +23,12 @@ export default async function SellerOrdersPage() {
   const settlements = await prisma.settlement.findMany({
     where: {
       sellerId: session.user.id,
-      status: {
-        not: "PAID",
-      },
+      status: "PAID",
       order: {
         status: "PAID",
       },
     },
-    orderBy: [{ fulfillmentStatus: "asc" }, { createdAt: "desc" }],
+    orderBy: { createdAt: "desc" },
     select: {
       id: true,
       grossAmount: true,
@@ -110,32 +108,30 @@ export default async function SellerOrdersPage() {
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-600">
-                  Pedidos y envios
+                  Historial
                 </p>
                 <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                  Logistica de tus ventas
+                  Ordenes ya liquidadas
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                  Prepara pedidos y carga tracking o evidencia de envio propio. La
-                  plataforma confirma la entrega y libera el monto a liquidar.
+                  Consulta pedidos cuyo pago ya fue liquidado.
                 </p>
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-                {orders.length} pedidos pagos
-              </div>
+              <Link
+                href="/seller/orders"
+                className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100"
+              >
+                Volver a pedidos activos
+              </Link>
             </div>
 
             <section className="mt-8">
-              <SellerOrdersClient orders={orders} showPaidSection={false} />
-              <div className="mt-8 flex justify-center">
-                <Link
-                  href="/seller/orders/settled"
-                  className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-                >
-                  Ver ordenes ya liquidadas
-                </Link>
-              </div>
+              <SellerOrdersClient
+                orders={orders}
+                showActiveSection={false}
+                showPaidSection
+              />
             </section>
           </div>
         </main>

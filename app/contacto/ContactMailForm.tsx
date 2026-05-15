@@ -13,23 +13,37 @@ export default function ContactMailForm({ supportEmail }: ContactMailFormProps) 
   const [subject, setSubject] = useState("");
   const [kind, setKind] = useState("Consulta general");
   const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setStatus(null);
+    setSending(true);
 
-    const body = [
-      `Nombre: ${name || "-"}`,
-      `Email: ${email || "-"}`,
-      `Tipo de consulta: ${kind}`,
-      "",
-      message,
-    ].join("\n");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, subject, kind, message }),
+      });
+      const data = await res.json().catch(() => null);
 
-    const mailto = new URL(`mailto:${supportEmail}`);
-    mailto.searchParams.set("subject", subject || kind);
-    mailto.searchParams.set("body", body);
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "No se pudo enviar el mensaje");
+      }
 
-    window.location.href = mailto.toString();
+      setName("");
+      setEmail("");
+      setSubject("");
+      setKind("Consulta general");
+      setMessage("");
+      setStatus("Mensaje enviado. Te vamos a responder por mail.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "No se pudo enviar el mensaje");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -45,6 +59,12 @@ export default function ContactMailForm({ supportEmail }: ContactMailFormProps) 
       </div>
 
       <form onSubmit={onSubmit} className="space-y-5">
+        {status && (
+          <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
+            {status}
+          </div>
+        )}
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="name" className="text-sm font-medium text-slate-700">
@@ -124,10 +144,11 @@ export default function ContactMailForm({ supportEmail }: ContactMailFormProps) 
 
         <button
           type="submit"
-          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
+          disabled={sending}
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
           <FiSend className="h-4 w-4" />
-          Enviar por mail
+          {sending ? "Enviando..." : "Enviar por mail"}
         </button>
       </form>
     </div>

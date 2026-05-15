@@ -23,6 +23,7 @@ type SellerProduct = {
 export default function SellerProductsClient() {
   const [products, setProducts] = useState<SellerProduct[]>([]);
   const [hasMore, setHasMore] = useState(false);
+  const [totalProducts, setTotalProducts] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -32,6 +33,7 @@ export default function SellerProductsClient() {
       .then((res) => res.json())
       .then((data) => {
         setProducts(Array.isArray(data.products) ? data.products : []);
+        setTotalProducts(Number(data.total ?? 0));
         setHasMore(Boolean(data.hasMore));
       });
   }, []);
@@ -52,6 +54,7 @@ export default function SellerProductsClient() {
       if (!res.ok || !Array.isArray(data?.products)) return;
 
       setProducts((current) => [...current, ...data.products]);
+      setTotalProducts(Number(data.total ?? products.length + data.products.length));
       setHasMore(Boolean(data.hasMore));
     } finally {
       setLoadingMore(false);
@@ -108,6 +111,7 @@ export default function SellerProductsClient() {
       }
 
       setProducts((current) => current.filter((item) => item.id !== product.id));
+      setTotalProducts((current) => Math.max(current - 1, 0));
       setMessage("Producto eliminado correctamente");
       await Swal.fire({
         title: "Producto eliminado",
@@ -149,6 +153,10 @@ export default function SellerProductsClient() {
               </div>
             )}
 
+            <p className="mb-4 text-sm text-slate-500">
+              Mostrando {products.length} de {totalProducts} productos
+            </p>
+
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {products.map((product) => (
                 <ItemSeller
@@ -160,7 +168,7 @@ export default function SellerProductsClient() {
               ))}
             </div>
 
-            {hasMore && (
+            {hasMore && products.length < totalProducts && (
               <div className="mt-8 flex justify-center">
                 <button
                   type="button"

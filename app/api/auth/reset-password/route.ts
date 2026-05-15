@@ -14,14 +14,14 @@ export async function POST(req: Request) {
 
   if (!token || !password) {
     return NextResponse.json(
-      { error: "Token y contrasena son obligatorios" },
+      { error: "Token y contraseña son obligatorios" },
       { status: 400 }
     );
   }
 
   if (password.length < 6) {
     return NextResponse.json(
-      { error: "Contrasena muy corta (minimo 6)" },
+      { error: "Contraseña muy corta (mínimo 6)" },
       { status: 400 }
     );
   }
@@ -65,5 +65,5 @@ export async function POST(req: Request) {
     }),
   ]);
 
-  return NextResponse.json({ message: "Contrasena actualizada" });
+  return NextResponse.json({ message: "Contraseña actualizada" });
 }

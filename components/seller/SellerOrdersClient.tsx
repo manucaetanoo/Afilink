@@ -2,7 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Swal from "sweetalert2";
 import {
+  FiCheckCircle,
   FiClock,
   FiExternalLink,
   FiPackage,
@@ -13,6 +15,7 @@ type FulfillmentStatus =
   | "PENDING"
   | "PREPARING"
   | "SHIPPED"
+  | "DELIVERY_REQUESTED"
   | "DELIVERED"
   | "CANCELED";
 
@@ -85,6 +88,7 @@ function formatDate(value: string | null) {
 function statusLabel(status: FulfillmentStatus) {
   const labels: Record<FulfillmentStatus, string> = {
     CANCELED: "Cancelado",
+    DELIVERY_REQUESTED: "Entregado por revisar",
     DELIVERED: "Entregado",
     PENDING: "Pendiente",
     PREPARING: "Preparando",
@@ -108,6 +112,10 @@ function settlementLabel(status: SettlementStatus) {
 function statusClasses(status: FulfillmentStatus | SettlementStatus) {
   if (status === "DELIVERED" || status === "AVAILABLE" || status === "PAID") {
     return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (status === "DELIVERY_REQUESTED") {
+    return "border-violet-200 bg-violet-50 text-violet-700";
   }
 
   if (status === "SHIPPED" || status === "PREPARING") {
@@ -139,13 +147,19 @@ function shippingAddress(order: SellerOrder["order"]) {
 export default function SellerOrdersClient({
   orders,
   canConfirmDelivery = false,
+  showActiveSection = true,
+  showPaidSection = true,
 }: {
   orders: SellerOrder[];
   canConfirmDelivery?: boolean;
+  showActiveSection?: boolean;
+  showPaidSection?: boolean;
 }) {
   const router = useRouter();
   const [savingId, setSavingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const activeOrders = orders.filter((order) => order.status !== "PAID");
+  const paidOrders = orders.filter((order) => order.status === "PAID");
 
   async function updateFulfillment(
     settlement: SellerOrder,
@@ -183,22 +197,36 @@ export default function SellerOrdersClient({
     }
   }
 
-  return (
-    <div className="space-y-4">
-      {message && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {message}
-        </div>
-      )}
+  async function requestDeliveryReview(
+    settlement: SellerOrder,
+    form: HTMLFormElement | null
+  ) {
+    const result = await Swal.fire({
+      title: "Estas seguro que el pedido fue entregado?",
+      text: "La plataforma lo va a revisar antes de liberar el pago.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Si, solicitar revision",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#0f172a",
+      cancelButtonColor: "#64748b",
+      reverseButtons: true,
+    });
 
-      {orders.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm">
-          Todavia no hay pedidos pagos para gestionar.
-        </div>
-      ) : (
-        orders.map((settlement) => {
+    if (!result.isConfirmed) return;
+
+    await updateFulfillment(
+      settlement,
+      new FormData(form ?? undefined),
+      "DELIVERY_REQUESTED"
+    );
+  }
+
+  function renderOrderCard(settlement: SellerOrder) {
           const lockedForSeller =
-            !canConfirmDelivery && settlement.fulfillmentStatus === "DELIVERED";
+            !canConfirmDelivery &&
+            (settlement.fulfillmentStatus === "DELIVERED" ||
+              settlement.fulfillmentStatus === "DELIVERY_REQUESTED");
 
           return (
             <form
@@ -406,7 +434,8 @@ export default function SellerOrdersClient({
                     type="button"
                     disabled={
                       savingId === settlement.id ||
-                      settlement.fulfillmentStatus === "DELIVERED"
+                      settlement.fulfillmentStatus === "DELIVERED" ||
+                      settlement.fulfillmentStatus === "DELIVERY_REQUESTED"
                     }
                     onClick={(event) =>
                       updateFulfillment(
@@ -439,12 +468,104 @@ export default function SellerOrdersClient({
                       Confirmar entrega
                     </button>
                   )}
+                  {!canConfirmDelivery && (
+                    <button
+                      type="button"
+                      disabled={
+                        savingId === settlement.id ||
+                        settlement.fulfillmentStatus === "DELIVERY_REQUESTED" ||
+                        settlement.fulfillmentStatus === "DELIVERED" ||
+                        settlement.fulfillmentStatus === "CANCELED"
+                      }
+                      onClick={(event) =>
+                        requestDeliveryReview(
+                          settlement,
+                          event.currentTarget.form
+                        )
+                      }
+                      className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      <FiCheckCircle />
+                      Cliente recibio la compra
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           </form>
           );
-        })
+  }
+
+  return (
+    <div className="space-y-8">
+      {message && (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {message}
+        </div>
+      )}
+
+      {orders.length === 0 ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm">
+          Todavia no hay pedidos pagos para gestionar.
+        </div>
+      ) : (
+        <>
+          {showActiveSection && (
+          <section>
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">
+                  Pedidos en gestion
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Ordenes pendientes de entrega, revision o liquidacion.
+                </p>
+              </div>
+              <span className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                {activeOrders.length}
+              </span>
+            </div>
+
+            {activeOrders.length === 0 ? (
+              <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+                No hay pedidos pendientes de gestion.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {activeOrders.map((settlement) => renderOrderCard(settlement))}
+              </div>
+            )}
+          </section>
+          )}
+
+          {showPaidSection && (
+          <section>
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">
+                  Ordenes ya liquidadas
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Historial de pedidos cuyo pago ya fue liquidado.
+                </p>
+              </div>
+              <span className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                {paidOrders.length}
+              </span>
+            </div>
+
+            {paidOrders.length === 0 ? (
+              <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+                Todavia no hay ordenes liquidadas.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {paidOrders.map((settlement) => renderOrderCard(settlement))}
+              </div>
+            )}
+          </section>
+          )}
+        </>
       )}
     </div>
   );

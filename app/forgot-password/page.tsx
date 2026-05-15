@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
           className="mx-auto h-10 w-auto"
         />
         <h2 className="mt-10 text-center text-2xl/9 font-bold tracking-tight text-gray-900">
-          Recuperar contrasena
+          Recuperar contraseña
         </h2>
       </div>
 
@@ -63,7 +63,7 @@ export default function ForgotPasswordPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-orange-600 sm:text-sm/6"
+                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-[#F78211] sm:text-sm/6"
               />
             </div>
           </div>
@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
           {devResetUrl && (
             <p className="break-words text-xs text-gray-500">
               Link de prueba local:{" "}
-              <Link href={devResetUrl} className="text-orange-600 hover:text-orange-500">
+              <Link href={devResetUrl} className="text-[#F78211] hover:text-[#F78211]">
                 {devResetUrl}
               </Link>
             </p>
@@ -82,14 +82,14 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full justify-center rounded-md bg-orange-600 px-3 py-1.5 text-sm/6 font-semibold text-white shadow-xs hover:bg-orange-500 disabled:opacity-60"
+            className="flex w-full justify-center rounded-md bg-[#F78211] px-3 py-1.5 text-sm/6 font-semibold text-white shadow-xs hover:bg-orange-500 disabled:opacity-60"
           >
             {loading ? "Enviando..." : "Enviar instrucciones"}
           </button>
         </form>
 
         <p className="mt-10 text-center text-sm/6 text-gray-500">
-          <Link href="/login" className="font-semibold text-orange-600 hover:text-orange-500">
+          <Link href="/login" className="font-semibold text-[#F78211] hover:text-orange-500">
             Volver a iniciar sesion
           </Link>
         </p>

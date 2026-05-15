@@ -18,6 +18,7 @@ const SELLER_PRODUCTS_LIMIT = 100;
 const MAX_SELLER_PRODUCTS_TAKE = 100;
 
 function getPaginationValue(value: string | null, fallback: number, max: number) {
+  if (value === null || value.trim() === "") return fallback;
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 0) return fallback;
   return Math.min(parsed, max);
@@ -52,33 +53,38 @@ export async function GET(req: Request) {
     const user = await requireUser();
     requireRole(user, ["SELLER", "ADMIN"]);
 
-    const products = await prisma.product.findMany({
-      where: user.role === "ADMIN" ? {} : { sellerId: user.id },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: take + 1,
-      select: {
-        id: true,
-        name: true,
-        desc: true,
-        price: true,
-        stock: true,
-        category: true,
-        sizes: true,
-        createdAt: true,
-        isActive: true,
-        commissionValue: true,
-        commissionType: true,
-        platformCommissionValue: true,
-        platformCommissionType: true,
-        imageUrls: true,
-      },
-    });
+    const where = user.role === "ADMIN" ? {} : { sellerId: user.id };
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+        select: {
+          id: true,
+          name: true,
+          desc: true,
+          price: true,
+          stock: true,
+          category: true,
+          sizes: true,
+          createdAt: true,
+          isActive: true,
+          commissionValue: true,
+          commissionType: true,
+          platformCommissionValue: true,
+          platformCommissionType: true,
+          imageUrls: true,
+        },
+      }),
+      prisma.product.count({ where }),
+    ]);
 
     return NextResponse.json({
       ok: true,
-      hasMore: products.length > take,
-      products: products.slice(0, take),
+      total,
+      hasMore: skip + products.length < total,
+      products,
     });
   } catch (e: unknown) {
     const msg = getErrorMessage(e);

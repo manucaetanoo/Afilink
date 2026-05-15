@@ -90,15 +90,15 @@ export default function SellerCampaignsList({
   if (items.length === 0) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-        <h2 className="text-xl font-semibold">Todavia no tenes campanas</h2>
+        <h2 className="text-xl font-semibold">Todavia no tenes campañas</h2>
         <p className="mt-2 text-sm text-slate-500">
-          Crea tu primera campana para destacar productos o promociones.
+          Crea tu primera campaña para destacar productos o promociones.
         </p>
         <Link
           href="/seller/campaigns/new"
           className="mt-6 inline-flex rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600"
         >
-          Crear campana
+          Crear campaña
         </Link>
       </div>
     );
@@ -174,7 +174,7 @@ export default function SellerCampaignsList({
             disabled={loadingMore}
             className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loadingMore ? "Cargando..." : "Cargar mas campanas"}
+            {loadingMore ? "Cargando..." : "Cargar mas campañas"}
           </button>
         </div>
       )}

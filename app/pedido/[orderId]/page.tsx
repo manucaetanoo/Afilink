@@ -17,6 +17,7 @@ type FulfillmentStatus =
   | "PENDING"
   | "PREPARING"
   | "SHIPPED"
+  | "DELIVERY_REQUESTED"
   | "DELIVERED"
   | "CANCELED";
 
@@ -24,6 +25,7 @@ type OrderStatus = "PENDING" | "PAID" | "CANCELED";
 
 const fulfillmentLabels: Record<FulfillmentStatus, string> = {
   CANCELED: "Cancelado",
+  DELIVERY_REQUESTED: "Entregado en revision",
   DELIVERED: "Entregado",
   PENDING: "Pendiente",
   PREPARING: "Preparando",
@@ -85,7 +87,11 @@ function money(value: number) {
 function getOverallProgress(orderStatus: OrderStatus, statuses: FulfillmentStatus[]) {
   if (orderStatus === "CANCELED" || statuses.includes("CANCELED")) return "CANCELED";
   if (orderStatus === "PENDING") return "PENDING";
-  if (statuses.includes("SHIPPED") || statuses.includes("DELIVERED")) return "SHIPPED";
+  if (
+    statuses.includes("SHIPPED") ||
+    statuses.includes("DELIVERY_REQUESTED") ||
+    statuses.includes("DELIVERED")
+  ) return "SHIPPED";
   if (statuses.includes("PREPARING")) return "PREPARING";
   return "PAID";
 }

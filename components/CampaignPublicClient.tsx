@@ -57,7 +57,7 @@ export function CampaignSummaryPanel({
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-900">{products.length}</p>
           <p className="mt-1 text-sm text-slate-600">
-            disponibles en esta campana
+            disponibles en esta campaña
           </p>
         </div>
 
@@ -163,11 +163,11 @@ export function SellerCampaignPanel({
           </p>
           <h3 className="mt-3 text-2xl font-bold text-slate-900">
             {isCampaignOwner
-              ? "Esta es la vista publica de tu campana"
-              : "Estas viendo una campana desde una cuenta de empresa"}
+              ? "Esta es la vista publica de tu campaña"
+              : "Estas viendo una campaña desde una cuenta de empresa"}
           </h3>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Verifica que el catalogo, el stock y la imagen de la campana esten
+            Verifica que el catalogo, el stock y la imagen de la campaña esten
             listos antes de enviarla a afiliados o clientes. Las comisiones y el link
             de afiliado quedan reservados para usuarios con rol afiliado.
           </p>
@@ -194,7 +194,7 @@ export function SellerCampaignPanel({
             href={sellerCampaignHref}
             className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600"
           >
-            {isCampaignOwner ? "Gestionar campana" : "Ir a mis campanas"}
+            {isCampaignOwner ? "Gestionar campaña" : "Ir a mis campañas"}
           </Link>
         </div>
       </div>

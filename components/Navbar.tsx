@@ -141,7 +141,7 @@ export default function Navbar() {
         { href: "/dashboard/seller", label: "Dashboard" },
         { href: "/seller/products", label: "Mis productos" },
         { href: "/seller/products/new", label: "Crear producto" },
-        { href: "/seller/campaigns", label: "Campanas" },
+        { href: "/seller/campaigns", label: "Campañas" },
         { href: "/seller/orders", label: "Ordenes" },
       ]
       : role === "ADMIN"

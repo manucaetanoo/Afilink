@@ -79,6 +79,10 @@ function statusClasses(status: string) {
     return "border-sky-200 bg-sky-50 text-sky-700";
   }
 
+  if (status === "DELIVERY_REQUESTED") {
+    return "border-violet-200 bg-violet-50 text-violet-700";
+  }
+
   if (status === "CANCELED") {
     return "border-rose-200 bg-rose-50 text-rose-700";
   }
@@ -90,6 +94,7 @@ function statusLabel(status: string) {
   const labels: Record<string, string> = {
     AVAILABLE: "Disponible",
     CANCELED: "Cancelada",
+    DELIVERY_REQUESTED: "Entregado por revisar",
     PAID: "Pagada",
     PENDING: "Pendiente",
   };
@@ -100,6 +105,7 @@ function statusLabel(status: string) {
 function fulfillmentLabel(status: string) {
   const labels: Record<string, string> = {
     CANCELED: "Cancelado",
+    DELIVERY_REQUESTED: "Entregado por revisar",
     DELIVERED: "Entregado",
     PENDING: "Pendiente",
     PREPARING: "Preparando",

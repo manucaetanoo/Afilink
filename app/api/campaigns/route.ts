@@ -6,6 +6,7 @@ const fallbackImage =
 const MAX_CAMPAIGNS_TAKE = 30;
 
 function getPaginationValue(value: string | null, fallback: number, max: number) {
+  if (value === null || value.trim() === "") return fallback;
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 0) return fallback;
   return Math.min(parsed, max);

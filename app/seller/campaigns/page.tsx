@@ -59,13 +59,13 @@ export default async function SellerCampaignsPage() {
                   Gestion
                 </p>
                 <h1 className="mt-3 text-3xl font-semibold tracking-tight">
-                  Campanas
+                  Campañas
                 </h1>
                 <p className="mt-2 text-sm font-bold text-black">
-                  Mira tus campanas, edita su contenido y administra productos asociados.
+                  Mira tus campañas, edita su contenido y administra productos asociados.
                 </p>
                 <h6 className="mt-2 text-sm text-slate-600">
-                  Los afiliados que promocionen tu campana recibiran un porcentaje
+                  Los afiliados que promocionen tu campaña recibiran un porcentaje
                   de comision por cada venta realizada de los productos.
                 </h6>
               </div>
@@ -74,7 +74,7 @@ export default async function SellerCampaignsPage() {
                 href="/seller/campaigns/new"
                 className="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
               >
-                Nueva campana
+                Nueva campaña
               </Link>
             </div>
 

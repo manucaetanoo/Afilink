@@ -201,49 +201,6 @@ export default function Home() {
   </div>
 </section>
 
-        <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-          <div className="grid items-center gap-10 rounded-3xl border border-orange-100 bg-white p-6 shadow-sm sm:p-10 lg:grid-cols-[0.9fr_1.1fr]">
-            <div>
-              <p className="text-base font-semibold text-[#F78211]">
-                Integraciones
-              </p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl">
-                Conectá tu tienda sin cargar todo a mano
-              </h2>
-              <p className="mt-4 text-base leading-7 text-gray-500">
-                Afilink permite importar productos desde tiendas Shopify y Fenicio
-                para publicar catalogos mas rapido y empezar a trabajar con
-                afiliados en menos pasos.
-              </p>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              {integrations.map((integration) => (
-                <div
-                  key={integration.name}
-                  className="rounded-2xl border border-orange-100 bg-[#fffaf6] p-5"
-                >
-                  <div className="flex items-center">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {integration.name}
-                    </h3>
-                    <div className="h-8">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={integration.logo}
-                        alt={integration.name}
-                        className="max-h-8 max-w-[96px] object-contain"
-                      />
-                    </div>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-gray-500">
-                    {integration.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
 
         <section id="como-funciona" className="relative px-6 py-24 sm:py-32 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
@@ -302,6 +259,49 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+          <div className="grid items-center gap-10 rounded-3xl bg-white p-6 shadow-sm sm:p-10 lg:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <p className="text-base font-semibold text-[#F78211]">
+                Integraciones
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl">
+                Conectá tu tienda sin cargar todo a mano
+              </h2>
+              <p className="mt-4 text-base leading-7 text-gray-500">
+                Afilink permite importar productos desde tiendas Shopify y Fenicio
+                para publicar catalogos mas rapido y empezar a trabajar con
+                afiliados en menos pasos.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {integrations.map((integration) => (
+                <div
+                  key={integration.name}
+                  className="rounded-2xl border border-orange-100 bg-[#fffaf6] p-5"
+                >
+                  <div className="flex min-h-16 items-center">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {integration.name}
+                    </h3>
+                    <div className="flex h-16 items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={integration.logo}
+                        alt={integration.name}
+                        className="max-h-14 max-w-[140px] object-contain"
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-gray-500">
+                    {integration.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
         <section className="py-24 sm:py-32">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mx-auto max-w-3xl text-center">
@@ -397,11 +397,6 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="border-t border-gray-900/10 py-5">
-    
-        </div>
-      </footer>
     </div>
   );
 }

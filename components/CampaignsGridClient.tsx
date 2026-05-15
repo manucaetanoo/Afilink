@@ -69,14 +69,14 @@ export default function CampaignsGridClient({
   const showAffiliateHighlights = role === "AFFILIATE";
   const showPublicCampaignInfo = !showAffiliateHighlights;
   const gridTitle = showAffiliateHighlights
-    ? "Campanas para empezar hoy"
+    ? "Campañas para empezar hoy"
     : isSellerViewer
-      ? "Campanas publicas para revisar"
+      ? "Campañas publicas para revisar"
       : "Promociones disponibles";
   const gridDescription = showAffiliateHighlights
-    ? "Elegi la campana que mejor encaje con tu audiencia y empeza a promocionar."
+    ? "Elegi la campaña que mejor encaje con tu audiencia y empeza a promocionar."
     : isSellerViewer
-      ? "Revisa el catalogo publico de campanas activas y entra a gestionar las tuyas cuando quieras."
+      ? "Revisa el catalogo publico de campañas activas y entra a gestionar las tuyas cuando quieras."
       : "Elegi una promocion, revisa sus productos y compra desde la tienda.";
   const sortedCampaigns = [...items].sort((a, b) => {
     if (currentSort === "newest") {
@@ -125,7 +125,7 @@ export default function CampaignsGridClient({
       <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-600">
-            Campanas
+            Campañas
           </p>
           <h2 className="mt-2 text-3xl font-bold text-slate-900">{gridTitle}</h2>
           <p className="mt-2 text-slate-600">{gridDescription}</p>
@@ -189,9 +189,9 @@ export default function CampaignsGridClient({
                     {campaign.description ||
                       (showPublicCampaignInfo
                         ? isSellerViewer
-                          ? "Campana activa con productos publicados. Revisa su presentacion publica y usala como referencia para tus promociones."
+                          ? "Campaña activa con productos publicados. Revisa su presentacion publica y usala como referencia para tus promociones."
                           : "Promocion activa con productos disponibles. Entra para ver detalles y comprar desde la tienda."
-                        : "Campana disponible para afiliados. Revisa los productos, la comision por venta y todo lo necesario para empezar a promocionarla.")}
+                        : "Campaña disponible para afiliados. Revisa los productos, la comision por venta y todo lo necesario para empezar a promocionarla.")}
                   </p>
 
                   <div className="mt-4 flex items-center justify-between gap-3 sm:mt-6 sm:gap-4">
@@ -233,7 +233,7 @@ export default function CampaignsGridClient({
                       href={campaignUrl}
                       className="inline-flex items-center text-sm font-semibold text-orange-600 transition hover:text-orange-700"
                     >
-                      Ver campana
+                      Ver campaña
                       <span className="ml-2 transition group-hover:translate-x-1">
                         -&gt;
                       </span>
@@ -253,7 +253,7 @@ export default function CampaignsGridClient({
                 disabled={loadingMore}
                 className="rounded-2xl border border-orange-200 bg-white px-6 py-3 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loadingMore ? "Cargando..." : "Cargar mas campanas"}
+                {loadingMore ? "Cargando..." : "Cargar mas campañas"}
               </button>
             </div>
           )}
@@ -265,7 +265,7 @@ export default function CampaignsGridClient({
               *
             </div>
             <h3 className="mt-6 text-2xl font-bold text-slate-900">
-              No hay campanas activas todavia
+              No hay campañas activas todavia
             </h3>
             <p className="mt-3 text-slate-600">
               Cuando haya promociones activas, vas a poder explorarlas aca.

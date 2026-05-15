@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   FiBarChart2,
+  FiCheckCircle,
   FiChevronLeft,
   FiChevronRight,
   FiCreditCard,
@@ -96,6 +97,11 @@ const menuSeller: Menu = {
         { title: "Mis productos", href: "/seller/products", icon: <FiShoppingBag /> },
         { title: "Campañas", href: "/seller/campaigns", icon: <FiLayers /> },
         { title: "Ordenes", href: "/seller/orders", icon: <FiFileText /> },
+        {
+          title: "Ordenes liquidadas",
+          href: "/seller/orders/settled",
+          icon: <FiCheckCircle />,
+        },
       ],
     },
     {
@@ -256,7 +262,9 @@ export default function Sidebar() {
                 const [targetPath, targetHash] = item.href.split("#");
                 const isSamePath =
                   pathname === targetPath ||
-                  (targetPath !== "/" && pathname.startsWith(targetPath));
+                  (targetPath !== "/" &&
+                    targetPath !== "/seller/orders" &&
+                    pathname.startsWith(targetPath));
                 const active = targetHash
                   ? isSamePath && currentHash === `#${targetHash}`
                   : isSamePath && !currentHash;

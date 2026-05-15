@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CubeIcon,
@@ -83,6 +83,17 @@ export default function NewProductPage() {
       url: URL.createObjectURL(file),
     }));
   }, [imageFiles]);
+
+  useEffect(() => {
+    if (!showShopifyImport && !showFenicioImport) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [showShopifyImport, showFenicioImport]);
 
   const selectedCategory = productCategories.find((item) => item.value === category);
   const suggestedSizes = selectedCategory?.sizes ?? [];
@@ -715,15 +726,18 @@ export default function NewProductPage() {
                 </form>
 
                 {showShopifyImport && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
-                      <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+                  <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-6">
+                    <div className="flex max-h-[82vh] w-full max-w-md flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                      <div className="shrink-0 flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
                         <div>
                           <h2 className="text-lg font-semibold text-slate-950">
                             Importar productos desde Shopify
                           </h2>
                           <p className="mt-1 text-sm text-slate-500">
                             Se crearan productos nuevos con precio, stock, imagenes y descripcion.
+                          </p>
+                          <p className="mt-1 text-sm text-slate-400">
+                            *Se importarán todos los productos de tu cuenta.*
                           </p>
                         </div>
 
@@ -738,7 +752,7 @@ export default function NewProductPage() {
                         </button>
                       </div>
 
-                      <form onSubmit={importFromShopify} className="space-y-5 px-5 py-5">
+                      <form onSubmit={importFromShopify} className="min-h-0 space-y-4 overflow-y-auto px-5 py-4">
                         {canUseDemoImports && (
                           <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                             <input
@@ -773,7 +787,7 @@ export default function NewProductPage() {
                             placeholder="mitienda.myshopify.com"
                             required={!(canUseDemoImports && shopifyDemoMode)}
                             disabled={canUseDemoImports && shopifyDemoMode}
-                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                           />
                         </div>
 
@@ -792,7 +806,7 @@ export default function NewProductPage() {
                             placeholder="shpat_..."
                             required={!(canUseDemoImports && shopifyDemoMode)}
                             disabled={canUseDemoImports && shopifyDemoMode}
-                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                           />
                           <p className="mt-2 text-xs text-slate-500">
                             El token se usa solo para esta importacion y no se guarda.
@@ -804,7 +818,7 @@ export default function NewProductPage() {
                           para evitar duplicados.
                         </div>
 
-                        <div className="border-t border-slate-200 pt-5">
+                        <div className="border-t border-slate-200 pt-4">
                           <div className="mb-3 flex items-center justify-between gap-4">
                             <div>
                               <h3 className="text-sm font-semibold text-slate-900">
@@ -833,7 +847,7 @@ export default function NewProductPage() {
                           <button
                             type="button"
                             onClick={() => setShowShopifyImport(false)}
-                            className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                           >
                             Cancelar
                           </button>
@@ -841,7 +855,7 @@ export default function NewProductPage() {
                           <button
                             type="submit"
                             disabled={importingShopify}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <ArrowDownTrayIcon className="h-4 w-4" />
                             {importingShopify ? "Importando..." : "Importar productos"}
@@ -853,15 +867,18 @@ export default function NewProductPage() {
                 )}
 
                 {showFenicioImport && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
-                      <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+                  <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-6">
+                    <div className="flex max-h-[82vh] w-full max-w-md flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                      <div className="shrink-0 flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
                         <div>
                           <h2 className="text-lg font-semibold text-slate-950">
                             Importar productos desde Fenicio
                           </h2>
                           <p className="mt-1 text-sm text-slate-500">
                             Se leeran los productos publicados en el feed Fenicio del comercio.
+                          </p>
+                            <p className="mt-1 text-sm text-slate-400">
+                            *Se importarán todos los productos de tu pagina.*
                           </p>
                         </div>
 
@@ -876,7 +893,7 @@ export default function NewProductPage() {
                         </button>
                       </div>
 
-                      <form onSubmit={importFromFenicio} className="space-y-5 px-5 py-5">
+                      <form onSubmit={importFromFenicio} className="min-h-0 space-y-4 overflow-y-auto px-5 py-4">
                         {canUseDemoImports && (
                           <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                             <input
@@ -892,6 +909,8 @@ export default function NewProductPage() {
                               <span className="mt-1 block text-xs text-slate-500">
                                 Crea productos demo sin conectar una tienda Fenicio real.
                               </span>
+                              
+                             
                             </span>
                           </label>
                         )}
@@ -911,7 +930,7 @@ export default function NewProductPage() {
                             placeholder="mitienda.com.uy"
                             required={!(canUseDemoImports && fenicioDemoMode)}
                             disabled={canUseDemoImports && fenicioDemoMode}
-                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                           />
                         </div>
 
@@ -930,7 +949,7 @@ export default function NewProductPage() {
                             placeholder="El mismo codigo usado para entrar al administrador"
                             required={!(canUseDemoImports && fenicioDemoMode)}
                             disabled={canUseDemoImports && fenicioDemoMode}
-                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                           />
                         </div>
 
@@ -939,7 +958,7 @@ export default function NewProductPage() {
                           las presentaciones marcadas como disponibles.
                         </div>
 
-                        <div className="border-t border-slate-200 pt-5">
+                        <div className="border-t border-slate-200 pt-4">
                           <div className="mb-3 flex items-center justify-between gap-4">
                             <div>
                               <h3 className="text-sm font-semibold text-slate-900">
@@ -968,7 +987,7 @@ export default function NewProductPage() {
                           <button
                             type="button"
                             onClick={() => setShowFenicioImport(false)}
-                            className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                           >
                             Cancelar
                           </button>
@@ -976,7 +995,7 @@ export default function NewProductPage() {
                           <button
                             type="submit"
                             disabled={importingFenicio}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <ArrowDownTrayIcon className="h-4 w-4" />
                             {importingFenicio ? "Importando..." : "Importar productos"}

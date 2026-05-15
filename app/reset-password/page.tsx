@@ -11,7 +11,7 @@ export default function ResetPasswordPage() {
           className="mx-auto h-10 w-auto"
         />
         <h2 className="mt-10 text-center text-2xl/9 font-bold tracking-tight text-gray-900">
-          Nueva contrasena
+          Nueva contraseña
         </h2>
       </div>
 

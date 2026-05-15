@@ -122,6 +122,10 @@ export async function PATCH(
       data.shippedAt = current.shippedAt ?? now;
     }
 
+    if (fulfillmentStatus === FulfillmentStatus.DELIVERY_REQUESTED) {
+      data.shippedAt = current.shippedAt ?? now;
+    }
+
     if (fulfillmentStatus === FulfillmentStatus.DELIVERED) {
       data.deliveredAt = current.deliveredAt ?? now;
       data.status = SettlementStatus.AVAILABLE;

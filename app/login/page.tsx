@@ -66,7 +66,7 @@ export default function Example() {
                 autoComplete="email"
                 value={email}                          
                 onChange={(e) => setEmail(e.target.value)} 
-                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-orange-600 sm:text-sm/6"
+                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-[#F78211] sm:text-sm/6"
                 />
             </div>
           </div>
@@ -77,8 +77,8 @@ export default function Example() {
                 Contraseña
               </label>
               <div className="text-sm">
-                <Link href="/forgot-password" className="font-semibold text-[#F78211] hover:text-orange-500">
-                  Olvide mi contrasena
+                <Link href="/forgot-password" className="font-semibold text-[#F78211] hover:text-[#F78211]">
+                  Olvide mi contraseña
                 </Link>
               </div>
             </div>
@@ -91,7 +91,7 @@ export default function Example() {
                 autoComplete="current-password"
                 value={password}                           // ✅
                 onChange={(e) => setPassword(e.target.value)} // ✅
-                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-orange-600 sm:text-sm/6"
+                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-[#F78211] sm:text-sm/6"
                 />
             </div>
           </div>

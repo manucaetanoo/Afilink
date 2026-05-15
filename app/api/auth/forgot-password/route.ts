@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   }
 
   const genericMessage =
-    "Si el email existe, te enviamos instrucciones para recuperar tu contrasena.";
+    "Si el email existe, te enviamos instrucciones para recuperar tu contraseña.";
 
   const user = await prisma.user.findUnique({
     where: { email },
@@ -134,11 +134,9 @@ const emailResult = await sendTransactionalEmail({
   `,
 });
 
-  return NextResponse.json({
-    message: genericMessage,
-    resetUrl:
-      process.env.NODE_ENV !== "production" && "skipped" in emailResult
-        ? resetUrl
-        : undefined,
-  });
+  if (process.env.NODE_ENV !== "production" && "skipped" in emailResult) {
+    console.log("[DEV] Reset URL:", resetUrl);
+  }
+
+  return NextResponse.json({ message: genericMessage });
 }

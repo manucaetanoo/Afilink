@@ -2,6 +2,8 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
 function genCode(len = 7) {
@@ -13,6 +15,12 @@ function genCode(len = 7) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const { campaignId, affiliateId } = await req.json();
 
     if (!campaignId || typeof campaignId !== "string") {
@@ -21,6 +29,10 @@ export async function POST(req: NextRequest) {
 
     if (!affiliateId || typeof affiliateId !== "string") {
       return NextResponse.json({ error: "affiliateId requerido" }, { status: 400 });
+    }
+
+    if (affiliateId !== session.user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
     
 

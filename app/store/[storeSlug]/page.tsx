@@ -2,78 +2,84 @@ import Link from "next/link";
 import ButtonScroll from "@/components/ButtonScroll";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
-import { unstable_cache } from "next/cache";
 import {
   StoreCampaignAffiliateAction,
   StoreProductAffiliateAction,
 } from "@/components/StoreAffiliateActions";
 
-export const revalidate = 60;
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
-const getCachedSellerStore = unstable_cache(
-  async (storeSlug: string) =>
-    prisma.user.findUnique({
-      where: { storeSlug },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        image: true,
-        role: true,
-        storeSlug: true,
-        products: {
-          where: { isActive: true },
-          orderBy: { createdAt: "desc" },
-          take: 24,
-          select: {
-            id: true,
-            name: true,
-            price: true,
-            commissionValue: true,
-            commissionType: true,
-            imageUrls: true,
-          },
+async function getSellerStore(storeSlug: string) {
+  const seller = await prisma.user.findUnique({
+    where: { storeSlug },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      image: true,
+      role: true,
+      storeSlug: true,
+      products: {
+        where: { isActive: true },
+        orderBy: { createdAt: "desc" },
+        take: 24,
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          commissionValue: true,
+          commissionType: true,
+          imageUrls: true,
         },
-        campaigns: {
-          where: { isActive: true },
-          orderBy: { createdAt: "desc" },
-          take: 12,
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-            description: true,
-            isActive: true,
-            products: {
-              select: {
-                product: {
-                  select: {
-                    id: true,
-                    name: true,
-                    price: true,
-                    commissionValue: true,
-                    commissionType: true,
-                    imageUrls: true,
-                    isActive: true,
-                  },
+      },
+      campaigns: {
+        where: { isActive: true },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          description: true,
+          isActive: true,
+          _count: { select: { products: true } },
+          products: {
+            take: 8,
+            select: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  commissionValue: true,
+                  commissionType: true,
+                  isActive: true,
                 },
               },
             },
           },
         },
       },
-    }),
-  ["public-store-detail"],
-  { revalidate: 60, tags: ["stores", "products", "campaigns"] }
-);
+    },
+  });
+
+  if (!seller) return null;
+
+  return {
+    ...seller,
+    products: seller.products.map((product) => ({
+      ...product,
+      imageUrls: product.imageUrls.slice(0, 1),
+    })),
+  };
+}
 
 export default async function StorePage(props: {
   params: Promise<{ storeSlug: string }>;
 }) {
   const { storeSlug } = await props.params;
 
-  const seller = await getCachedSellerStore(storeSlug);
+  const seller = await getSellerStore(storeSlug);
 
   if (!seller || seller.role !== "SELLER") {
     return (
@@ -199,13 +205,13 @@ export default async function StorePage(props: {
                 <p className="max-w-2xl text-lg leading-8 text-slate-600">
                   {isAffiliateViewer
                     ? "Un espacio dentro de Afilink para que afiliados descubran, entiendan y promocionen los productos de la marca."
-                    : "Explora los productos y campanas activas de esta marca dentro de Afilink."}
+                    : "Explora los productos y campañas activas de esta marca dentro de Afilink."}
                 </p>
 
                 <div className="mt-8 flex flex-wrap gap-4">
                   <ButtonScroll
-                    targetId="campanas"
-                    label={isAffiliateViewer ? "Ver campanas" : "Ver catalogo"}
+                    targetId="campañas"
+                    label={isAffiliateViewer ? "Ver campañas" : "Ver catalogo"}
                   />
 
                   {isAffiliateViewer ? (
@@ -266,7 +272,7 @@ export default async function StorePage(props: {
                 dentro de Afilink.{" "}
                 {isAffiliateViewer
                   ? "Los afiliados pueden descubrir que conviene promocionar, ver comisiones claras y encontrar oportunidades de venta activas."
-                  : "Los visitantes pueden explorar su catalogo y entrar a sus campanas activas."}
+                  : "Los visitantes pueden explorar su catalogo y entrar a sus campañas activas."}
               </p>
             </div>
 
@@ -277,7 +283,7 @@ export default async function StorePage(props: {
 
               <div className="mt-5 space-y-4">
                 {[
-                  "Campanas organizadas por oportunidad de venta",
+                  "Campañas organizadas por oportunidad de venta",
                   isAffiliateViewer
                     ? "Productos destacados listos para promocionar"
                     : "Productos destacados listos para comprar",
@@ -298,7 +304,7 @@ export default async function StorePage(props: {
             </div>
           </section>
 
-          <section className="mt-10" id="campanas">
+          <section className="mt-10" id="campañas">
             <div className="mb-6 flex items-end justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-500">
@@ -310,7 +316,7 @@ export default async function StorePage(props: {
                 <p className="mt-2 max-w-2xl text-slate-500">
                   {isAffiliateViewer
                     ? "Aca no mostramos solo productos. Mostramos oportunidades concretas para promocionar la marca y generar ingresos."
-                    : "Explora las campanas activas y los productos asociados de esta marca."}
+                    : "Explora las campañas activas y los productos asociados de esta marca."}
                 </p>
               </div>
             </div>
@@ -329,6 +335,7 @@ export default async function StorePage(props: {
               <div className="space-y-5">
                 {seller.campaigns.map((c) => {
                   const campaignProducts = c.products.map((cp) => cp.product);
+                  const campaignProductsCount = c._count.products;
                   const firstProduct = campaignProducts[0];
 
                   return (
@@ -345,8 +352,8 @@ export default async function StorePage(props: {
                             </span>
 
                             <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs text-orange-700">
-                              {campaignProducts.length}{" "}
-                              {campaignProducts.length === 1 ? "producto" : "productos"}
+                              {campaignProductsCount}{" "}
+                              {campaignProductsCount === 1 ? "producto" : "productos"}
                             </span>
                           </div>
 
@@ -393,7 +400,7 @@ export default async function StorePage(props: {
                                 ? firstProduct
                                   ? getEstimatedEarning(firstProduct)
                                   : "Sin productos"
-                                : `${campaignProducts.length} disponibles`}
+                                : `${campaignProductsCount} disponibles`}
                             </p>
                           </div>
 
@@ -503,13 +510,13 @@ export default async function StorePage(props: {
                 </h2>
                 <p className="mt-3 leading-7 text-slate-600">
                   {isAffiliateViewer
-                    ? "Explora campanas activas, elige productos alineados con tu audiencia y genera ingresos con comisiones claras desde el inicio."
-                    : "Revisa sus productos destacados y entra a las campanas disponibles para conocer mejor la marca."}
+                    ? "Explora campañas activas, elige productos alineados con tu audiencia y genera ingresos con comisiones claras desde el inicio."
+                    : "Revisa sus productos destacados y entra a las campañas disponibles para conocer mejor la marca."}
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-4">
                   <ButtonScroll
-                    targetId={isAffiliateViewer ? "campanas" : "productos"}
+                    targetId={isAffiliateViewer ? "campañas" : "productos"}
                     label={isAffiliateViewer ? "Quiero promocionar esta marca" : "Ver productos"}
                     classname="rounded-2xl bg-orange-500 px-6 py-3 text-sm font-medium text-white transition hover:bg-orange-600"
                   />
