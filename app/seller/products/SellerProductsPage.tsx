@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { PulseLoader } from "react-spinners";
 import Swal from "sweetalert2";
 import ItemSeller from "@/components/ItemSeller";
 import Navbar from "@/components/Navbar";
@@ -24,6 +25,7 @@ export default function SellerProductsClient() {
   const [products, setProducts] = useState<SellerProduct[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [totalProducts, setTotalProducts] = useState(0);
+  const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -35,6 +37,9 @@ export default function SellerProductsClient() {
         setProducts(Array.isArray(data.products) ? data.products : []);
         setTotalProducts(Number(data.total ?? 0));
         setHasMore(Boolean(data.hasMore));
+      })
+      .finally(() => {
+        setLoadingInitial(false);
       });
   }, []);
 
@@ -153,32 +158,40 @@ export default function SellerProductsClient() {
               </div>
             )}
 
-            <p className="mb-4 text-sm text-slate-500">
-              Mostrando {products.length} de {totalProducts} productos
-            </p>
-
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {products.map((product) => (
-                <ItemSeller
-                  key={product.id}
-                  product={product}
-                  deleting={deletingProductId === product.id}
-                  onDelete={handleDeleteProduct}
-                />
-              ))}
-            </div>
-
-            {hasMore && products.length < totalProducts && (
-              <div className="mt-8 flex justify-center">
-                <button
-                  type="button"
-                  onClick={loadMoreProducts}
-                  disabled={loadingMore}
-                  className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loadingMore ? "Cargando..." : "Cargar mas productos"}
-                </button>
+            {loadingInitial ? (
+              <div className="flex min-h-[320px] items-center justify-center">
+                <PulseLoader color="#ff9e42" />
               </div>
+            ) : (
+              <>
+                <p className="mb-4 text-sm text-slate-500">
+                  Mostrando {products.length} de {totalProducts} productos
+                </p>
+
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {products.map((product) => (
+                    <ItemSeller
+                      key={product.id}
+                      product={product}
+                      deleting={deletingProductId === product.id}
+                      onDelete={handleDeleteProduct}
+                    />
+                  ))}
+                </div>
+
+                {hasMore && products.length < totalProducts && (
+                  <div className="mt-8 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={loadMoreProducts}
+                      disabled={loadingMore}
+                      className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {loadingMore ? "Cargando..." : "Cargar mas productos"}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </main>

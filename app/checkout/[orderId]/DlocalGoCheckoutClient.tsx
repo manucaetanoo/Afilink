@@ -600,7 +600,7 @@ export default function DlocalGoCheckoutClient({
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Impuestos</span>
+                    <span>Recargo</span>
                     <span className="font-medium text-slate-700">
                       ${Number(order.taxAmount).toFixed(2)}
                     </span>
