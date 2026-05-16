@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   description: "Explora empresas con alto potencial de conversion y, si eres afiliado, prioriza las que te dejan mejores comisiones por venta.",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function StoresPage() {
   const stores = await prisma.user.findMany({
     where: {
