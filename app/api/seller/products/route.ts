@@ -75,16 +75,28 @@ export async function GET(req: Request) {
           platformCommissionValue: true,
           platformCommissionType: true,
           imageUrls: true,
+          seller: {
+            select: {
+              platformCommissionValue: true,
+              platformCommissionType: true,
+            },
+          },
         },
       }),
       prisma.product.count({ where }),
     ]);
 
+    const productsWithSellerCommission = products.map(({ seller, ...product }) => ({
+      ...product,
+      platformCommissionValue: seller.platformCommissionValue,
+      platformCommissionType: seller.platformCommissionType,
+    }));
+
     return NextResponse.json({
       ok: true,
       total,
       hasMore: skip + products.length < total,
-      products,
+      products: productsWithSellerCommission,
     });
   } catch (e: unknown) {
     const msg = getErrorMessage(e);
@@ -153,6 +165,21 @@ export async function POST(req: Request) {
       );
     }
 
+    const sellerSettings = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        platformCommissionValue: true,
+        platformCommissionType: true,
+      },
+    });
+
+    if (!sellerSettings) {
+      return NextResponse.json(
+        { ok: false, error: "Vendedor no encontrado" },
+        { status: 404 }
+      );
+    }
+
     const created = await prisma.product.create({
       data: {
         sellerId: user.id,
@@ -164,6 +191,8 @@ export async function POST(req: Request) {
         sizes: categoriesWithSizes.has(category) ? sizes : [],
         commissionValue,
         commissionType: "PERCENT",
+        platformCommissionValue: sellerSettings.platformCommissionValue,
+        platformCommissionType: sellerSettings.platformCommissionType,
         imageUrls,
       },
       select: {

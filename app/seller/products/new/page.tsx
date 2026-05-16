@@ -61,6 +61,12 @@ export default function NewProductPage() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [customSize, setCustomSize] = useState("");
   const [commissionValue, setCommissionValue] = useState(10);
+  const [platformCommissionValue, setPlatformCommissionValue] = useState(
+    DEFAULT_PLATFORM_COMMISSION_VALUE
+  );
+  const [platformCommissionType, setPlatformCommissionType] = useState<
+    "PERCENT" | "FIXED"
+  >(DEFAULT_PLATFORM_COMMISSION_TYPE);
   const [priceValue, setPriceValue] = useState("");
   const [showShopifyImport, setShowShopifyImport] = useState(false);
   const [shopifyDomain, setShopifyDomain] = useState("");
@@ -95,14 +101,42 @@ export default function NewProductPage() {
     };
   }, [showShopifyImport, showFenicioImport]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/profile", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+
+        const value = Number(data?.user?.platformCommissionValue);
+        const type = data?.user?.platformCommissionType;
+
+        if (Number.isFinite(value) && value >= 0) {
+          setPlatformCommissionValue(value);
+        }
+
+        if (type === "PERCENT" || type === "FIXED") {
+          setPlatformCommissionType(type);
+        }
+      })
+      .catch(() => {
+        // Si no se puede leer el perfil, mantenemos el default local.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const selectedCategory = productCategories.find((item) => item.value === category);
   const suggestedSizes = selectedCategory?.sizes ?? [];
   const shouldShowSizes = categoriesWithSizes.has(category);
   const sellerNet = getSellerNetAmount({
     price: Number(priceValue) || 0,
     affiliateCommissionValue: commissionValue,
-    platformCommissionValue: DEFAULT_PLATFORM_COMMISSION_VALUE,
-    platformCommissionType: DEFAULT_PLATFORM_COMMISSION_TYPE,
+    platformCommissionValue,
+    platformCommissionType,
   });
 
   function toggleSize(size: string) {

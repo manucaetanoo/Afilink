@@ -47,6 +47,8 @@ export async function GET() {
       bankAccountAlias: true,
       bankBranch: true,
       payoutNotes: true,
+      platformCommissionValue: true,
+      platformCommissionType: true,
       updatedAt: true,
     },
   });
@@ -142,6 +144,8 @@ export async function POST(req: Request) {
       bankAccountAlias: true,
       bankBranch: true,
       payoutNotes: true,
+      platformCommissionValue: true,
+      platformCommissionType: true,
       updatedAt: true,
     },
   });

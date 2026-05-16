@@ -21,6 +21,10 @@ model User {
   // Store
   storeSlug String? @unique @db.VarChar(80)
 
+  // Comision de plataforma por empresa
+  platformCommissionValue Int            @default(5)
+  platformCommissionType  CommissionType @default(PERCENT)
+
   // Datos de cobro / liquidacion
   payoutMethod         PayoutMethod? @default(BANK_TRANSFER)
   payoutHolderName     String?       @db.VarChar(120)

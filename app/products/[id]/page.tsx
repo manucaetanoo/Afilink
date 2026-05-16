@@ -51,6 +51,8 @@ const getCachedProduct = unstable_cache(
             id: true,
             name: true,
             storeSlug: true,
+            platformCommissionValue: true,
+            platformCommissionType: true,
           },
         },
       },
@@ -76,8 +78,8 @@ export default async function ProductPage({
     price: product.price,
     affiliateCommissionValue: product.commissionValue,
     affiliateCommissionType: product.commissionType,
-    platformCommissionValue: product.platformCommissionValue,
-    platformCommissionType: product.platformCommissionType,
+    platformCommissionValue: product.seller.platformCommissionValue,
+    platformCommissionType: product.seller.platformCommissionType,
   });
 
   return (

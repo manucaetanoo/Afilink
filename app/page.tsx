@@ -176,7 +176,7 @@ export default function Home() {
           </div>
         </section>
 
-<section className="mx-auto max-w-7xl px-6 lg:px-8">
+{/* <section className="mx-auto max-w-7xl px-6 lg:px-8">
   <div className="rounded-3xl border border-[#E89C51]/10 bg-[#f8f6f3] p-6 shadow-xl shadow-orange-950/5 sm:p-10">
     <div className="grid gap-6 lg:grid-cols-3">
       {stats.map(([label, value, Icon]) => (
@@ -199,7 +199,7 @@ export default function Home() {
       ))}
     </div>
   </div>
-</section>
+</section> */}
 
 
         <section id="como-funciona" className="relative px-6 py-24 sm:py-32 lg:px-8">

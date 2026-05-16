@@ -7,7 +7,7 @@ import {
   CommissionStatus,
   SettlementStatus,
 } from "@/lib/prisma-enums";
-import { type Product } from "@prisma/client";
+import { type Product, type User } from "@prisma/client";
 
 type CheckoutItemInput = {
   productId: string;
@@ -39,7 +39,9 @@ type CreateOrderInput = {
 };
 
 type ResolvedOrderItem = {
-  product: Product;
+  product: Product & {
+    seller: Pick<User, "platformCommissionValue" | "platformCommissionType">;
+  };
   quantity: number;
   selectedSize: string | null;
   affiliateId: string | null;
@@ -135,6 +137,14 @@ async function resolveCheckoutItems(items: CheckoutItemInput[]) {
     const quantity = Math.max(1, Math.min(20, Number(item.quantity || 1)));
     const product = await prisma.product.findUnique({
       where: { id: item.productId },
+      include: {
+        seller: {
+          select: {
+            platformCommissionValue: true,
+            platformCommissionType: true,
+          },
+        },
+      },
     });
 
     if (!product) {
@@ -172,8 +182,8 @@ async function resolveCheckoutItems(items: CheckoutItemInput[]) {
       total,
       affiliateValue: product.commissionValue,
       affiliateType: "PERCENT",
-      platformValue: product.platformCommissionValue,
-      platformType: product.platformCommissionType,
+      platformValue: product.seller.platformCommissionValue,
+      platformType: product.seller.platformCommissionType,
       hasAffiliate: !!attribution.affiliateId,
     });
 
@@ -288,8 +298,8 @@ export async function createCheckoutOrder(
         commissionType: "PERCENT",
         affiliateAmount,
 
-        platformCommissionValue: first.product.platformCommissionValue,
-        platformCommissionType: first.product.platformCommissionType,
+        platformCommissionValue: first.product.seller.platformCommissionValue,
+        platformCommissionType: first.product.seller.platformCommissionType,
         platformAmount,
 
         sellerAmount,
@@ -316,8 +326,8 @@ export async function createCheckoutOrder(
           commissionValue: item.product.commissionValue,
           commissionType: "PERCENT",
           affiliateAmount: item.affiliateAmount,
-          platformCommissionValue: item.product.platformCommissionValue,
-          platformCommissionType: item.product.platformCommissionType,
+          platformCommissionValue: item.product.seller.platformCommissionValue,
+          platformCommissionType: item.product.seller.platformCommissionType,
           platformAmount: item.platformAmount,
           sellerAmount: item.sellerAmount,
         },
