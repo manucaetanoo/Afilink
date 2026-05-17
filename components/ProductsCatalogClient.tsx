@@ -31,7 +31,9 @@ export default function ProductsCatalogClient({
   const [items, setItems] = useState(products);
   const [hasMore, setHasMore] = useState(hasMoreInitial);
   const [loadingMore, setLoadingMore] = useState(false);
-  const showAffiliateHighlights = data?.user?.role === "AFFILIATE";
+  const role = data?.user?.role;
+  const showAffiliateHighlights = role === "AFFILIATE";
+  const showCommissionBadge = role === "AFFILIATE" || role === "SELLER";
   const topCommission = items.length
     ? Math.max(...items.map((product) => Number(product.commissionValue || 0)))
     : 0;
@@ -132,6 +134,7 @@ export default function ProductsCatalogClient({
                   key={product.id}
                   product={product}
                   showAffiliateHighlights={showAffiliateHighlights}
+                  showCommissionBadge={showCommissionBadge}
                 />
               ))}
             </div>

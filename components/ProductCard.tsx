@@ -14,6 +14,7 @@ export type ProductCardProduct = {
 type ProductCardProps = {
   product: ProductCardProduct;
   showAffiliateHighlights?: boolean;
+  showCommissionBadge?: boolean;
 };
 
 const formatPrice = (amount: number) =>
@@ -35,10 +36,15 @@ const getCommissionEarning = (product: ProductCardProduct) => {
 export default function ProductCard({
   product,
   showAffiliateHighlights = false,
+  showCommissionBadge = showAffiliateHighlights,
 }: ProductCardProps) {
   const imageUrl = product.imageUrls?.[0] ?? null;
   const isInlineImage = imageUrl?.startsWith("data:") ?? false;
   const hasCommission =
+    showCommissionBadge &&
+    typeof product.commissionValue === "number" &&
+    product.commissionValue > 0;
+  const hasAffiliateCommission =
     showAffiliateHighlights &&
     typeof product.commissionValue === "number" &&
     product.commissionValue > 0;
@@ -65,9 +71,11 @@ export default function ProductCard({
               <p className="mt-1 text-xs text-white/85">por venta</p>
             </div>
 
-            <div className="rounded-full border border-white/60 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm sm:px-3 sm:text-xs">
-              Ganas {formatPrice(commissionEarning)}
-            </div>
+            {hasAffiliateCommission && (
+              <div className="rounded-full border border-white/60 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm sm:px-3 sm:text-xs">
+                Ganas {formatPrice(commissionEarning)}
+              </div>
+            )}
           </div>
         )}
 
@@ -114,7 +122,7 @@ export default function ProductCard({
             </p>
           </div>
 
-          {hasCommission && (
+          {hasAffiliateCommission && (
             <div className="hidden rounded-full bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 ring-1 ring-orange-100 sm:block">
               Ideal para afiliados
             </div>
@@ -125,7 +133,7 @@ export default function ProductCard({
           {product.desc ?? "Este producto no tiene descripcion todavia."}
         </p>
 
-        {hasCommission && (
+        {hasAffiliateCommission && (
           <div className="mt-4 rounded-xl border border-orange-100 bg-gradient-to-r from-orange-50 via-amber-50 to-white p-3 sm:mt-5 sm:rounded-2xl sm:p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-700">
               Ganancia estimada

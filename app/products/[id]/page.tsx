@@ -12,6 +12,7 @@ import Navbar from "@/components/Navbar";
 import ProductGallery from "@/components/ProductGallery";
 import ProductPurchaseActions from "@/components/ProductPurchaseActions";
 import {
+  ProductAffiliateJumpButton,
   ProductAffiliatePanel,
   SellerProductNetPanel,
 } from "@/components/ProductRolePanels";
@@ -121,8 +122,9 @@ export default async function ProductPage({
                     Sin stock
                   </span>
                 )}
+                <ProductAffiliateJumpButton sellerId={product.seller.id} />
               </div>
-
+          
               <div className="mt-5">
                 <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
                   {product.name}
@@ -178,12 +180,14 @@ export default async function ProductPage({
               </div>
             </div>
 
-            <ProductAffiliatePanel
-              productId={product.id}
-              sellerId={product.seller.id}
-              price={product.price}
-              commissionValue={product.commissionValue}
-            />
+            <div id="affiliate-panel" className="scroll-mt-28">
+              <ProductAffiliatePanel
+                productId={product.id}
+                sellerId={product.seller.id}
+                price={product.price}
+                commissionValue={product.commissionValue}
+              />
+            </div>
 
             <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
               Vendido por{" "}

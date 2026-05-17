@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { FiShare2 } from "react-icons/fi";
+import { FiLink  } from "react-icons/fi";
 import GetAffiliateLinkButton from "@/components/GetAffiliateLinkButton";
 
 type SellerNet = {
@@ -84,7 +84,7 @@ export function ProductAffiliatePanel({
       <div className="p-6 sm:p-7">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-200">
-            <FiShare2 className="text-xl" />
+            <FiLink  className="text-xl" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-700">
@@ -121,5 +121,24 @@ export function ProductAffiliatePanel({
         </div>
       </div>
     </div>
+  );
+}
+
+export function ProductAffiliateJumpButton({
+  sellerId,
+}: Pick<Props, "sellerId">) {
+  const { data } = useSession();
+  const user = data?.user;
+
+  if (user?.role !== "AFFILIATE" || !user.id || user.id === sellerId) return null;
+
+  return (
+    <a
+      href="#affiliate-panel"
+      className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700 transition hover:bg-orange-100"
+    >
+      <FiLink  />
+      Promocionar producto
+    </a>
   );
 }
