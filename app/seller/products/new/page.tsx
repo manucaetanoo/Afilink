@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CubeIcon,
   CurrencyDollarIcon,
@@ -38,6 +38,13 @@ const productCategories = [
 
 const categoriesWithSizes = new Set(["CLOTHING", "SHOES"]);
 
+type ShopifyConnection = {
+  shopDomain: string;
+  scope?: string | null;
+  installedAt?: string;
+  updatedAt?: string;
+};
+
 const uploadImage = async (file: File) => {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -52,7 +59,22 @@ function getErrorMessage(error: unknown) {
 }
 
 export default function NewProductPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#faf7f2] text-slate-950">
+          <Navbar />
+        </div>
+      }
+    >
+      <NewProductPageContent />
+    </Suspense>
+  );
+}
+
+function NewProductPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -70,9 +92,11 @@ export default function NewProductPage() {
   const [priceValue, setPriceValue] = useState("");
   const [showShopifyImport, setShowShopifyImport] = useState(false);
   const [shopifyDomain, setShopifyDomain] = useState("");
-  const [shopifyToken, setShopifyToken] = useState("");
+  const [shopifyConnection, setShopifyConnection] =
+    useState<ShopifyConnection | null>(null);
   const [shopifyCommissionValue, setShopifyCommissionValue] = useState(10);
   const [shopifyDemoMode, setShopifyDemoMode] = useState(false);
+  const [connectingShopify, setConnectingShopify] = useState(false);
   const [importingShopify, setImportingShopify] = useState(false);
   const [showFenicioImport, setShowFenicioImport] = useState(false);
   const [fenicioDomain, setFenicioDomain] = useState("");
@@ -128,6 +152,43 @@ export default function NewProductPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/shopify/connection", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const connection = data?.connection ?? null;
+        setShopifyConnection(connection);
+        if (connection?.shopDomain) setShopifyDomain(connection.shopDomain);
+      })
+      .catch(() => {
+        if (!cancelled) setShopifyConnection(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const shopifyStatus = searchParams.get("shopify");
+    const shop = searchParams.get("shop");
+
+    if (shopifyStatus === "connected") {
+      setMessage(`Shopify conectado${shop ? `: ${shop}` : ""}. Ya podes importar productos.`);
+      setShowShopifyImport(true);
+      router.replace("/seller/products/new");
+    }
+
+    if (shopifyStatus === "error") {
+      setMessage("No se pudo conectar Shopify. Revisa la configuracion de la app e intenta de nuevo.");
+      setShowShopifyImport(true);
+      router.replace("/seller/products/new");
+    }
+  }, [router, searchParams]);
 
   const selectedCategory = productCategories.find((item) => item.value === category);
   const suggestedSizes = selectedCategory?.sizes ?? [];
@@ -221,6 +282,12 @@ export default function NewProductPage() {
 
   async function importFromShopify(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (!(canUseDemoImports && shopifyDemoMode) && !shopifyConnection) {
+      await connectShopify();
+      return;
+    }
+
     setImportingShopify(true);
     setMessage(null);
 
@@ -229,8 +296,7 @@ export default function NewProductPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          shopDomain: shopifyDomain,
-          accessToken: shopifyToken,
+          shopDomain: shopifyConnection?.shopDomain ?? shopifyDomain,
           commissionValue: shopifyCommissionValue,
           demoMode: canUseDemoImports && shopifyDemoMode,
         }),
@@ -246,13 +312,35 @@ export default function NewProductPage() {
         `Importacion lista: ${data.imported} productos creados, ${data.skipped} omitidos.`
       );
       setShowShopifyImport(false);
-      setShopifyToken("");
       router.push("/seller/products");
       router.refresh();
     } catch (err: unknown) {
       setMessage(getErrorMessage(err));
     } finally {
       setImportingShopify(false);
+    }
+  }
+
+  async function connectShopify() {
+    setConnectingShopify(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/shopify/oauth/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopDomain: shopifyDomain }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok || !data?.authUrl) {
+        throw new Error(data?.error || "No se pudo iniciar la conexion con Shopify");
+      }
+
+      window.location.assign(data.authUrl);
+    } catch (err: unknown) {
+      setMessage(getErrorMessage(err));
+      setConnectingShopify(false);
     }
   }
 
@@ -813,38 +901,35 @@ export default function NewProductPage() {
                           >
                             Dominio de la tienda
                           </label>
-                          <input
-                            id="shopifyDomain"
-                            type="text"
-                            value={shopifyDomain}
-                            onChange={(e) => setShopifyDomain(e.target.value)}
-                            placeholder="mitienda.myshopify.com"
-                            required={!(canUseDemoImports && shopifyDemoMode)}
-                            disabled={canUseDemoImports && shopifyDemoMode}
-                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
-                          />
-                        </div>
-
-                        <div>
-                          <label
-                            htmlFor="shopifyToken"
-                            className="text-sm font-semibold text-slate-900"
-                          >
-                            Admin API access token
-                          </label>
-                          <input
-                            id="shopifyToken"
-                            type="password"
-                            value={shopifyToken}
-                            onChange={(e) => setShopifyToken(e.target.value)}
-                            placeholder="shpat_..."
-                            required={!(canUseDemoImports && shopifyDemoMode)}
-                            disabled={canUseDemoImports && shopifyDemoMode}
-                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
-                          />
-                          <p className="mt-2 text-xs text-slate-500">
-                            El token se usa solo para esta importacion y no se guarda.
-                          </p>
+                          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                            <input
+                              id="shopifyDomain"
+                              type="text"
+                              value={shopifyDomain}
+                              onChange={(e) => setShopifyDomain(e.target.value)}
+                              placeholder="mitienda.myshopify.com"
+                              required={!(canUseDemoImports && shopifyDemoMode) && !shopifyConnection}
+                              disabled={Boolean(shopifyConnection) || (canUseDemoImports && shopifyDemoMode)}
+                              className="block min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100 disabled:text-slate-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={connectShopify}
+                              disabled={connectingShopify || (canUseDemoImports && shopifyDemoMode)}
+                              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {shopifyConnection ? "Reconectar" : connectingShopify ? "Conectando..." : "Conectar"}
+                            </button>
+                          </div>
+                          {shopifyConnection ? (
+                            <p className="mt-2 text-xs font-medium text-emerald-700">
+                              Tienda conectada: {shopifyConnection.shopDomain}
+                            </p>
+                          ) : (
+                            <p className="mt-2 text-xs text-slate-500">
+                              Al conectar, Shopify te pedira aprobar permisos de productos.
+                            </p>
+                          )}
                         </div>
 
                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
@@ -888,11 +973,15 @@ export default function NewProductPage() {
 
                           <button
                             type="submit"
-                            disabled={importingShopify}
+                            disabled={importingShopify || connectingShopify}
                             className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <ArrowDownTrayIcon className="h-4 w-4" />
-                            {importingShopify ? "Importando..." : "Importar productos"}
+                            {importingShopify
+                              ? "Importando..."
+                              : shopifyConnection || (canUseDemoImports && shopifyDemoMode)
+                                ? "Importar productos"
+                                : "Conectar Shopify"}
                           </button>
                         </div>
                       </form>

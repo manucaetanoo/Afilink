@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { requireRole, requireUser } from "@/lib/auth";
 import { demoShopifyProducts } from "@/lib/demo-import-products";
 import { prisma } from "@/lib/prisma";
+import {
+  decryptShopifyToken,
+  normalizeShopDomain,
+  SHOPIFY_API_VERSION,
+} from "@/lib/shopify";
 
 type ShopifyImage = {
   src?: string;
@@ -30,26 +35,11 @@ type ShopifyProductsResponse = {
   products?: ShopifyProduct[];
 };
 
-const SHOPIFY_API_VERSION = "2025-10";
 const CLOTHING_SIZE_VALUES = new Set(["XS", "S", "M", "L", "XL", "XXL"]);
 const SHOE_SIZE_PATTERN = /^(3[5-9]|4[0-4])$/;
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "ERROR";
-}
-
-function normalizeShopDomain(value: unknown) {
-  const raw = String(value ?? "")
-    .trim()
-    .replace(/^https?:\/\//i, "")
-    .replace(/\/.*$/, "")
-    .toLowerCase();
-
-  if (!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(raw)) {
-    return null;
-  }
-
-  return raw;
 }
 
 function stripHtml(value: string | null | undefined) {
@@ -132,8 +122,8 @@ export async function POST(req: Request) {
     requireRole(user, ["SELLER", "ADMIN"]);
 
     const body = await req.json();
-    const shopDomain = normalizeShopDomain(body.shopDomain);
-    const accessToken = String(body.accessToken ?? "").trim();
+    let shopDomain = normalizeShopDomain(body.shopDomain);
+    let accessToken = String(body.accessToken ?? "").trim();
     const commissionValue = Number(body.commissionValue ?? 10);
     const demoMode = Boolean(body.demoMode);
     const canUseDemoImports = process.env.ENABLE_DEMO_IMPORTS === "true";
@@ -211,16 +201,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, imported, skipped });
     }
 
+    if (!accessToken) {
+      const connection = await prisma.shopifyConnection.findUnique({
+        where: { userId: user.id },
+        select: { shopDomain: true, accessToken: true },
+      });
+
+      if (connection) {
+        shopDomain = connection.shopDomain;
+        accessToken = decryptShopifyToken(connection.accessToken);
+      }
+    }
+
     if (!shopDomain) {
       return NextResponse.json(
-        { ok: false, error: "Dominio de Shopify invalido" },
+        { ok: false, error: "Conecta una tienda Shopify antes de importar" },
         { status: 400 }
       );
     }
 
     if (!accessToken) {
       return NextResponse.json(
-        { ok: false, error: "Access token de Shopify requerido" },
+        { ok: false, error: "Conecta una tienda Shopify antes de importar" },
         { status: 400 }
       );
     }
