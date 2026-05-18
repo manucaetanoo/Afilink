@@ -274,7 +274,7 @@ export default function SellerOnboardingForm() {
             </div>
 
             <p className="mt-4 max-w-lg text-sm text-orange-50/90">
-              Elegi el nombre de tu tienda, defini el slug publico y subi tu logo.
+              Elegi el nombre de tu tienda, defini el url publico y subi tu logo.
             </p>
 
             <div className="mt-8 space-y-3 text-sm text-orange-50/95">
@@ -352,7 +352,7 @@ export default function SellerOnboardingForm() {
                   htmlFor="storeSlug"
                   className="mb-2 block text-sm font-semibold text-slate-900"
                 >
-                  Slug de la empresa
+                  url de la empresa
                 </label>
 
                 <div className="flex overflow-hidden rounded-2xl border border-orange-200 bg-orange-50/40 transition focus-within:border-orange-400 focus-within:bg-white focus-within:ring-4 focus:ring-orange-100">
