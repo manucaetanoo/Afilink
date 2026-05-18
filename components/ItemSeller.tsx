@@ -28,6 +28,7 @@ export default function ItemSeller({
   deleting?: boolean;
 }) {
   const isAffiliate = role === "AFFILIATE";
+  const imageUrl = product.imageUrls?.[0] ?? null;
   const sellerNet = getSellerNetAmount({
     price: product.price,
     affiliateCommissionValue: product.commissionValue,
@@ -39,13 +40,21 @@ export default function ItemSeller({
   return (
     <div className="group flex min-h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg">
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={product.imageUrls?.[0] ?? "https://readymadeui.com/images/product14.webp"}
-          alt={product.name}
-          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-        />
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/35 to-transparent" />
+        {imageUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt={product.name}
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/35 to-transparent" />
+          </>
+        ) : (
+          <div className="flex h-full items-center justify-center bg-gradient-to-br from-orange-100 via-white to-amber-50 text-sm font-medium text-slate-500">
+            Sin imagen
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-4">
