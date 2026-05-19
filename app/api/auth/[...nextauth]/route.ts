@@ -35,6 +35,9 @@ export const authOptions: NextAuthOptions = {
 
         if (!user) return null;
         if (!user.isActive) return null;
+        if (!user.emailVerifiedAt) {
+          throw new Error("EMAIL_NOT_VERIFIED");
+        }
         if (!user.passwordHash) return null;
 
         // 3) Comparar password

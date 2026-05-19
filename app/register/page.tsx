@@ -2,14 +2,10 @@
 
 import Navbar from "@/components/Navbarv2"
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Toggle from "@/components/Toggle"
-import { signIn } from "next-auth/react";
 
 export default function RegisterPage() {
-  const router = useRouter();
-
   const [email, setEmail] = useState("");
   //const [name, setName] = useState("");
   const [name, setName] = useState("");
@@ -20,6 +16,7 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,24 +53,36 @@ export default function RegisterPage() {
       return;
     }
 
-    const loginRes = await signIn("credentials", {
-    email,
-    password,
-    redirect: false,
-  });
+    setConfirmationEmail(data?.email ?? email);
 
-    if (loginRes?.error) {
-    throw new Error("La cuenta se creó, pero no se pudo iniciar sesión");
   }
 
-    // Registro OK → login
-
-        if(selected == "SELLER") {
-      router.push("/onboarding/seller");
-    } else {
-    router.push("/login");
-  }
-
+  if (confirmationEmail) {
+    return (
+      <div className="flex min-h-screen flex-col justify-center px-4 py-12">
+        <div className="mx-auto w-full max-w-md rounded-2xl border border-orange-100 bg-white p-8 text-center shadow-[0_20px_60px_rgba(251,146,60,0.12)]">
+          <img
+            alt="Afilink"
+            src="/img/logosbg.png"
+            className="mx-auto h-10 w-auto"
+          />
+          <h1 className="mt-8 text-2xl font-bold tracking-tight text-slate-950">
+            Revisa tu email
+          </h1>
+          <p className="mt-4 text-sm leading-6 text-slate-600">
+            Te enviamos un link de confirmacion a{" "}
+            <span className="font-semibold text-slate-900">{confirmationEmail}</span>.
+            Tenes que verificarlo antes de iniciar sesion.
+          </p>
+          <Link
+            href="/login"
+            className="mt-8 inline-flex w-full justify-center rounded-md bg-[#F78211] px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-500"
+          >
+            Ir a iniciar sesion
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (

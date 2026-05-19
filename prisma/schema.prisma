@@ -42,27 +42,29 @@ model User {
   payoutNotes          String?       @db.Text
 
   // Auth / sistema
-  passwordHash String?
-  role         Role    @default(AFFILIATE)
-  isActive     Boolean @default(true)
+  passwordHash    String?
+  emailVerifiedAt DateTime?
+  role            Role      @default(AFFILIATE)
+  isActive        Boolean   @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relaciones
-  products            Product[]               @relation("SellerProducts")
-  campaigns           Campaign[]              @relation("SellerCampaigns")
-  links               AffiliateLink[]         @relation("AffiliateLinks")
-  campaignLinks       AffiliateCampaignLink[] @relation("AffiliateCampaignLinks")
-  commissions         Commission[]            @relation("AffiliateCommissions")
-  affiliateOrders     Order[]                 @relation("OrderAffiliate")
-  affiliateItems      OrderItem[]             @relation("OrderItemAffiliate")
-  sellerOrders        Order[]                 @relation("OrderSeller")
-  sellerItems         OrderItem[]             @relation("OrderItemSeller")
-  settlements         Settlement[]            @relation("SellerSettlements")
-  payoutRequests      PayoutRequest[]
-  passwordResetTokens PasswordResetToken[]
-  shopifyConnection   ShopifyConnection?
+  products                Product[]                @relation("SellerProducts")
+  campaigns               Campaign[]               @relation("SellerCampaigns")
+  links                   AffiliateLink[]          @relation("AffiliateLinks")
+  campaignLinks           AffiliateCampaignLink[]  @relation("AffiliateCampaignLinks")
+  commissions             Commission[]             @relation("AffiliateCommissions")
+  affiliateOrders         Order[]                  @relation("OrderAffiliate")
+  affiliateItems          OrderItem[]              @relation("OrderItemAffiliate")
+  sellerOrders            Order[]                  @relation("OrderSeller")
+  sellerItems             OrderItem[]              @relation("OrderItemSeller")
+  settlements             Settlement[]             @relation("SellerSettlements")
+  payoutRequests          PayoutRequest[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  shopifyConnection       ShopifyConnection?
 
   @@index([role])
   @@index([isActive])
@@ -87,6 +89,19 @@ model ShopifyConnection {
 }
 
 model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique @db.VarChar(191)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailVerificationToken {
   id        String    @id @default(cuid())
   tokenHash String    @unique @db.VarChar(191)
   userId    String

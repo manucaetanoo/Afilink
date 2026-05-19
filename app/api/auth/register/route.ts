@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@/lib/prisma-enums";
+import { sendEmailVerification } from "@/lib/email-verification";
 
 
 export async function POST(req: Request) {
@@ -32,8 +33,26 @@ export async function POST(req: Request) {
     );
   }
 
-  const exists = await prisma.user.findUnique({ where: { email } });
+  const exists = await prisma.user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      emailVerifiedAt: true,
+    },
+  });
   if (exists) {
+    if (!exists.emailVerifiedAt) {
+      await sendEmailVerification({ req, user: exists });
+      return NextResponse.json({
+        message: "La cuenta ya existia. Te reenviamos el email de verificacion.",
+        email: exists.email,
+        role: exists.role,
+      });
+    }
+
     return NextResponse.json({ error: "Ese email ya existe" }, { status: 409 });
   }
 
@@ -46,9 +65,19 @@ export async function POST(req: Request) {
       passwordHash,
       role,
       isActive: true,
+      emailVerifiedAt: null,
     },
     select: { id: true, email: true, name:true, role: true, isActive: true },
   });
 
-  return NextResponse.json(user, { status: 201 });
+  await sendEmailVerification({ req, user });
+
+  return NextResponse.json(
+    {
+      message: "Cuenta creada. Te enviamos un email para verificar tu cuenta.",
+      email: user.email,
+      role: user.role,
+    },
+    { status: 201 }
+  );
 }
