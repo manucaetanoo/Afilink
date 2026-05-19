@@ -18,6 +18,16 @@ const sections = [
     ],
   },
   {
+    title: "Información legal del responsable",
+    paragraphs: [
+      "Afilink es una plataforma administrada por Manuel Caetano, quien actúa como persona física responsable del sitio web, su operación y la gestión de los servicios ofrecidos a través de la plataforma.",
+    "A efectos legales y de cumplimiento, se deja constancia de los siguientes datos del responsable: titular y administrador del sitio: Manuel Caetano; número de identificación: 55565489.",
+      
+    ],
+  },
+
+
+  {
     title: "Usuarios de la plataforma",
     paragraphs: [
       "Dentro de Afilink pueden existir distintos tipos de usuarios. El seller o vendedor es quien publica productos, administra su disponibilidad, define precios, atiende consultas relacionadas con sus publicaciones y asume la responsabilidad principal por la entrega, garantía y cumplimiento de lo ofrecido. El afiliado es quien promociona productos o campañas mediante enlaces generados por la plataforma y puede recibir comisiones cuando una venta válida sea atribuida correctamente a su actividad. El comprador es la persona que adquiere productos publicados dentro de Afilink.",
