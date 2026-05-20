@@ -61,7 +61,9 @@ function decodeXml(value: string) {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([\da-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)));
 }
 
 function getTagValue(xml: string, tag: string) {
@@ -82,7 +84,29 @@ function parsePrice(value: string) {
   const match = value.match(/[\d.,]+/);
   if (!match) return null;
 
-  const normalized = match[0].replace(/\./g, "").replace(",", ".");
+  const priceText = match[0];
+  const lastDot = priceText.lastIndexOf(".");
+  const lastComma = priceText.lastIndexOf(",");
+  const decimalSeparator =
+    lastDot > -1 && lastComma > -1
+      ? lastDot > lastComma
+        ? "."
+        : ","
+      : lastDot > -1
+        ? priceText.length - lastDot - 1 === 3
+          ? null
+          : "."
+        : lastComma > -1
+          ? priceText.length - lastComma - 1 === 3
+            ? null
+            : ","
+          : null;
+
+  const normalized = decimalSeparator
+    ? priceText
+        .replace(new RegExp(`\\${decimalSeparator === "." ? "," : "."}`, "g"), "")
+        .replace(decimalSeparator, ".")
+    : priceText.replace(/[.,]/g, "");
   const price = Number(normalized);
 
   return Number.isFinite(price) && price > 0 ? Math.round(price) : null;
