@@ -951,11 +951,6 @@ function NewProductPageContent() {
                               <p className="text-xs font-medium text-emerald-700">
                                 Tienda conectada: {shopifyConnection.shopDomain}
                               </p>
-                              {shopifyConnection.scope ? (
-                                <p className="text-[11px] text-emerald-700">
-                                  Permisos: {shopifyConnection.scope}
-                                </p>
-                              ) : null}
                               <button
                                 type="button"
                                 onClick={disconnectShopify}
