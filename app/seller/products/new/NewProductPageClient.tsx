@@ -97,6 +97,7 @@ function NewProductPageContent() {
   const [shopifyCommissionValue, setShopifyCommissionValue] = useState(10);
   const [shopifyDemoMode, setShopifyDemoMode] = useState(false);
   const [connectingShopify, setConnectingShopify] = useState(false);
+  const [disconnectingShopify, setDisconnectingShopify] = useState(false);
   const [importingShopify, setImportingShopify] = useState(false);
   const [showFenicioImport, setShowFenicioImport] = useState(false);
   const [fenicioDomain, setFenicioDomain] = useState("");
@@ -341,6 +342,30 @@ function NewProductPageContent() {
     } catch (err: unknown) {
       setMessage(getErrorMessage(err));
       setConnectingShopify(false);
+    }
+  }
+
+  async function disconnectShopify() {
+    setDisconnectingShopify(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/shopify/connection", {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "No se pudo desconectar Shopify");
+      }
+
+      setShopifyConnection(null);
+      setShopifyDomain("");
+      setMessage("Shopify desconectado. Podes conectar la tienda nuevamente.");
+    } catch (err: unknown) {
+      setMessage(getErrorMessage(err));
+    } finally {
+      setDisconnectingShopify(false);
     }
   }
 
@@ -922,9 +947,19 @@ function NewProductPageContent() {
                             </button>
                           </div>
                           {shopifyConnection ? (
-                            <p className="mt-2 text-xs font-medium text-emerald-700">
-                              Tienda conectada: {shopifyConnection.shopDomain}
-                            </p>
+                            <div className="mt-2 flex flex-col gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                              <p className="text-xs font-medium text-emerald-700">
+                                Tienda conectada: {shopifyConnection.shopDomain}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={disconnectShopify}
+                                disabled={disconnectingShopify || importingShopify || connectingShopify}
+                                className="self-start text-xs font-semibold text-slate-700 underline-offset-4 transition hover:text-slate-950 hover:underline disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto"
+                              >
+                                {disconnectingShopify ? "Desconectando..." : "Desconectar"}
+                              </button>
+                            </div>
                           ) : (
                             <p className="mt-2 text-xs text-slate-500">
                               Al conectar, Shopify te pedira aprobar permisos de productos.

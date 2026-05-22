@@ -239,8 +239,19 @@ export async function POST(req: Request) {
     );
 
     if (!shopifyRes.ok) {
+      const shopifyErrorBody = await shopifyRes.text().catch(() => "");
+      console.error("Shopify import error", {
+        status: shopifyRes.status,
+        statusText: shopifyRes.statusText,
+        body: shopifyErrorBody,
+        shopDomain,
+      });
+
       return NextResponse.json(
-        { ok: false, error: "Shopify rechazo la conexion o el token" },
+        {
+          ok: false,
+          error: `Shopify rechazo la conexion o el token (${shopifyRes.status})`,
+        },
         { status: shopifyRes.status === 401 ? 401 : 400 }
       );
     }
