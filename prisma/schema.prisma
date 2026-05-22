@@ -79,6 +79,9 @@ model ShopifyConnection {
 
   shopDomain  String  @unique @db.VarChar(191)
   accessToken String  @db.Text
+  accessTokenExpiresAt DateTime?
+  refreshToken String? @db.Text
+  refreshTokenExpiresAt DateTime?
   scope       String? @db.Text
 
   installedAt DateTime @default(now())

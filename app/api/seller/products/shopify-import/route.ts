@@ -5,6 +5,8 @@ import { demoShopifyProducts } from "@/lib/demo-import-products";
 import { prisma } from "@/lib/prisma";
 import {
   decryptShopifyToken,
+  encryptShopifyToken,
+  getShopifyClientId,
   normalizeShopDomain,
   SHOPIFY_API_VERSION,
 } from "@/lib/shopify";
@@ -35,11 +37,77 @@ type ShopifyProductsResponse = {
   products?: ShopifyProduct[];
 };
 
+type ShopifyRefreshTokenResponse = {
+  access_token?: string;
+  expires_in?: number;
+  refresh_token?: string;
+  refresh_token_expires_in?: number;
+};
+
 const CLOTHING_SIZE_VALUES = new Set(["XS", "S", "M", "L", "XL", "XXL"]);
 const SHOE_SIZE_PATTERN = /^(3[5-9]|4[0-4])$/;
+const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "ERROR";
+}
+
+function getExpiresAt(seconds: unknown) {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return new Date(Date.now() + value * 1000);
+}
+
+function shouldRefreshAccessToken(expiresAt: Date | null | undefined) {
+  if (!expiresAt) return false;
+  return expiresAt.getTime() - Date.now() <= TOKEN_REFRESH_BUFFER_MS;
+}
+
+async function refreshShopifyToken(params: {
+  userId: string;
+  shopDomain: string;
+  refreshToken: string;
+}) {
+  const tokenRes = await fetch(
+    `https://${params.shopDomain}/admin/oauth/access_token`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: getShopifyClientId(),
+        client_secret: process.env.SHOPIFY_API_SECRET,
+        grant_type: "refresh_token",
+        refresh_token: params.refreshToken,
+      }),
+      cache: "no-store",
+    }
+  );
+
+  const tokenData = (await tokenRes.json().catch(() => null)) as
+    | ShopifyRefreshTokenResponse
+    | null;
+
+  if (!tokenRes.ok || !tokenData?.access_token || !tokenData.refresh_token) {
+    console.error("Shopify token refresh error", {
+      status: tokenRes.status,
+      statusText: tokenRes.statusText,
+      body: tokenData,
+      shopDomain: params.shopDomain,
+    });
+    throw new Error("Volvé a conectar Shopify para renovar los permisos");
+  }
+
+  await prisma.shopifyConnection.update({
+    where: { userId: params.userId },
+    data: {
+      accessToken: encryptShopifyToken(tokenData.access_token),
+      accessTokenExpiresAt: getExpiresAt(tokenData.expires_in),
+      refreshToken: encryptShopifyToken(tokenData.refresh_token),
+      refreshTokenExpiresAt: getExpiresAt(tokenData.refresh_token_expires_in),
+    },
+  });
+
+  return tokenData.access_token;
 }
 
 function stripHtml(value: string | null | undefined) {
@@ -204,12 +272,37 @@ export async function POST(req: Request) {
     if (!accessToken) {
       const connection = await prisma.shopifyConnection.findUnique({
         where: { userId: user.id },
-        select: { shopDomain: true, accessToken: true },
+        select: {
+          shopDomain: true,
+          accessToken: true,
+          accessTokenExpiresAt: true,
+          refreshToken: true,
+          refreshTokenExpiresAt: true,
+        },
       });
 
       if (connection) {
         shopDomain = connection.shopDomain;
         accessToken = decryptShopifyToken(connection.accessToken);
+
+        if (shouldRefreshAccessToken(connection.accessTokenExpiresAt)) {
+          if (
+            !connection.refreshToken ||
+            (connection.refreshTokenExpiresAt &&
+              connection.refreshTokenExpiresAt.getTime() <= Date.now())
+          ) {
+            return NextResponse.json(
+              { ok: false, error: "Volvé a conectar Shopify para renovar los permisos" },
+              { status: 401 }
+            );
+          }
+
+          accessToken = await refreshShopifyToken({
+            userId: user.id,
+            shopDomain: connection.shopDomain,
+            refreshToken: decryptShopifyToken(connection.refreshToken),
+          });
+        }
       }
     }
 
