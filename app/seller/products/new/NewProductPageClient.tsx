@@ -91,6 +91,7 @@ function NewProductPageContent() {
   >(DEFAULT_PLATFORM_COMMISSION_TYPE);
   const [priceValue, setPriceValue] = useState("");
   const [showShopifyImport, setShowShopifyImport] = useState(false);
+  const shopifyImportEnabled = false;
   const [shopifyDomain, setShopifyDomain] = useState("");
   const [shopifyConnection, setShopifyConnection] =
     useState<ShopifyConnection | null>(null);
@@ -434,6 +435,7 @@ function NewProductPageContent() {
                     </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      {shopifyImportEnabled && (
                       <button
                         type="button"
                         onClick={() => setShowShopifyImport(true)}
@@ -448,7 +450,7 @@ function NewProductPageContent() {
                         Importar desde Shopify
                         <ArrowDownTrayIcon className="h-4 w-4" />
                       </button>
-
+                      )}
                       <button
                         type="button"
                         onClick={() => setShowFenicioImport(true)}
@@ -872,7 +874,7 @@ function NewProductPageContent() {
                   </div>
                 </form>
 
-                {showShopifyImport && (
+                {showShopifyImport && shopifyImportEnabled && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-6">
                     <div className="flex max-h-[82vh] w-full max-w-md flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
                       <div className="shrink-0 flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
@@ -1023,6 +1025,7 @@ function NewProductPageContent() {
                     </div>
                   </div>
                 )}
+                
 
                 {showFenicioImport && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-6">

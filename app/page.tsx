@@ -122,11 +122,11 @@ const stats: StatItem[] = [
 ];
 
 const integrations = [
-  {
-    name: "Shopify",
-    logo: "/img/Shopify-Logo-PNG.png",
-    description: "Importa productos, precios, imagenes y stock desde tu tienda.",
-  },
+  // {
+  //   name: "Shopify",
+  //   logo: "/img/Shopify-Logo-PNG.png",
+  //   description: "Importa productos, precios, imagenes y stock desde tu tienda.",
+  // },
   {
     name: "Fenicio",
     logo: "/img/fenicio-logo.png",
@@ -269,7 +269,7 @@ export default function Home() {
                 Conectá tu tienda sin cargar todo a mano
               </h2>
               <p className="mt-4 text-base leading-7 text-gray-500">
-                Afilink permite importar productos desde tiendas Shopify y Fenicio
+                Afilink permite importar productos desde tiendas Fenicio
                 para publicar catalogos mas rapido y empezar a trabajar con
                 afiliados en menos pasos.
               </p>
