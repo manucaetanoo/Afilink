@@ -91,7 +91,7 @@ function NewProductPageContent() {
   >(DEFAULT_PLATFORM_COMMISSION_TYPE);
   const [priceValue, setPriceValue] = useState("");
   const [showShopifyImport, setShowShopifyImport] = useState(false);
-  const shopifyImportEnabled = false;
+  const shopifyImportEnabled = true;
   const [shopifyDomain, setShopifyDomain] = useState("");
   const [shopifyConnection, setShopifyConnection] =
     useState<ShopifyConnection | null>(null);
