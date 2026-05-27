@@ -1,4 +1,5 @@
 import { revalidatePath, revalidateTag } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireRole, requireUser } from "@/lib/auth";
 import { demoShopifyProducts } from "@/lib/demo-import-products";
@@ -16,6 +17,7 @@ type ShopifyImage = {
 };
 
 type ShopifyVariant = {
+  id?: number;
   price?: string;
   inventory_quantity?: number;
   option1?: string | null;
@@ -182,6 +184,21 @@ function getStock(product: ShopifyProduct) {
     const quantity = Number(variant.inventory_quantity ?? 0);
     return total + (Number.isFinite(quantity) && quantity > 0 ? quantity : 0);
   }, 0);
+}
+
+function getPrimaryVariant(product: ShopifyProduct) {
+  return (product.variants ?? []).find((variant) => variant.id) ?? null;
+}
+
+function getShopifyVariantMetadata(product: ShopifyProduct) {
+  return (product.variants ?? [])
+    .filter((variant) => variant.id)
+    .map((variant) => ({
+      id: String(variant.id),
+      option1: variant.option1 ?? null,
+      option2: variant.option2 ?? null,
+      option3: variant.option3 ?? null,
+    }));
 }
 
 export async function POST(req: Request) {
@@ -353,10 +370,10 @@ export async function POST(req: Request) {
     const shopifyProducts = Array.isArray(shopifyData.products) ? shopifyData.products : [];
     const existingProducts = await prisma.product.findMany({
       where: { sellerId: user.id },
-      select: { name: true },
+      select: { id: true, name: true },
     });
-    const existingNames = new Set(
-      existingProducts.map((product) => product.name.trim().toLowerCase())
+    const existingByName = new Map(
+      existingProducts.map((product) => [product.name.trim().toLowerCase(), product])
     );
 
     let imported = 0;
@@ -366,12 +383,29 @@ export async function POST(req: Request) {
       const name = String(shopifyProduct.title ?? "").trim();
       const price = getPrice(shopifyProduct);
 
-      if (!name || !price || existingNames.has(name.toLowerCase())) {
+      if (!name || !price) {
         skipped += 1;
         continue;
       }
 
       const category = mapCategory(shopifyProduct);
+      const primaryVariant = getPrimaryVariant(shopifyProduct);
+      const shopifyVariants = getShopifyVariantMetadata(shopifyProduct);
+      const existingProduct = existingByName.get(name.toLowerCase());
+
+      if (existingProduct) {
+        await prisma.product.update({
+          where: { id: existingProduct.id },
+          data: {
+            shopifyShopDomain: shopDomain,
+            shopifyProductId: String(shopifyProduct.id),
+            shopifyVariantId: primaryVariant?.id ? String(primaryVariant.id) : null,
+            shopifyVariants: shopifyVariants.length ? shopifyVariants : Prisma.JsonNull,
+          },
+        });
+        skipped += 1;
+        continue;
+      }
 
       await prisma.product.create({
         data: {
@@ -386,6 +420,10 @@ export async function POST(req: Request) {
           commissionType: "PERCENT",
           platformCommissionValue: sellerSettings.platformCommissionValue,
           platformCommissionType: sellerSettings.platformCommissionType,
+          shopifyShopDomain: shopDomain,
+          shopifyProductId: String(shopifyProduct.id),
+          shopifyVariantId: primaryVariant?.id ? String(primaryVariant.id) : null,
+          shopifyVariants: shopifyVariants.length ? shopifyVariants : Prisma.JsonNull,
           imageUrls: (shopifyProduct.images ?? [])
             .map((image) => image.src?.trim())
             .filter((src): src is string => Boolean(src))
@@ -394,7 +432,7 @@ export async function POST(req: Request) {
         },
       });
 
-      existingNames.add(name.toLowerCase());
+      existingByName.set(name.toLowerCase(), { id: "", name });
       imported += 1;
     }
 

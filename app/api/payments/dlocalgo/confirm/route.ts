@@ -25,6 +25,10 @@ type ShippingData = {
   shippingNotes?: unknown;
 };
 
+const ALLOWED_SHIPPING_COUNTRY = "UY";
+const SHIPPING_COUNTRY_ERROR =
+  "Por ahora las compras y entregas estan disponibles solo dentro de Uruguay";
+
 function cleanString(value: unknown, maxLength: number) {
   if (typeof value !== "string") return "";
   return value.trim().slice(0, maxLength);
@@ -42,7 +46,9 @@ function parseShippingData(value: unknown) {
     shippingCity: cleanString(shipping.shippingCity, 120),
     shippingState: cleanString(shipping.shippingState, 120),
     shippingPostalCode: cleanString(shipping.shippingPostalCode, 20) || null,
-    shippingCountry: cleanString(shipping.shippingCountry, 2).toUpperCase() || "UY",
+    shippingCountry:
+      cleanString(shipping.shippingCountry, 2).toUpperCase() ||
+      ALLOWED_SHIPPING_COUNTRY,
     shippingNotes: cleanString(shipping.shippingNotes, 1000) || null,
   };
 
@@ -62,7 +68,20 @@ function parseShippingData(value: unknown) {
     throw new Error("Email de entrega invalido");
   }
 
+  if (data.shippingCountry !== ALLOWED_SHIPPING_COUNTRY) {
+    throw new Error(SHIPPING_COUNTRY_ERROR);
+  }
+
   return data;
+}
+
+function isCheckoutValidationError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (error.message === "Datos de entrega incompletos" ||
+      error.message === "Email de entrega invalido" ||
+      error.message === SHIPPING_COUNTRY_ERROR)
+  );
 }
 
 export async function POST(req: Request) {
@@ -169,7 +188,7 @@ export async function POST(req: Request) {
         error:
           error instanceof Error ? error.message : "No se pudo confirmar el pago",
       },
-      { status: 500 }
+      { status: isCheckoutValidationError(error) ? 400 : 500 }
     );
   }
 }

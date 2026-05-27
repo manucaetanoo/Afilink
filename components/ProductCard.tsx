@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { isPublicShopifyEnabled } from "@/lib/features";
 
 export type ProductCardProduct = {
   id: string;
@@ -9,6 +10,7 @@ export type ProductCardProduct = {
   stock: number;
   commissionValue: number;
   imageUrls: string[];
+  isShopifyProduct?: boolean;
 };
 
 type ProductCardProps = {
@@ -39,6 +41,7 @@ export default function ProductCard({
   showCommissionBadge = showAffiliateHighlights,
 }: ProductCardProps) {
   const imageUrl = product.imageUrls?.[0] ?? null;
+  const showShopifyBranding = isPublicShopifyEnabled() && product.isShopifyProduct;
   const isInlineImage = imageUrl?.startsWith("data:") ?? false;
   const hasCommission =
     showCommissionBadge &&
@@ -59,7 +62,7 @@ export default function ProductCard({
         href={`/products/${product.id}`}
         className="relative block overflow-hidden"
       >
-        {hasCommission && (
+  
           <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3 sm:gap-3 sm:p-4">
             <div className="rounded-xl bg-orange-500 px-3 py-2 text-white shadow-lg shadow-orange-500/30 sm:rounded-2xl sm:px-4 sm:py-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-100">
@@ -71,13 +74,27 @@ export default function ProductCard({
               <p className="mt-1 text-xs text-white/85">por venta</p>
             </div>
 
-            {hasAffiliateCommission && (
-              <div className="rounded-full border border-white/60 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm sm:px-3 sm:text-xs">
-                Ganas {formatPrice(commissionEarning)}
-              </div>
-            )}
+            <div className="flex flex-col items-end gap-2">
+              {showShopifyBranding && (
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/70 bg-white/95 p-1.5 shadow-sm sm:h-12 sm:w-12 sm:rounded-2xl">
+                  <Image
+                    src="/img/Shopify-Logo-PNG.png"
+                    alt="Shopify"
+                    width={40}
+                    height={40}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              )}
+
+              {hasAffiliateCommission && (
+                <div className="rounded-full border border-white/60 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm sm:px-3 sm:text-xs">
+                  Ganas {formatPrice(commissionEarning)}
+                </div>
+              )}
+            </div>
           </div>
-        )}
+  
 
         <div className="relative aspect-[4/3.35] w-full overflow-hidden bg-slate-100 sm:aspect-[4/4.6]">
           {imageUrl && isInlineImage ? (

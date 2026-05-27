@@ -106,6 +106,8 @@ const requiredShippingFields: Array<keyof ShippingData> = [
   "shippingState",
 ];
 
+const ALLOWED_SHIPPING_COUNTRY = "UY";
+
 const inputClassName =
   "mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-orange-400 focus:ring-4 focus:ring-orange-100";
 
@@ -273,7 +275,7 @@ export default function DlocalGoCheckoutClient({
           items: draftItems,
           shippingData: {
             ...shipping,
-            shippingCountry: shipping.shippingCountry || "UY",
+            shippingCountry: ALLOWED_SHIPPING_COUNTRY,
           },
         }),
       });
@@ -342,7 +344,7 @@ export default function DlocalGoCheckoutClient({
           installmentsId: installmentsId || undefined,
           shippingData: {
             ...shipping,
-            shippingCountry: shipping.shippingCountry || "UY",
+            shippingCountry: ALLOWED_SHIPPING_COUNTRY,
           },
         }),
       });
@@ -423,6 +425,16 @@ export default function DlocalGoCheckoutClient({
                 <TextField label="Nombre completo" value={shipping.buyerName} onChange={(value) => setShippingField("buyerName", value)} autoComplete="name" />
                 <TextField label="Email" value={shipping.buyerEmail} onChange={(value) => setShippingField("buyerEmail", value)} type="email" autoComplete="email" />
                 <TextField label="Telefono" value={shipping.buyerPhone} onChange={(value) => setShippingField("buyerPhone", value.replace(/\D/g, "").slice(0, 9).replace(/(\d{3})(\d{3})(\d{0,3})/, (_match, g1, g2, g3) => (g3 ? `${g1} ${g2} ${g3}` : `${g1} ${g2}`)))} type="tel" autoComplete="tel" />
+
+                <div className="block text-sm font-medium text-slate-700">
+                  Pais
+                  <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm">
+                    Uruguay
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Por ahora las compras y entregas estan disponibles solo dentro de Uruguay.
+                  </p>
+                </div>
 
                 <label className="block text-sm font-medium text-slate-700">
                   Departamento

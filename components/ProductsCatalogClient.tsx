@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import ProductCard, { type ProductCardProduct } from "@/components/ProductCard";
+import { isPublicShopifyEnabled } from "@/lib/features";
+
+type ProductSourceFilter = "all" | "afilink" | "shopify";
 
 type Props = {
   products: ProductCardProduct[];
@@ -31,15 +34,23 @@ export default function ProductsCatalogClient({
   const [items, setItems] = useState(products);
   const [hasMore, setHasMore] = useState(hasMoreInitial);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<ProductSourceFilter>("all");
+  const shopifyEnabled = isPublicShopifyEnabled();
   const role = data?.user?.role;
   const showAffiliateHighlights = role === "AFFILIATE";
   const showCommissionBadge = role === "AFFILIATE" || role === "SELLER";
-  const topCommission = items.length
-    ? Math.max(...items.map((product) => Number(product.commissionValue || 0)))
+  const filteredItems = items.filter((product) => {
+    if (!shopifyEnabled) return true;
+    if (sourceFilter === "shopify") return product.isShopifyProduct;
+    if (sourceFilter === "afilink") return !product.isShopifyProduct;
+    return true;
+  });
+  const topCommission = filteredItems.length
+    ? Math.max(...filteredItems.map((product) => Number(product.commissionValue || 0)))
     : 0;
-  const topEarning = items.length
+  const topEarning = filteredItems.length
     ? Math.max(
-        ...items.map((product) =>
+        ...filteredItems.map((product) =>
           getCommissionEarning(
             Number(product.price || 0),
             Number(product.commissionValue || 0)
@@ -47,27 +58,69 @@ export default function ProductsCatalogClient({
         )
       )
     : 0;
-  const minPrice = items.length
-    ? Math.min(...items.map((product) => Number(product.price || 0)))
+  const minPrice = filteredItems.length
+    ? Math.min(...filteredItems.map((product) => Number(product.price || 0)))
     : 0;
+  const sourceTabs: Array<{ value: ProductSourceFilter; label: string }> =
+    shopifyEnabled
+      ? [
+          { value: "all", label: "Todos" },
+          { value: "afilink", label: "Afilink" },
+          { value: "shopify", label: "Shopify" },
+        ]
+      : [];
+
+  async function fetchProducts(source: ProductSourceFilter, skip = 0) {
+    const params = new URLSearchParams({
+      skip: String(skip),
+      take: String(pageSize),
+      source,
+    });
+    const res = await fetch(`/api/products?${params.toString()}`, {
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || !Array.isArray(data?.products)) return null;
+
+    return {
+      products: data.products as ProductCardProduct[],
+      hasMore: Boolean(data.hasMore),
+    };
+  }
+
+  async function changeSourceFilter(source: ProductSourceFilter) {
+    if (source === sourceFilter || loadingMore) return;
+
+    setSourceFilter(source);
+    setLoadingMore(true);
+
+    try {
+      if (source === "all") {
+        setItems(products);
+        setHasMore(hasMoreInitial);
+        return;
+      }
+
+      const result = await fetchProducts(source);
+      if (!result) return;
+
+      setItems(result.products);
+      setHasMore(result.hasMore);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   async function loadMore() {
     setLoadingMore(true);
 
     try {
-      const params = new URLSearchParams({
-        skip: String(items.length),
-        take: String(pageSize),
-      });
-      const res = await fetch(`/api/products?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => null);
+      const result = await fetchProducts(sourceFilter, items.length);
+      if (!result) return;
 
-      if (!res.ok || !Array.isArray(data?.products)) return;
-
-      setItems((current) => [...current, ...data.products]);
-      setHasMore(Boolean(data.hasMore));
+      setItems((current) => [...current, ...result.products]);
+      setHasMore(result.hasMore);
     } finally {
       setLoadingMore(false);
     }
@@ -83,7 +136,7 @@ export default function ProductsCatalogClient({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
-              {items.length} {items.length === 1 ? "producto" : "productos"}
+              {filteredItems.length} {filteredItems.length === 1 ? "producto" : "productos"}
             </div>
             <div className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm">
               Desde {formatMoney(minPrice)}
@@ -100,13 +153,37 @@ export default function ProductsCatalogClient({
             )}
           </div>
 
-          <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm">
-            Ordenados por oportunidad comercial
-          </div>
+          {shopifyEnabled ? (
+            <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+              {sourceTabs.map((tab) => {
+                const isActive = sourceFilter === tab.value;
+
+                return (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => changeSourceFilter(tab.value)}
+                    disabled={loadingMore && !isActive}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                      isActive
+                        ? "bg-slate-900 text-white"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm">
+              Ordenados por oportunidad comercial
+            </div>
+          )}
         </div>
       </section>
 
-      {items.length === 0 ? (
+      {filteredItems.length === 0 ? (
         <section className="mt-10 rounded-[28px] border border-dashed border-orange-200 bg-white p-12 text-center shadow-sm">
           <div className="mx-auto max-w-md">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
@@ -129,7 +206,7 @@ export default function ProductsCatalogClient({
             </h2>
 
             <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 sm:gap-y-10 xl:grid-cols-3 xl:gap-x-8 2xl:grid-cols-4">
-              {items.map((product) => (
+              {filteredItems.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}

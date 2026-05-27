@@ -4,7 +4,7 @@ application_url = "https://www.afilink.lat/"
 embedded = false
 
 [access_scopes]
-scopes = "read_products,read_inventory"
+scopes = "read_products,read_inventory,read_orders"
 
 [auth]
 redirect_urls = [
@@ -16,4 +16,8 @@ api_version = "2026-04"
 
 [[webhooks.subscriptions]]
 compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+uri = "https://www.afilink.lat/api/shopify/webhooks"
+
+[[webhooks.subscriptions]]
+topics = ["app/uninstalled", "orders/paid"]
 uri = "https://www.afilink.lat/api/shopify/webhooks"

@@ -2,6 +2,8 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeShopDomain } from "@/lib/shopify";
+import { processShopifyPaidOrder } from "@/lib/shopify-orders";
+import { isShopifyEnabled } from "@/lib/features";
 
 function verifyShopifyWebhookHmac(rawBody: string, hmacHeader: string | null) {
   const secret = process.env.SHOPIFY_API_SECRET?.trim();
@@ -28,12 +30,21 @@ export async function POST(req: Request) {
   const topic = req.headers.get("x-shopify-topic") ?? "";
   const shop = normalizeShopDomain(req.headers.get("x-shopify-shop-domain"));
 
+  if (!isShopifyEnabled()) {
+    return NextResponse.json({ ok: true, ignored: "shopify_disabled" });
+  }
+
   if (topic === "app/uninstalled" || topic === "shop/redact") {
     if (shop) {
       await prisma.shopifyConnection.deleteMany({
         where: { shopDomain: shop },
       });
     }
+  }
+
+  if ((topic === "orders/paid" || topic === "orders/create") && shop) {
+    const payload = JSON.parse(rawBody);
+    await processShopifyPaidOrder({ shopDomain: shop, payload });
   }
 
   return NextResponse.json({ ok: true });

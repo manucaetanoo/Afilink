@@ -18,6 +18,7 @@ import {
 } from "@/components/ProductRolePanels";
 import { prisma } from "@/lib/prisma";
 import { getSellerNetAmount } from "@/lib/pricing";
+import { isShopifyEnabled } from "@/lib/features";
 import { unstable_cache } from "next/cache";
 
 const categoryLabels: Record<string, string> = {
@@ -74,6 +75,7 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const categoryName = categoryLabels[product.category] ?? "Producto";
+  const shopifyEnabled = isShopifyEnabled();
   const hasStock = product.stock > 0;
   const sellerNet = getSellerNetAmount({
     price: product.price,
@@ -155,6 +157,9 @@ export default async function ProductPage({
                   price: product.price,
                   imageUrl: product.imageUrls[0] ?? null,
                   sizes: product.sizes,
+                  usesShopifyCheckout: Boolean(
+                    shopifyEnabled && product.shopifyShopDomain && product.shopifyVariantId
+                  ),
                 }}
               />
 

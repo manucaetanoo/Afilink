@@ -21,6 +21,10 @@ import {
 } from "@/lib/platform-commission";
 import { formatMoney, getSellerNetAmount } from "@/lib/pricing";
 import Sidebar from "@/components/Sidebar";
+import {
+  isPublicShopifyBillingEnabled,
+  isPublicShopifyEnabled,
+} from "@/lib/features";
 
 const productCategories = [
   { value: "CLOTHING", label: "Ropa", sizes: ["XS", "S", "M", "L", "XL", "XXL"] },
@@ -91,13 +95,15 @@ function NewProductPageContent() {
   >(DEFAULT_PLATFORM_COMMISSION_TYPE);
   const [priceValue, setPriceValue] = useState("");
   const [showShopifyImport, setShowShopifyImport] = useState(false);
-  const shopifyImportEnabled = true;
+  const shopifyImportEnabled = isPublicShopifyEnabled();
+  const shopifyBillingEnabled = isPublicShopifyBillingEnabled();
   const [shopifyDomain, setShopifyDomain] = useState("");
   const [shopifyConnection, setShopifyConnection] =
     useState<ShopifyConnection | null>(null);
   const [shopifyCommissionValue, setShopifyCommissionValue] = useState(10);
   const [shopifyDemoMode, setShopifyDemoMode] = useState(false);
   const [connectingShopify, setConnectingShopify] = useState(false);
+  const [activatingShopifyBilling, setActivatingShopifyBilling] = useState(false);
   const [disconnectingShopify, setDisconnectingShopify] = useState(false);
   const [importingShopify, setImportingShopify] = useState(false);
   const [showFenicioImport, setShowFenicioImport] = useState(false);
@@ -370,6 +376,27 @@ function NewProductPageContent() {
     }
   }
 
+  async function activateShopifyBilling() {
+    setActivatingShopifyBilling(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/shopify/billing/start", {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok || !data?.confirmationUrl) {
+        throw new Error(data?.error || "No se pudo activar el cobro en Shopify");
+      }
+
+      window.location.assign(data.confirmationUrl);
+    } catch (err: unknown) {
+      setMessage(getErrorMessage(err));
+      setActivatingShopifyBilling(false);
+    }
+  }
+
   async function importFromFenicio(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setImportingFenicio(true);
@@ -435,7 +462,7 @@ function NewProductPageContent() {
                     </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      {shopifyImportEnabled && (
+                    {shopifyImportEnabled && (
                       <button
                         type="button"
                         onClick={() => setShowShopifyImport(true)}
@@ -949,18 +976,42 @@ function NewProductPageContent() {
                             </button>
                           </div>
                           {shopifyConnection ? (
-                            <div className="mt-2 flex flex-col gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-                              <p className="text-xs font-medium text-emerald-700">
-                                Tienda conectada: {shopifyConnection.shopDomain}
-                              </p>
-                              <button
-                                type="button"
-                                onClick={disconnectShopify}
-                                disabled={disconnectingShopify || importingShopify || connectingShopify}
-                                className="self-start text-xs font-semibold text-slate-700 underline-offset-4 transition hover:text-slate-950 hover:underline disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto"
-                              >
-                                {disconnectingShopify ? "Desconectando..." : "Desconectar"}
-                              </button>
+                            <div className="mt-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2">
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <p className="text-xs font-medium text-emerald-700">
+                                  Tienda conectada: {shopifyConnection.shopDomain}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={disconnectShopify}
+                                  disabled={
+                                    disconnectingShopify ||
+                                    importingShopify ||
+                                    connectingShopify ||
+                                    activatingShopifyBilling
+                                  }
+                                  className="self-start text-xs font-semibold text-slate-700 underline-offset-4 transition hover:text-slate-950 hover:underline disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto"
+                                >
+                                  {disconnectingShopify ? "Desconectando..." : "Desconectar"}
+                                </button>
+                              </div>
+                              {shopifyBillingEnabled && (
+                                <div className="mt-3 flex flex-col gap-2 border-t border-emerald-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                                  <p className="text-xs text-emerald-800">
+                                    Activa el cobro por uso para que Afilink pueda cobrar comisiones de ventas Shopify.
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={activateShopifyBilling}
+                                    disabled={activatingShopifyBilling || importingShopify}
+                                    className="inline-flex justify-center rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    {activatingShopifyBilling
+                                      ? "Abriendo Shopify..."
+                                      : "Activar comisiones"}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <p className="mt-2 text-xs text-slate-500">

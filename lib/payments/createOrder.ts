@@ -54,7 +54,7 @@ type ResolvedOrderItem = {
   sellerAmount: number;
 };
 
-async function resolveAttribution({
+export async function resolveAttribution({
   product,
   clickId,
   campaignClickId,

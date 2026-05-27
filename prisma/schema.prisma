@@ -147,6 +147,11 @@ model Product {
   sizes     String[]        @default([])
   imageUrls String[]
 
+  shopifyShopDomain String? @db.VarChar(191)
+  shopifyProductId  String? @db.VarChar(80)
+  shopifyVariantId  String? @db.VarChar(80)
+  shopifyVariants   Json?
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -167,6 +172,8 @@ model Product {
   @@index([sellerId])
   @@index([isActive])
   @@index([stock])
+  @@index([shopifyShopDomain])
+  @@index([shopifyVariantId])
   @@index([sellerId, isActive])
   @@index([isActive, commissionValue, createdAt], map: "idx_product_active_commission_created")
 }
@@ -343,6 +350,13 @@ model Order {
   paymentId       String? @db.VarChar(191)
   paymentStatus   String? @db.VarChar(50)
 
+  shopifyShopDomain String? @db.VarChar(191)
+  shopifyOrderId    String? @db.VarChar(80)
+  shopifyOrderName  String? @db.VarChar(80)
+  shopifyBillingStatus String? @db.VarChar(50)
+  shopifyBillingUsageRecordId String? @db.VarChar(191)
+  shopifyBillingError String? @db.Text
+
   // Datos de contacto y entrega
   buyerName          String? @db.VarChar(140)
   buyerEmail         String? @db.VarChar(191)
@@ -359,6 +373,7 @@ model Order {
   commissions Commission[]
   settlements Settlement[]
   items       OrderItem[]
+  shopifyBillingCharge ShopifyBillingCharge?
 
   @@index([productId])
   @@index([sellerId])
@@ -368,8 +383,35 @@ model Order {
   @@index([clickId])
   @@index([campaignClickId])
   @@index([createdAt])
+  @@index([shopifyShopDomain])
+  @@index([shopifyOrderId])
+  @@unique([shopifyShopDomain, shopifyOrderId])
   @@index([sellerId, status])
   @@index([affiliateId, status])
+}
+
+model ShopifyBillingCharge {
+  id String @id @default(cuid())
+
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  shopDomain     String @db.VarChar(191)
+  shopifyOrderId String @db.VarChar(80)
+
+  amount   Int
+  currency String @db.VarChar(10)
+  status   String @db.VarChar(50)
+
+  usageRecordId String? @db.VarChar(191)
+  error         String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shopDomain])
+  @@index([shopifyOrderId])
+  @@index([status])
 }
 
 model Commission {
