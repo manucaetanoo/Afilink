@@ -36,6 +36,7 @@ export type AdminOrder = {
     id: string;
     quantity: number;
     selectedSize: string | null;
+    selectedColor: string | null;
     total: number;
     sellerAmount: number;
     affiliateAmount: number;

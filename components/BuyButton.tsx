@@ -4,6 +4,7 @@ type BuyButtonProps = {
   productId: string;
   refCode?: string | null;
   selectedSize?: string | null;
+  selectedColor?: string | null;
   className?: string;
   disabled?: boolean;
   disabledReason?: string;
@@ -13,6 +14,7 @@ export function BuyButton({
   productId,
   refCode,
   selectedSize,
+  selectedColor,
   className,
   disabled = false,
   disabledReason,
@@ -24,7 +26,7 @@ export function BuyButton({
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, refCode, selectedSize }),
+      body: JSON.stringify({ productId, refCode, selectedSize, selectedColor }),
     });
 
     const data = await response.json();

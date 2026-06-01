@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole, requireUser } from "@/lib/auth";
+import { normalizeProductColors } from "@/lib/product-color";
 
 const productCategories = [
   "CLOTHING",
@@ -68,6 +69,7 @@ export async function GET(req: Request) {
           stock: true,
           category: true,
           sizes: true,
+          colors: true,
           createdAt: true,
           isActive: true,
           commissionValue: true,
@@ -121,6 +123,7 @@ export async function POST(req: Request) {
     const commissionValue = Number(body.commissionValue);
     const category = String(body.category ?? "OTHER").trim().toUpperCase();
     const sizes = normalizeSizes(body.sizes);
+    const colors = normalizeProductColors(body.colors);
 
     const imageUrlsRaw = body.imageUrls;
     const imageUrls: string[] = Array.isArray(imageUrlsRaw)
@@ -189,6 +192,7 @@ export async function POST(req: Request) {
         stock,
         category: category as (typeof productCategories)[number],
         sizes: categoriesWithSizes.has(category) ? sizes : [],
+        colors: colors.length ? colors : undefined,
         commissionValue,
         commissionType: "PERCENT",
         platformCommissionValue: sellerSettings.platformCommissionValue,
@@ -199,6 +203,7 @@ export async function POST(req: Request) {
         id: true,
         category: true,
         sizes: true,
+        colors: true,
         stock: true,
         commissionValue: true,
         commissionType: true,

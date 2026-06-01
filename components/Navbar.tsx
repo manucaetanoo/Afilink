@@ -242,6 +242,7 @@ export default function Navbar() {
                             <p className="mt-1 text-xs text-slate-500">
                               ${item.price.toFixed(2)}
                               {item.selectedSize && ` - Talle ${item.selectedSize}`}
+                              {item.selectedColor && ` - Color ${item.selectedColor}`}
                               {(item.clickId || item.campaignClickId) && " · - referido"}
                             </p>
                             <div className="mt-2 flex items-center gap-2">
@@ -450,6 +451,7 @@ export default function Navbar() {
                             <p className="mt-1 break-words text-xs leading-5 text-slate-500">
                               ${item.price.toFixed(2)}
                               {item.selectedSize && ` - Talle ${item.selectedSize}`}
+                              {item.selectedColor && ` - Color ${item.selectedColor}`}
                               {(item.clickId || item.campaignClickId) && " · - referido"}
                             </p>
                             <div className="mt-2 flex items-center gap-2">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { isPublicShopifyEnabled } from "@/lib/features";
+import type { ProductColorOption } from "@/lib/product-color";
 
 export type ProductCardProduct = {
   id: string;
@@ -9,6 +10,7 @@ export type ProductCardProduct = {
   price: number;
   stock: number;
   commissionValue: number;
+  colors?: ProductColorOption[];
   imageUrls: string[];
   isShopifyProduct?: boolean;
 };
@@ -55,6 +57,7 @@ export default function ProductCard({
   const commissionLabel = getCommissionLabel(product);
   const commissionEarning = getCommissionEarning(product);
   const hasStock = product.stock > 0;
+  const colors = product.colors ?? [];
 
   return (
     <article className="group overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-[0_15px_50px_-35px_rgba(15,23,42,0.45)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_30px_80px_-35px_rgba(249,115,22,0.45)] sm:rounded-[28px]">
@@ -134,6 +137,20 @@ export default function ProductCard({
             <p className="mt-1.5 text-sm font-medium text-slate-500 sm:mt-2">
               Precio de venta {formatPrice(product.price)}
             </p>
+            {colors.length > 0 && (
+              <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                <span className="inline-flex -space-x-1">
+                  {colors.slice(0, 3).map((color) => (
+                    <span
+                      key={`${color.name}-${color.hex}`}
+                      className="h-3 w-3 rounded-full border border-white ring-1 ring-slate-300"
+                      style={{ backgroundColor: color.hex }}
+                    />
+                  ))}
+                </span>
+                {colors.length === 1 ? colors[0].name : `${colors.length} colores`}
+              </p>
+            )}
             <p className="mt-1 text-xs font-semibold text-slate-500">
               {!hasStock && "Sin stock"}
             </p>

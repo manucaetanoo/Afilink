@@ -19,6 +19,7 @@ import {
   DEFAULT_PLATFORM_COMMISSION_TYPE,
   DEFAULT_PLATFORM_COMMISSION_VALUE,
 } from "@/lib/platform-commission";
+import { PRODUCT_COLOR_PRESETS, type ProductColorOption } from "@/lib/product-color";
 import { formatMoney, getSellerNetAmount } from "@/lib/pricing";
 import Sidebar from "@/components/Sidebar";
 import {
@@ -86,6 +87,10 @@ function NewProductPageContent() {
   const [category, setCategory] = useState("OTHER");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [customSize, setCustomSize] = useState("");
+  const [colors, setColors] = useState<ProductColorOption[]>([]);
+  const [customColorName, setCustomColorName] = useState("");
+  const [customColorHex, setCustomColorHex] = useState("#111827");
+  const [showColorVariants, setShowColorVariants] = useState(false);
   const [commissionValue, setCommissionValue] = useState(10);
   const [platformCommissionValue, setPlatformCommissionValue] = useState(
     DEFAULT_PLATFORM_COMMISSION_VALUE
@@ -226,6 +231,23 @@ function NewProductPageContent() {
     setCustomSize("");
   }
 
+  function toggleColor(color: ProductColorOption) {
+    setColors((current) =>
+      current.some((item) => item.name.toLowerCase() === color.name.toLowerCase())
+        ? current.filter((item) => item.name.toLowerCase() !== color.name.toLowerCase())
+        : [...current, color]
+    );
+  }
+
+  function addCustomColor() {
+    const name = customColorName.trim();
+    if (!name) return;
+
+    toggleColor({ name, hex: customColorHex });
+    setCustomColorName("");
+    setCustomColorHex("#111827");
+  }
+
   function removeImage(index: number) {
     setImageFiles((current) =>
       current.filter((_, currentIndex) => currentIndex !== index)
@@ -261,6 +283,7 @@ function NewProductPageContent() {
         stock,
         category,
         sizes: shouldShowSizes ? selectedSizes : [],
+        colors,
         commissionValue,
         commissionType: "PERCENT",
         imageUrls,
@@ -641,6 +664,109 @@ function NewProductPageContent() {
                                     ))}
                                   </div>
                                 )}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              <div>
+                                <h3 className="text-sm font-semibold text-slate-900">
+                                  Variantes de color
+                                </h3>
+                                <p className="text-sm text-slate-500">
+                                  Opcional. Si no agregas ninguna, el producto queda sin variante de color.
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setShowColorVariants((current) => !current)}
+                                className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                              >
+                                {showColorVariants ? "Ocultar colores" : "Agregar variante de color"}
+                              </button>
+                            </div>
+
+                            {colors.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {colors.map((color) => (
+                                  <button
+                                    key={`${color.name}-${color.hex}`}
+                                    type="button"
+                                    onClick={() => toggleColor(color)}
+                                    className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100"
+                                  >
+                                    <span
+                                      className="h-3.5 w-3.5 rounded-full border border-slate-300"
+                                      style={{ backgroundColor: color.hex }}
+                                    />
+                                    {color.name} x
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {showColorVariants && (
+                              <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
+                                <div className="flex flex-wrap gap-2">
+                                  {PRODUCT_COLOR_PRESETS.map((color) => (
+                                    <button
+                                      key={color.name}
+                                      type="button"
+                                      onClick={() => toggleColor(color)}
+                                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                                        colors.some((item) => item.name.toLowerCase() === color.name.toLowerCase())
+                                          ? "border-slate-950 bg-white text-slate-950 ring-2 ring-slate-200"
+                                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                                      }`}
+                                    >
+                                      <span
+                                        className="h-4 w-4 rounded-full border border-slate-300"
+                                        style={{ backgroundColor: color.hex }}
+                                      />
+                                      {color.name}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+                                  <input
+                                    type="text"
+                                    value={customColorName}
+                                    onChange={(e) => setCustomColorName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        addCustomColor();
+                                      }
+                                    }}
+                                    placeholder="Agregar color personalizado"
+                                    maxLength={40}
+                                    className="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+                                  />
+                                  <div className="flex gap-2">
+                                    <label className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+                                      <span
+                                        className="h-6 w-6 rounded-full border border-slate-300"
+                                        style={{ backgroundColor: customColorHex }}
+                                      />
+                                      <input
+                                        type="color"
+                                        value={customColorHex}
+                                        onChange={(e) => setCustomColorHex(e.target.value)}
+                                        className="h-8 w-10 cursor-pointer border-0 bg-transparent p-0"
+                                        aria-label="Elegir color"
+                                      />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      onClick={addCustomColor}
+                                      className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                                    >
+                                      Agregar
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </div>

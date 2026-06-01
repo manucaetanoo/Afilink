@@ -13,6 +13,7 @@ type CheckoutItemInput = {
   productId: string;
   quantity?: number;
   selectedSize?: string | null;
+  selectedColor?: string | null;
   clickId?: string;
   campaignClickId?: string;
 };
@@ -34,6 +35,7 @@ type CheckoutShippingData = {
 type CreateOrderInput = {
   productId: string;
   selectedSize?: string | null;
+  selectedColor?: string | null;
   clickId?: string;
   campaignClickId?: string;
 };
@@ -44,6 +46,7 @@ type ResolvedOrderItem = {
   };
   quantity: number;
   selectedSize: string | null;
+  selectedColor: string | null;
   affiliateId: string | null;
   campaignId: string | null;
   clickId: string | null;
@@ -160,6 +163,7 @@ async function resolveCheckoutItems(items: CheckoutItemInput[]) {
     }
 
     const selectedSize = item.selectedSize?.trim() || null;
+    const selectedColor = item.selectedColor?.trim() || null;
 
     if (product.sizes.length > 0) {
       if (!selectedSize) {
@@ -168,6 +172,28 @@ async function resolveCheckoutItems(items: CheckoutItemInput[]) {
 
       if (!product.sizes.includes(selectedSize)) {
         throw new Error(`Talle invalido para ${product.name}`);
+      }
+    }
+
+    const productColors = Array.isArray(product.colors)
+      ? product.colors.filter(
+          (color): color is { name: string; hex: string } =>
+            Boolean(
+              color &&
+                typeof color === "object" &&
+                "name" in color &&
+                typeof color.name === "string"
+            )
+        )
+      : [];
+
+    if (productColors.length > 0) {
+      if (!selectedColor) {
+        throw new Error(`Selecciona un color para ${product.name}`);
+      }
+
+      if (!productColors.some((color) => color.name === selectedColor)) {
+        throw new Error(`Color invalido para ${product.name}`);
       }
     }
 
@@ -191,6 +217,7 @@ async function resolveCheckoutItems(items: CheckoutItemInput[]) {
       product,
       quantity,
       selectedSize: product.sizes.length > 0 ? selectedSize : null,
+      selectedColor: productColors.length > 0 ? selectedColor : null,
       ...attribution,
       total,
       affiliateAmount: split.affiliateAmount,
@@ -321,6 +348,7 @@ export async function createCheckoutOrder(
           campaignClickId: item.campaignClickId,
           quantity: item.quantity,
           selectedSize: item.selectedSize,
+          selectedColor: item.selectedColor,
           unitPrice: item.product.price,
           total: item.total,
           commissionValue: item.product.commissionValue,
@@ -367,8 +395,9 @@ export async function createCheckoutOrder(
 export async function createOrder({
   productId,
   selectedSize,
+  selectedColor,
   clickId,
   campaignClickId,
 }: CreateOrderInput) {
-  return createCheckoutOrder([{ productId, selectedSize, clickId, campaignClickId }]);
+  return createCheckoutOrder([{ productId, selectedSize, selectedColor, clickId, campaignClickId }]);
 }

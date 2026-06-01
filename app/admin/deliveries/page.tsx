@@ -40,6 +40,7 @@ export default async function AdminOrdersPage() {
             id: true,
             quantity: true,
             selectedSize: true,
+            selectedColor: true,
             total: true,
             sellerAmount: true,
             affiliateAmount: true,

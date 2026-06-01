@@ -41,6 +41,7 @@ type OrderCheckoutData = {
     id: string;
     total: number;
     selectedSize: string | null;
+    selectedColor: string | null;
     product: {
       name: string;
       desc: string | null;
@@ -57,6 +58,7 @@ type Props = {
     productId: string;
     quantity?: number;
     selectedSize?: string | null;
+    selectedColor?: string | null;
     clickId?: string;
     campaignClickId?: string;
   }>;
@@ -611,6 +613,11 @@ export default function DlocalGoCheckoutClient({
                       {item.selectedSize && (
                         <p className="mt-2 inline-flex rounded-full bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700">
                           Talle {item.selectedSize}
+                        </p>
+                      )}
+                      {item.selectedColor && (
+                        <p className="mt-2 ml-2 inline-flex rounded-full bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700">
+                          Color {item.selectedColor}
                         </p>
                       )}
                       <p className="mt-2 text-sm font-semibold text-slate-900">

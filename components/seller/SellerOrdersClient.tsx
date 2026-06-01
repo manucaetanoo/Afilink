@@ -59,6 +59,7 @@ export type SellerOrder = {
       id: string;
       quantity: number;
       selectedSize: string | null;
+      selectedColor: string | null;
       total: number;
       product: {
         name: string;
@@ -318,6 +319,11 @@ export default function SellerOrdersClient({
                           {item.selectedSize && (
                             <span className="mt-0.5 block text-xs font-semibold text-orange-700">
                               Talle {item.selectedSize}
+                            </span>
+                          )}
+                          {item.selectedColor && (
+                            <span className="mt-0.5 block text-xs font-semibold text-slate-600">
+                              Color {item.selectedColor}
                             </span>
                           )}
                         </span>

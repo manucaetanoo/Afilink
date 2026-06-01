@@ -23,6 +23,7 @@ type CheckoutItemInput = {
   productId?: unknown;
   quantity?: unknown;
   selectedSize?: unknown;
+  selectedColor?: unknown;
   clickId?: unknown;
   campaignClickId?: unknown;
 };
@@ -112,6 +113,8 @@ export async function POST(req: Request) {
             quantity: Number(item.quantity || 1),
             selectedSize:
               typeof item.selectedSize === "string" ? item.selectedSize : undefined,
+            selectedColor:
+              typeof item.selectedColor === "string" ? item.selectedColor : undefined,
             clickId: typeof item.clickId === "string" ? item.clickId : undefined,
             campaignClickId:
               typeof item.campaignClickId === "string"

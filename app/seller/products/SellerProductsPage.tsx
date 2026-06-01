@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import ItemSeller from "@/components/ItemSeller";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
+import type { ProductColorOption } from "@/lib/product-color";
 
 type SellerProduct = {
   id: string;
@@ -17,6 +18,7 @@ type SellerProduct = {
   commissionType: "PERCENT" | "FIXED";
   platformCommissionValue: number;
   platformCommissionType: "PERCENT" | "FIXED";
+  colors: ProductColorOption[] | null;
   imageUrls: string[];
   isActive: boolean;
 };

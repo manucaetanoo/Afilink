@@ -2,12 +2,14 @@ import { notFound } from "next/navigation";
 import { getDlocalGoSmartFieldsConfig } from "@/lib/payments/dlocalgo";
 import { prisma } from "@/lib/prisma";
 import { getCheckoutTotalWithTax } from "@/lib/taxes";
+import { parseProductColors } from "@/lib/product-color";
 import DlocalGoCheckoutClient from "./[orderId]/DlocalGoCheckoutClient";
 
 type DraftCheckoutItem = {
   productId: string;
   quantity?: number;
   selectedSize?: string | null;
+  selectedColor?: string | null;
   clickId?: string;
   campaignClickId?: string;
 };
@@ -31,6 +33,8 @@ function decodeCheckoutItems(value?: string | string[]) {
         quantity: Math.max(1, Math.min(20, Number(item.quantity || 1))),
         selectedSize:
           typeof item.selectedSize === "string" ? item.selectedSize : null,
+        selectedColor:
+          typeof item.selectedColor === "string" ? item.selectedColor : null,
         clickId: typeof item.clickId === "string" ? item.clickId : undefined,
         campaignClickId:
           typeof item.campaignClickId === "string"
@@ -68,6 +72,7 @@ export default async function DraftCheckoutPage({
       price: true,
       stock: true,
       sizes: true,
+      colors: true,
       imageUrls: true,
     },
   });
@@ -80,11 +85,16 @@ export default async function DraftCheckoutPage({
     if (product.sizes.length > 0 && !product.sizes.includes(item.selectedSize || "")) {
       notFound();
     }
+    const colors = parseProductColors(product.colors);
+    if (colors.length > 0 && !colors.some((color) => color.name === item.selectedColor)) {
+      notFound();
+    }
 
     return {
-      id: `${item.productId}:${item.selectedSize || "no-size"}`,
+      id: `${item.productId}:${item.selectedSize || "no-size"}:${item.selectedColor || "no-color"}`,
       total: product.price * item.quantity,
       selectedSize: item.selectedSize,
+      selectedColor: colors.length > 0 ? item.selectedColor : null,
       product: {
         name: product.name,
         desc: product.desc,

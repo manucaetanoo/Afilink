@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DEFAULT_PLATFORM_COMMISSION_VALUE } from "@/lib/platform-commission";
+import { parseProductColors, type ProductColorOption } from "@/lib/product-color";
 import { formatMoney, getSellerNetAmount } from "@/lib/pricing";
 
 type Product = {
@@ -12,6 +13,7 @@ type Product = {
   commissionType: "PERCENT" | "FIXED";
   platformCommissionValue?: number;
   platformCommissionType?: "PERCENT" | "FIXED";
+  colors?: ProductColorOption[] | unknown;
   imageUrls: string[];
   isActive?: boolean;
 };
@@ -29,6 +31,7 @@ export default function ItemSeller({
 }) {
   const isAffiliate = role === "AFFILIATE";
   const imageUrl = product.imageUrls?.[0] ?? null;
+  const colors = parseProductColors(product.colors);
   const sellerNet = getSellerNetAmount({
     price: product.price,
     affiliateCommissionValue: product.commissionValue,
@@ -71,6 +74,20 @@ export default function ItemSeller({
           <h6 className="mr-auto text-lg font-bold tracking-tight text-slate-950">
             ${product.price}
           </h6>
+          {colors.length > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+              <span className="inline-flex -space-x-1">
+                {colors.slice(0, 3).map((color) => (
+                  <span
+                    key={`${color.name}-${color.hex}`}
+                    className="h-3 w-3 rounded-full border border-white ring-1 ring-slate-300"
+                    style={{ backgroundColor: color.hex }}
+                  />
+                ))}
+              </span>
+              {colors.length === 1 ? colors[0].name : `${colors.length} colores`}
+            </span>
+          )}
           {product.isActive !== undefined && (
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
               {product.isActive ? "Activo" : "Inactivo"}

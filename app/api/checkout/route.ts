@@ -7,6 +7,7 @@ type CheckoutItem = {
   productId?: string;
   quantity?: number;
   selectedSize?: string | null;
+  selectedColor?: string | null;
   clickId?: string;
   campaignClickId?: string;
 };
@@ -124,6 +125,8 @@ export async function POST(req: Request) {
     const productId: string | undefined = body?.productId;
     const selectedSize: string | undefined =
       typeof body?.selectedSize === "string" ? body.selectedSize : undefined;
+    const selectedColor: string | undefined =
+      typeof body?.selectedColor === "string" ? body.selectedColor : undefined;
     const refCode: string | undefined =
       typeof body?.refCode === "string" ? body.refCode : undefined;
     const items = Array.isArray(body?.items)
@@ -156,6 +159,8 @@ export async function POST(req: Request) {
           quantity: item.quantity,
           selectedSize:
             typeof item.selectedSize === "string" ? item.selectedSize : undefined,
+          selectedColor:
+            typeof item.selectedColor === "string" ? item.selectedColor : undefined,
           clickId: item.clickId || undefined,
           campaignClickId: item.campaignClickId || undefined,
         }));
@@ -228,6 +233,7 @@ export async function POST(req: Request) {
               {
                 productId: productId!,
                 selectedSize,
+                selectedColor,
                 clickId: clickId || undefined,
                 campaignClickId: campaignClickId || undefined,
               },

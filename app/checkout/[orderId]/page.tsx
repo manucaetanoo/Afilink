@@ -34,6 +34,7 @@ export default async function CheckoutOrderPage({ params }: Props) {
           id: true,
           total: true,
           selectedSize: true,
+          selectedColor: true,
           product: {
             select: {
               name: true,
@@ -64,6 +65,7 @@ export default async function CheckoutOrderPage({ params }: Props) {
           id: checkoutOrder.id,
           total: checkoutOrder.total,
           selectedSize: null,
+          selectedColor: null,
           product: checkoutOrder.product,
         },
       ];
@@ -94,6 +96,7 @@ export default async function CheckoutOrderPage({ params }: Props) {
       id: item.id,
       total: item.total,
       selectedSize: item.selectedSize,
+      selectedColor: item.selectedColor,
       product: item.product,
     })),
   };

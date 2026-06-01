@@ -52,6 +52,7 @@ type CheckoutItemInput = {
   productId: string;
   quantity?: number;
   selectedSize?: string | null;
+  selectedColor?: string | null;
   clickId?: string;
   campaignClickId?: string;
 };

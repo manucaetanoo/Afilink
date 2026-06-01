@@ -36,18 +36,30 @@ export default async function EditProductPage({ params }: Props) {
       stock: true,
       category: true,
       sizes: true,
+      colors: true,
       imageUrls: true,
       isActive: true,
       commissionValue: true,
       commissionType: true,
-      platformCommissionValue: true,
-      platformCommissionType: true,
+      seller: {
+        select: {
+          platformCommissionValue: true,
+          platformCommissionType: true,
+        },
+      },
     },
   });
 
   if (!product) {
     notFound();
   }
+
+  const { seller, ...productData } = product;
+  const productWithSellerCommission = {
+    ...productData,
+    platformCommissionValue: seller.platformCommissionValue,
+    platformCommissionType: seller.platformCommissionType,
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
@@ -71,7 +83,7 @@ export default async function EditProductPage({ params }: Props) {
               </p>
             </div>
 
-            <ProductEditForm product={product} />
+            <ProductEditForm product={productWithSellerCommission} />
           </div>
         </main>
       </div>

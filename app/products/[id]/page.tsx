@@ -18,6 +18,7 @@ import {
 } from "@/components/ProductRolePanels";
 import { prisma } from "@/lib/prisma";
 import { getSellerNetAmount } from "@/lib/pricing";
+import { parseProductColors } from "@/lib/product-color";
 import { isShopifyEnabled } from "@/lib/features";
 import { unstable_cache } from "next/cache";
 
@@ -77,6 +78,7 @@ export default async function ProductPage({
   const categoryName = categoryLabels[product.category] ?? "Producto";
   const shopifyEnabled = isShopifyEnabled();
   const hasStock = product.stock > 0;
+  const colors = parseProductColors(product.colors);
   const sellerNet = getSellerNetAmount({
     price: product.price,
     affiliateCommissionValue: product.commissionValue,
@@ -134,6 +136,22 @@ export default async function ProductPage({
                 <p className="mt-4 text-base leading-7 text-slate-600">
                   {product.desc ?? "Este producto todavia no tiene descripcion."}
                 </p>
+                {colors.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {colors.map((color) => (
+                      <span
+                        key={`${color.name}-${color.hex}`}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700"
+                      >
+                        <span
+                          className="h-4 w-4 rounded-full border border-slate-300"
+                          style={{ backgroundColor: color.hex }}
+                        />
+                        {color.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="mt-6 rounded-2xl bg-slate-50 p-5">
@@ -157,6 +175,7 @@ export default async function ProductPage({
                   price: product.price,
                   imageUrl: product.imageUrls[0] ?? null,
                   sizes: product.sizes,
+                  colors,
                   usesShopifyCheckout: Boolean(
                     shopifyEnabled && product.shopifyShopDomain && product.shopifyVariantId
                   ),

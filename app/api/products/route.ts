@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { isShopifyEnabled } from "@/lib/features";
+import { normalizeProductColors, parseProductColors } from "@/lib/product-color";
 
 const MAX_PRODUCTS_TAKE = 80;
 type ProductSourceFilter = "all" | "afilink" | "shopify";
@@ -41,6 +42,7 @@ export async function GET(req: Request) {
       price: true,
       stock: true,
       commissionValue: true,
+      colors: true,
       imageUrls: true,
       shopifyShopDomain: true,
       shopifyVariantId: true,
@@ -57,6 +59,7 @@ export async function GET(req: Request) {
       price: product.price,
       stock: product.stock,
       commissionValue: product.commissionValue,
+      colors: parseProductColors(product.colors),
       imageUrls: product.imageUrls.slice(0, 1),
       isShopifyProduct:
         shopifyEnabled && Boolean(product.shopifyShopDomain && product.shopifyVariantId),
@@ -80,6 +83,7 @@ export async function POST(req: Request) {
       stock?: number;
       commissionValue?: number;
     };
+    const colors = normalizeProductColors(body.colors);
 
     if (!sellerId || !name || typeof price !== "number") {
       return NextResponse.json(
@@ -115,6 +119,7 @@ export async function POST(req: Request) {
         desc: desc ?? null,
         price,
         stock: stock ?? 0,
+        colors: colors.length ? colors : undefined,
         commissionValue: commissionValue ?? 10,
         commissionType: "PERCENT",
       },
@@ -124,6 +129,7 @@ export async function POST(req: Request) {
         desc: true,
         price: true,
         stock: true,
+        colors: true,
         sellerId: true,
         commissionValue: true, 
       },

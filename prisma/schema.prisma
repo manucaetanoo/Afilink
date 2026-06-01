@@ -145,6 +145,7 @@ model Product {
   stock     Int             @default(0)
   category  ProductCategory @default(OTHER)
   sizes     String[]        @default([])
+  colors    Json?
   imageUrls String[]
 
   shopifyShopDomain String? @db.VarChar(191)
@@ -509,6 +510,7 @@ model OrderItem {
 
   quantity     Int     @default(1)
   selectedSize String? @db.VarChar(30)
+  selectedColor String? @db.VarChar(40)
   unitPrice    Int
   total        Int
 

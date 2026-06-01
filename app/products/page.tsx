@@ -4,6 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import type { Metadata } from "next";
 import ProductsCatalogClient from "@/components/ProductsCatalogClient";
 import { isShopifyEnabled } from "@/lib/features";
+import { parseProductColors } from "@/lib/product-color";
 
 
 export const metadata: Metadata = {
@@ -31,6 +32,7 @@ async function getActiveProducts() {
       price: true,
       stock: true,
       commissionValue: true,
+      colors: true,
       imageUrls: true,
       shopifyShopDomain: true,
       shopifyVariantId: true,
@@ -46,6 +48,7 @@ async function getActiveProducts() {
       price: product.price,
       stock: product.stock,
       commissionValue: product.commissionValue,
+      colors: parseProductColors(product.colors),
       imageUrls: product.imageUrls.slice(0, 1),
       isShopifyProduct:
         shopifyEnabled && Boolean(product.shopifyShopDomain && product.shopifyVariantId),

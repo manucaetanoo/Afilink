@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole, requireUser } from "@/lib/auth";
+import { normalizeProductColors } from "@/lib/product-color";
 
 const productCategories = [
   "CLOTHING",
@@ -51,6 +52,7 @@ export async function PATCH(
       isActive?: boolean;
       category?: (typeof productCategories)[number];
       sizes?: string[];
+      colors?: Array<{ name: string; hex: string }>;
       commissionValue?: number;
       commissionType?: "PERCENT";
       imageUrls?: string[];
@@ -117,6 +119,11 @@ export async function PATCH(
 
     if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
 
+    if (body.colors !== undefined) {
+      const colors = normalizeProductColors(body.colors);
+      data.colors = colors.length ? colors : [];
+    }
+
     if (body.commissionValue !== undefined) {
       const commissionValue = Number(body.commissionValue);
 
@@ -166,6 +173,7 @@ export async function PATCH(
         stock: true,
         category: true,
         sizes: true,
+        colors: true,
         isActive: true,
         commissionValue: true,
         commissionType: true,

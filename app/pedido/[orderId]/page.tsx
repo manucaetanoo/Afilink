@@ -152,6 +152,7 @@ export default async function PedidoDetallePage({
           id: true,
           quantity: true,
           selectedSize: true,
+          selectedColor: true,
           total: true,
           product: {
             select: {
@@ -301,6 +302,7 @@ export default async function PedidoDetallePage({
                     <p className="mt-1 text-xs text-slate-500">
                       x{item.quantity}
                       {item.selectedSize ? ` - Talle ${item.selectedSize}` : ""}
+                      {item.selectedColor ? ` - Color ${item.selectedColor}` : ""}
                     </p>
                   </div>
                   <p className="shrink-0 text-sm font-semibold text-slate-900">

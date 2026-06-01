@@ -67,6 +67,7 @@ export default async function SettledSellerOrdersPage() {
               id: true,
               quantity: true,
               selectedSize: true,
+              selectedColor: true,
               total: true,
               product: {
                 select: {

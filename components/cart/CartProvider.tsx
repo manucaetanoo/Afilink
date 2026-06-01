@@ -15,6 +15,7 @@ export type CartProductInput = {
   price: number;
   imageUrl?: string | null;
   selectedSize?: string | null;
+  selectedColor?: string | null;
 };
 
 export type CartItem = CartProductInput & {
@@ -37,8 +38,14 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "Afilink_cart";
 
-function getLineId(productId: string, selectedSize?: string | null) {
-  return `${productId}:${selectedSize?.trim() || "no-size"}`;
+function getLineId(
+  productId: string,
+  selectedSize?: string | null,
+  selectedColor?: string | null
+) {
+  return `${productId}:${selectedSize?.trim() || "no-size"}:${
+    selectedColor?.trim() || "no-color"
+  }`;
 }
 
 function readCart() {
@@ -55,14 +62,19 @@ function readCart() {
           typeof item.selectedSize === "string" && item.selectedSize.trim()
             ? item.selectedSize.trim()
             : null;
+        const selectedColor =
+          typeof item.selectedColor === "string" && item.selectedColor.trim()
+            ? item.selectedColor.trim()
+            : null;
 
         return {
           ...item,
           lineId:
             typeof item.lineId === "string"
               ? item.lineId
-              : getLineId(item.productId, selectedSize),
+              : getLineId(item.productId, selectedSize, selectedColor),
           selectedSize,
+          selectedColor,
           quantity: Math.max(1, Math.min(20, Number(item.quantity || 1))),
         } as CartItem;
       });
@@ -88,13 +100,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const referral = response.ok ? await response.json().catch(() => null) : null;
 
     setItems((current) => {
-      const lineId = getLineId(product.productId, product.selectedSize);
+      const lineId = getLineId(
+        product.productId,
+        product.selectedSize,
+        product.selectedColor
+      );
       const existing = current.find((item) => item.lineId === lineId);
       const nextItem: CartItem = {
         ...product,
         lineId,
         imageUrl: product.imageUrl ?? null,
         selectedSize: product.selectedSize?.trim() || null,
+        selectedColor: product.selectedColor?.trim() || null,
         quantity: existing ? existing.quantity + 1 : 1,
         clickId: referral?.clickId || undefined,
         campaignClickId: referral?.campaignClickId || undefined,
