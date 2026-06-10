@@ -209,11 +209,11 @@ export default function SellerOnboardingForm() {
                       <Squares2X2Icon className="mt-0.5 h-5 w-5 text-orange-500" />
                       <div>
                         <p className="text-sm font-semibold text-slate-900">
-                          Carga manual o importacion
+                          Carga manual o importá
                         </p>
                         <p className="mt-1 text-sm leading-6 text-slate-500">
                           Desde la pantalla de crear producto tambien podes importar
-                          productos desde Shopify o Fenicio.
+                          productos Fenicio.
                         </p>
                       </div>
                     </div>
