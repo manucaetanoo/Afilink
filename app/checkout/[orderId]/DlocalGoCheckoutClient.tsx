@@ -160,6 +160,7 @@ export default function DlocalGoCheckoutClient({
   );
   const [installments, setInstallments] = useState<DlocalInstallment[]>([]);
   const [installmentsId, setInstallmentsId] = useState("");
+  const [installmentsChecked, setInstallmentsChecked] = useState(false);
   const [shipping, setShipping] = useState<ShippingData>(order.shipping);
   const [documentType, setDocumentType] = useState("CI");
   const [documentNumber, setDocumentNumber] = useState("");
@@ -174,6 +175,7 @@ export default function DlocalGoCheckoutClient({
     setCardReady(false);
     setInstallments([]);
     setInstallmentsId("");
+    setInstallmentsChecked(false);
     setDeliveryConfirmed(deliveryConfirmedValue);
   };
 
@@ -213,8 +215,10 @@ export default function DlocalGoCheckoutClient({
         setError(null);
 
         window.dlocalGo.onInstallmentsChange?.((options) => {
-          setInstallments(options ?? []);
-          setInstallmentsId("");
+          const availableOptions = options ?? [];
+          setInstallments(availableOptions);
+          setInstallmentsId(availableOptions[0]?.id ?? "");
+          setInstallmentsChecked(true);
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : "No se pudo iniciar la tarjeta");
@@ -541,24 +545,32 @@ export default function DlocalGoCheckoutClient({
                     />
                   </div>
 
-                  {installments.length > 1 && (
+                  {installments.length > 0 ? (
                     <label className="block text-sm font-medium text-slate-700">
-                      Cuotas
+                      Forma de pago
                       <select
                         value={installmentsId}
                         onChange={(event) => setInstallmentsId(event.target.value)}
                         className={inputClassName}
                       >
-                        <option value="">Selecciona una opcion</option>
                         {installments.map((option) => (
                           <option key={option.id} value={option.id}>
-                            {option.installments} cuotas de {option.currency}{" "}
-                            {option.installment_amount}
+                            {option.installments === 1
+                              ? `1 pago de ${option.currency} ${option.total_amount}`
+                              : `${option.installments} cuotas de ${option.currency} ${option.installment_amount}`}
                           </option>
                         ))}
                       </select>
                     </label>
-                  )}
+                  ) : installmentsChecked ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                      Cuotas no disponibles para esta tarjeta. El pago se procesara en un solo pago.
+                    </div>
+                  ) : cardReady ? (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                      Si la tarjeta admite cuotas, las opciones apareceran automaticamente.
+                    </div>
+                  ) : null}
 
                   <button
                     type="button"

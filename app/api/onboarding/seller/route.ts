@@ -9,12 +9,17 @@ function clean(value: unknown) {
   return v.length ? v : null;
 }
 
+function getSessionUserId(session: unknown) {
+  if (!session || typeof session !== "object" || !("user" in session)) return undefined;
+
+  const { user } = session as { user?: { id?: unknown } };
+  return typeof user?.id === "string" ? user.id : undefined;
+}
+
 export async function GET() {
   const session = await getServerSession(authOptions);
+  const userId = getSessionUserId(session);
 
-  console.log("SESSION ONBOARDING:", session);
-
-  const userId = (session?.user as any)?.id as string | undefined;
   if (!userId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
@@ -40,8 +45,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
+  const userId = getSessionUserId(session);
 
-  const userId = (session?.user as any)?.id as string | undefined;
   if (!userId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
@@ -71,7 +76,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: "Body inválido" }, { status: 400 });
+    return NextResponse.json({ error: "Body invalido" }, { status: 400 });
   }
 
   const companyName = clean(body.companyName);
@@ -97,7 +102,7 @@ export async function POST(req: Request) {
   }
 
   if (image && image.length > 500) {
-    return NextResponse.json({ error: "URL de imagen inválida" }, { status: 400 });
+    return NextResponse.json({ error: "URL de imagen invalida" }, { status: 400 });
   }
 
   const exists = await prisma.user.findFirst({
@@ -110,7 +115,7 @@ export async function POST(req: Request) {
 
   if (exists) {
     return NextResponse.json(
-      { error: "Ese slug ya está en uso" },
+      { error: "Ese slug ya esta en uso" },
       { status: 409 }
     );
   }

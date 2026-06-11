@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
 import { isShopifyEnabled } from "@/lib/features";
-import { normalizeProductColors, parseProductColors } from "@/lib/product-color";
+import { parseProductColors } from "@/lib/product-color";
 
 const MAX_PRODUCTS_TAKE = 80;
 type ProductSourceFilter = "all" | "afilink" | "shopify";
@@ -72,77 +71,12 @@ function parseSourceFilter(value: string | null): ProductSourceFilter {
   return "all";
 }
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
-    const body = await req.json();
-    const { sellerId, name, desc, price, stock, commissionValue } = body as {
-      sellerId: string;
-      name: string;
-      desc?: string | null;
-      price: number;
-      stock?: number;
-      commissionValue?: number;
-    };
-    const colors = normalizeProductColors(body.colors);
-
-    if (!sellerId || !name || typeof price !== "number") {
-      return NextResponse.json(
-        { error: "Faltan datos: sellerId, name, price (number)" },
-        { status: 400 }
-      );
-    }
-
-    if (
-      stock !== undefined &&
-      (!Number.isInteger(stock) || stock < 0)
-    ) {
-      return NextResponse.json(
-        { error: "Stock invalido" },
-        { status: 400 }
-      );
-    }
-
-    if (
-      commissionValue !== undefined &&
-      (!Number.isFinite(commissionValue) || commissionValue <= 0 || commissionValue > 100)
-    ) {
-      return NextResponse.json(
-        { error: "Comision invalida" },
-        { status: 400 }
-      );
-    }
-
-    const product = await prisma.product.create({
-      data: {
-        sellerId,
-        name,
-        desc: desc ?? null,
-        price,
-        stock: stock ?? 0,
-        colors: colors.length ? colors : undefined,
-        commissionValue: commissionValue ?? 10,
-        commissionType: "PERCENT",
-      },
-      select: {
-        id: true,
-        name: true,
-        desc: true,
-        price: true,
-        stock: true,
-        colors: true,
-        sellerId: true,
-        commissionValue: true, 
-      },
-    });
-
-    revalidateTag("products", "max");
-    revalidateTag("campaigns", "max");
-    revalidateTag("stores", "max");
-    revalidatePath("/products");
-    revalidatePath("/campaigns");
-    revalidatePath("/store");
-
-    return NextResponse.json(product, { status: 201 });
+    return NextResponse.json(
+      { error: "Usa /api/seller/products para crear productos autenticados" },
+      { status: 410 }
+    );
   } catch (e) {
     console.error(e);
     return NextResponse.json(

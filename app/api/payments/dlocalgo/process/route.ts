@@ -4,6 +4,8 @@ import {
   createDlocalGoPayment,
 } from "@/lib/payments/dlocalgo";
 import { prisma } from "@/lib/prisma";
+import { OrderStatus } from "@/lib/prisma-enums";
+import { rateLimit } from "@/lib/rate-limit";
 
 type ShippingData = {
   buyerName?: unknown;
@@ -89,8 +91,21 @@ function isShippingValidationError(error: unknown) {
 
 export async function POST(req: Request) {
   try {
+    const limit = rateLimit(req, {
+      key: "payments:dlocalgo:process",
+      limit: 20,
+      windowMs: 60_000,
+    });
+
+    if (!limit.ok) {
+      return NextResponse.json(
+        { ok: false, error: "Demasiados intentos" },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+      );
+    }
+
     const body = await req.json();
-    let orderId = body?.orderId as string | undefined;
+    const orderId = body?.orderId as string | undefined;
     const items = Array.isArray(body?.items)
       ? (body.items as CheckoutItemInput[])
       : null;
@@ -142,6 +157,22 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { ok: false, error: "orderId requerido" },
         { status: 400 }
+      );
+    }
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, status: true, paymentStatus: true },
+    });
+
+    if (
+      !existingOrder ||
+      existingOrder.status !== OrderStatus.PENDING ||
+      existingOrder.paymentStatus?.toUpperCase() === "PAID"
+    ) {
+      return NextResponse.json(
+        { ok: false, error: "La orden no esta disponible para pago" },
+        { status: 409 }
       );
     }
 

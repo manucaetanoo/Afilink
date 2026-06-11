@@ -2,6 +2,7 @@ import { randomBytes, createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTransactionalEmail } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 
 const RESET_TOKEN_MINUTES = 30;
 
@@ -20,6 +21,19 @@ function getAppUrl(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const limit = rateLimit(req, {
+    key: "auth:forgot-password",
+    limit: 5,
+    windowMs: 60_000,
+  });
+
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Demasiados intentos" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const email = String(body.email || "").toLowerCase().trim();
 

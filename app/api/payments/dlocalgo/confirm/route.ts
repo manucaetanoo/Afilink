@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { confirmDlocalGoPayment } from "@/lib/payments/dlocalgo";
 import { createCheckoutOrder } from "@/lib/payments/createOrder";
 import { prisma } from "@/lib/prisma";
+import { OrderStatus } from "@/lib/prisma-enums";
+import { rateLimit } from "@/lib/rate-limit";
 
 type CheckoutItemInput = {
   productId?: unknown;
@@ -87,6 +89,19 @@ function isCheckoutValidationError(error: unknown) {
 
 export async function POST(req: Request) {
   try {
+    const limit = rateLimit(req, {
+      key: "payments:dlocalgo:confirm",
+      limit: 20,
+      windowMs: 60_000,
+    });
+
+    if (!limit.ok) {
+      return NextResponse.json(
+        { ok: false, error: "Demasiados intentos" },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+      );
+    }
+
     const body = await req.json();
     const orderId = cleanString(body?.orderId, 191);
     const checkoutToken = cleanString(body?.checkoutToken, 500);
@@ -149,6 +164,22 @@ export async function POST(req: Request) {
       );
 
       resolvedOrderId = order.id;
+    }
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: resolvedOrderId },
+      select: { id: true, status: true, paymentStatus: true },
+    });
+
+    if (
+      !existingOrder ||
+      existingOrder.status !== OrderStatus.PENDING ||
+      existingOrder.paymentStatus?.toUpperCase() === "PAID"
+    ) {
+      return NextResponse.json(
+        { ok: false, error: "La orden no esta disponible para pago" },
+        { status: 409 }
+      );
     }
 
     let payment: Awaited<ReturnType<typeof confirmDlocalGoPayment>>;

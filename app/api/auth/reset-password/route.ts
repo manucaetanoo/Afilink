@@ -2,12 +2,26 @@ import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
 export async function POST(req: Request) {
+  const limit = rateLimit(req, {
+    key: "auth:reset-password",
+    limit: 10,
+    windowMs: 60_000,
+  });
+
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Demasiados intentos" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const token = String(body.token || "").trim();
   const password = String(body.password || "");
@@ -19,7 +33,7 @@ export async function POST(req: Request) {
     );
   }
 
-  if (password.length < 6) {
+  if (password.length < 10) {
     return NextResponse.json(
       { error: "Contraseña muy corta (mínimo 6)" },
       { status: 400 }

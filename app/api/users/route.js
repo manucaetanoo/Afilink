@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireUser, requireRole } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 function isValidEmail(email) {
   if (typeof email !== "string") return false;
@@ -13,60 +14,83 @@ function isValidEmail(email) {
 }
 
 function isValidRole(role) {
-  return role === "ADMIN" || role === "AFFILIATE" || role  === "SELLER";
+  return role === "ADMIN" || role === "AFFILIATE" || role === "SELLER";
 }
 
-
+function getAuthStatus(error) {
+  const msg = error instanceof Error ? error.message : "ERROR";
+  if (msg === "UNAUTHORIZED") return 401;
+  if (msg === "FORBIDDEN") return 403;
+  return null;
+}
 
 export async function POST(req) {
   try {
-    const { email, role, password } = await req.json();
+    const limit = rateLimit(req, {
+      key: "users:post",
+      limit: 20,
+      windowMs: 60_000,
+    });
 
-    const emailNorm = (email ?? "").trim().toLowerCase();
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
-
-    if(typeof password !== "string" || password.length < 6 ){
-      return NextResponse.json({error: "Password Invalida (minimo 6)"}, {status: 400});
-    }
-
-    if (!isValidEmail(emailNorm)) {
-      return NextResponse.json({ error: "Email inválido" }, { status: 400 });
-    }
-
-    const roleNorm = role ?? "AFFILIATE";
-    if (roleNorm === "ADMIN") {
+    if (!limit.ok) {
       return NextResponse.json(
-        { error: "No podés asignarte el rol ADMIN" },
-        { status: 403 }
+        { error: "Demasiados intentos" },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
       );
     }
-    if (!isValidRole(roleNorm)) {
+
+    const currentUser = await requireUser();
+    requireRole(currentUser, ["ADMIN"]);
+
+    const { email, role, password } = await req.json();
+    const emailNorm = (email ?? "").trim().toLowerCase();
+
+    if (typeof password !== "string" || password.length < 10) {
       return NextResponse.json(
-        { error: "Role inválido. Usá SELLER o AFFILIATE" },
+        { error: "Password invalida (minimo 10)" },
         { status: 400 }
       );
     }
 
+    if (!isValidEmail(emailNorm)) {
+      return NextResponse.json({ error: "Email invalido" }, { status: 400 });
+    }
+
+    const roleNorm = role ?? "AFFILIATE";
+    if (!isValidRole(roleNorm)) {
+      return NextResponse.json(
+        { error: "Role invalido. Usa SELLER, AFFILIATE o ADMIN" },
+        { status: 400 }
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { email: emailNorm, role: roleNorm, passwordHash  }, // <- ACÁ usás emailNorm
+      data: { email: emailNorm, role: roleNorm, passwordHash },
       select: { id: true, email: true, role: true },
     });
 
     return NextResponse.json(user, { status: 201 });
   } catch (e) {
+    const authStatus = getAuthStatus(e);
+    if (authStatus) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "ERROR" },
+        { status: authStatus }
+      );
+    }
+
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return NextResponse.json(
         { error: "Ya existe un usuario con ese email" },
         { status: 409 }
       );
     }
+
     console.error(e);
     return NextResponse.json({ error: "Error interno" }, { status: 500 });
   }
 }
-
 
 export async function GET(req) {
   try {
@@ -74,11 +98,9 @@ export async function GET(req) {
     requireRole(user, ["ADMIN"]);
 
     const { searchParams } = new URL(req.url);
-
     const q = (searchParams.get("q") ?? "").trim().toLowerCase();
-    const role = searchParams.get("role"); // "ADMIN" | "AFFILIATE" | null
-    const isActiveParam = searchParams.get("isActive"); // "true" | "false" | null
-
+    const role = searchParams.get("role");
+    const isActiveParam = searchParams.get("isActive");
     const page = Math.max(parseInt(searchParams.get("page") ?? "1", 10), 1);
     const pageSizeRaw = parseInt(searchParams.get("pageSize") ?? "20", 10);
     const pageSize = Math.min(Math.max(pageSizeRaw, 1), 100);
@@ -110,9 +132,12 @@ export async function GET(req) {
       { status: 200 }
     );
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "ERROR";
-    const status = msg === "UNAUTHORIZED" ? 401 : msg === "FORBIDDEN" ? 403 : 500;
+    const authStatus = getAuthStatus(e);
+    const status = authStatus ?? 500;
     if (status === 500) console.error(e);
-    return NextResponse.json({ error: msg }, { status });
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "ERROR" },
+      { status }
+    );
   }
 }

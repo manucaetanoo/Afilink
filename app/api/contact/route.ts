@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendTransactionalEmail } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 
 const supportEmail = process.env.SUPPORT_EMAIL ?? "infoafilink@gmail.com";
 
@@ -18,6 +19,19 @@ function escapeHtml(value: string) {
 }
 
 export async function POST(req: Request) {
+  const limit = rateLimit(req, {
+    key: "contact:post",
+    limit: 5,
+    windowMs: 60_000,
+  });
+
+  if (!limit.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Demasiados intentos" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   const body = await req.json().catch(() => null);
 
   if (!body) {

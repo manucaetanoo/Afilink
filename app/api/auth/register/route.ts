@@ -3,9 +3,23 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@/lib/prisma-enums";
 import { sendEmailVerification } from "@/lib/email-verification";
+import { rateLimit } from "@/lib/rate-limit";
 
 
 export async function POST(req: Request) {
+  const limit = rateLimit(req, {
+    key: "auth:register",
+    limit: 10,
+    windowMs: 60_000,
+  });
+
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Demasiados intentos" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
   const body = await req.json();
 
   const email = String(body.email || "").toLowerCase().trim();
@@ -26,7 +40,7 @@ export async function POST(req: Request) {
   }
 
 
-  if (password.length < 6) {
+  if (password.length < 10) {
     return NextResponse.json(
       { error: "Password muy corto (mínimo 6)" },
       { status: 400 }

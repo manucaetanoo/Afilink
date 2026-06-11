@@ -1,4 +1,6 @@
 // app/orders/[id]/success/page.tsx
+import Link from "next/link";
+
 export default async function SuccessPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params; // acá se resuelve la Promise
   const orderId = id;
@@ -13,12 +15,12 @@ export default async function SuccessPage({ params }: { params: Promise<{ id: st
         <p className="text-sm text-gray-400">
           Te estará llegando la informacion del pedido a tu mail. <br /> Se recomienda guardar el numero de pedido
         </p>
-        <a
+        <Link
           href="/products"
           className="mt-6 inline-block px-6 py-3 rounded-md bg-orange-600 text-white font-medium shadow-md hover:bg-orange-700 transition-colors duration-200"
         >
           Volver a la tienda
-        </a>
+        </Link>
       </div>
     </div>
   );
