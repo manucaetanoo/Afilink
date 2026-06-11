@@ -45,9 +45,9 @@ export async function POST(req) {
     const { email, role, password } = await req.json();
     const emailNorm = (email ?? "").trim().toLowerCase();
 
-    if (typeof password !== "string" || password.length < 10) {
+    if (typeof password !== "string" || password.length < 6) {
       return NextResponse.json(
-        { error: "Password invalida (minimo 10)" },
+        { error: "Contraseña invalida (minimo 6)" },
         { status: 400 }
       );
     }

@@ -34,15 +34,15 @@ export async function POST(req: Request) {
 
   if (!email || !password) {
     return NextResponse.json(
-      { error: "Email y password son obligatorios" },
+      { error: "Email y contraseña son obligatorios" },
       { status: 400 }
     );
   }
 
 
-  if (password.length < 10) {
+  if (password.length < 6) {
     return NextResponse.json(
-      { error: "Password muy corto (mínimo 6)" },
+      { error: "Contraseña muy corta (mínimo 6)" },
       { status: 400 }
     );
   }

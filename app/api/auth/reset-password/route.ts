@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     );
   }
 
-  if (password.length < 10) {
+  if (password.length < 6) {
     return NextResponse.json(
       { error: "Contraseña muy corta (mínimo 6)" },
       { status: 400 }
