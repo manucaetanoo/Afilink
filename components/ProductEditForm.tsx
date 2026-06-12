@@ -79,13 +79,21 @@ export default function ProductEditForm({ product }: { product: ProductFormProdu
     platformCommissionType: product.platformCommissionType,
   });
 
-  function fileToDataUrl(file: File) {
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
-      reader.readAsDataURL(file);
+  async function uploadProductImage(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/api/seller/product-images", {
+      method: "POST",
+      body: formData,
     });
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || !data?.ok || !data?.url) {
+      throw new Error(data?.error || "No se pudo subir la imagen");
+    }
+
+    return String(data.url);
   }
 
   function setField<Key extends keyof typeof form>(key: Key, value: (typeof form)[Key]) {
@@ -136,7 +144,7 @@ export default function ProductEditForm({ product }: { product: ProductFormProdu
       const uploadedImages = await Promise.all(
         Array.from(files)
           .filter((file) => file.type.startsWith("image/"))
-          .map(fileToDataUrl)
+          .map(uploadProductImage)
       );
 
       setField("imageUrls", [...form.imageUrls, ...uploadedImages].slice(0, 8));

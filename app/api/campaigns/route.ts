@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  getFirstRenderableProductImage,
+  getRenderableImageUrl,
+  getRenderableProductImageUrls,
+} from "@/lib/product-images";
 
 const fallbackImage =
   "https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1200&q=80";
@@ -58,11 +63,16 @@ export async function GET(req: Request) {
 
   const items = campaigns.slice(0, take).map((campaign) => {
     const activeProducts = campaign.products
-      .map((item) => item.product)
+      .map((item) => ({
+        ...item.product,
+        imageUrls: getRenderableProductImageUrls(item.product.imageUrls, 1),
+      }))
       .filter((product) => product?.isActive);
     const mainImage =
-      campaign.bannerUrl ||
-      activeProducts.find((product) => product.imageUrls?.[0])?.imageUrls?.[0] ||
+      getRenderableImageUrl(campaign.bannerUrl) ||
+      activeProducts
+        .map((product) => getFirstRenderableProductImage(product.imageUrls))
+        .find((imageUrl): imageUrl is string => Boolean(imageUrl)) ||
       fallbackImage;
     const maxCommissionPercent = activeProducts.length
       ? Math.max(...activeProducts.map((product) => product.commissionValue || 0))

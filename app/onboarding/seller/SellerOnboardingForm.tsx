@@ -221,7 +221,7 @@ export default function SellerOnboardingForm() {
 
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
                     <p className="text-sm font-semibold text-slate-900">
-                      Defini comision afiliada
+                      Definí comision
                     </p>
                     <p className="mt-1 text-sm leading-6 text-slate-500">
                       Cada producto queda con precio, stock, imagen y comision para

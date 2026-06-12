@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole, requireUser } from "@/lib/auth";
 import { normalizeProductColors } from "@/lib/product-color";
+import { normalizeProductImageUrls } from "@/lib/product-images";
 
 const productCategories = [
   "CLOTHING",
@@ -152,12 +153,7 @@ export async function PATCH(
     }
 
     if (body.imageUrls !== undefined) {
-      data.imageUrls = Array.isArray(body.imageUrls)
-        ? (body.imageUrls as unknown[])
-            .filter((url: unknown): url is string => typeof url === "string")
-            .map((url) => url.trim())
-            .filter(Boolean)
-        : [];
+      data.imageUrls = normalizeProductImageUrls(body.imageUrls);
     }
 
     const where = user.role === "ADMIN" ? { id } : { id, sellerId: user.id };

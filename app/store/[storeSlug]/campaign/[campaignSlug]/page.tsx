@@ -7,6 +7,11 @@ import {
   CampaignSummaryPanel,
   SellerCampaignPanel,
 } from "@/components/CampaignPublicClient";
+import {
+  getFirstRenderableProductImage,
+  getRenderableImageUrl,
+  getRenderableProductImageUrls,
+} from "@/lib/product-images";
 
 type Props = {
   params: Promise<{
@@ -38,8 +43,8 @@ const getCommissionEarning = (
 };
 
 const getActiveCampaign = unstable_cache(
-  async (storeSlug: string, campaignSlug: string) =>
-    prisma.campaign.findFirst({
+  async (storeSlug: string, campaignSlug: string) => {
+    const campaign = await prisma.campaign.findFirst({
       where: {
         slug: campaignSlug,
         seller: {
@@ -79,7 +84,21 @@ const getActiveCampaign = unstable_cache(
           },
         },
       },
-    }),
+    });
+
+    if (!campaign) return null;
+
+    return {
+      ...campaign,
+      bannerUrl: getRenderableImageUrl(campaign.bannerUrl),
+      products: campaign.products.map((item) => ({
+        product: {
+          ...item.product,
+          imageUrls: getRenderableProductImageUrls(item.product.imageUrls, 1),
+        },
+      })),
+    };
+  },
   ["active-campaign-detail"],
   { revalidate: 60, tags: ["campaigns", "products"] }
 );
@@ -122,7 +141,7 @@ export default async function CampaignPublicPage(props: Props) {
     name: product.name,
     price: product.price,
     desc: product.desc,
-    imageUrl: product.imageUrls?.[0] ?? null,
+    imageUrl: getFirstRenderableProductImage(product.imageUrls),
     stock: product.stock,
     commissionValue: product.commissionValue,
     commissionType: product.commissionType,
@@ -367,7 +386,7 @@ export default async function CampaignPublicPage(props: Props) {
                         name: product.name,
                         price: product.price,
                         desc: product.desc,
-                        imageUrl: product.imageUrls?.[0] ?? null,
+                        imageUrl: getFirstRenderableProductImage(product.imageUrls),
                         stock: product.stock,
                         commissionValue: showAffiliateHighlights
                           ? product.commissionValue

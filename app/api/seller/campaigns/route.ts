@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { normalizeImageUrl } from "@/lib/product-images";
 
 function slugify(text: string) {
   return text
@@ -94,7 +95,7 @@ export async function POST(req: Request) {
 
     const title = body?.title?.trim();
     const description = body?.description?.trim() || null;
-    const bannerUrl = body?.bannerUrl?.trim() || null;
+    const bannerUrl = normalizeImageUrl(body?.bannerUrl);
     const isActive = typeof body?.isActive === "boolean" ? body.isActive : true;
 
     let slug = body?.slug?.trim();

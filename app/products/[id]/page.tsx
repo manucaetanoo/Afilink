@@ -19,6 +19,10 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getSellerNetAmount } from "@/lib/pricing";
 import { parseProductColors } from "@/lib/product-color";
+import {
+  getFirstRenderableProductImage,
+  getRenderableProductImageUrls,
+} from "@/lib/product-images";
 import { isShopifyEnabled } from "@/lib/features";
 import { unstable_cache } from "next/cache";
 
@@ -45,8 +49,8 @@ export const revalidate = 60;
 export const dynamic = "force-static";
 
 const getCachedProduct = unstable_cache(
-  async (id: string) =>
-    prisma.product.findUnique({
+  async (id: string) => {
+    const product = await prisma.product.findUnique({
       where: { id },
       include: {
         seller: {
@@ -59,7 +63,15 @@ const getCachedProduct = unstable_cache(
           },
         },
       },
-    }),
+    });
+
+    return product
+      ? {
+          ...product,
+          imageUrls: getRenderableProductImageUrls(product.imageUrls),
+        }
+      : null;
+  },
   ["product-detail"],
   { revalidate: 60, tags: ["products"] }
 );
@@ -173,7 +185,7 @@ export default async function ProductPage({
                   id: product.id,
                   name: product.name,
                   price: product.price,
-                  imageUrl: product.imageUrls[0] ?? null,
+                  imageUrl: getFirstRenderableProductImage(product.imageUrls),
                   sizes: product.sizes,
                   colors,
                   usesShopifyCheckout: Boolean(

@@ -31,13 +31,21 @@ type Props = {
 
 type FormKey = keyof Required<CampaignFormValues>;
 
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
-    reader.readAsDataURL(file);
+async function uploadCampaignBanner(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("/api/seller/product-images", {
+    method: "POST",
+    body: formData,
   });
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok || !data?.ok || !data?.url) {
+    throw new Error(data?.error || "No se pudo subir la imagen");
+  }
+
+  return String(data.url);
 }
 
 function getErrorMessage(error: unknown) {
@@ -48,6 +56,7 @@ export default function CampaignForm({ storeSlug, defaultValues, campaignId }: P
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: defaultValues?.title || "",
@@ -82,15 +91,20 @@ export default function CampaignForm({ storeSlug, defaultValues, campaignId }: P
     }
 
     try {
-      const bannerUrl = await fileToDataUrl(file);
+      setUploadingBanner(true);
+      const bannerUrl = await uploadCampaignBanner(file);
       handleChange("bannerUrl", bannerUrl);
     } catch (error) {
       setMessage(getErrorMessage(error));
+    } finally {
+      setUploadingBanner(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploadingBanner) return;
+
     setLoading(true);
     setMessage(null);
 
@@ -103,18 +117,22 @@ export default function CampaignForm({ storeSlug, defaultValues, campaignId }: P
       }
     );
 
+    
     const data = await res.json().catch(() => null);
     setLoading(false);
 
+    
     if (!res.ok) {
       setMessage(data?.error || "Error guardando campaña");
       return;
     }
-
+    
+    const nextCampaignId = campaignId ?? data?.campaign?.id;
+    
     router.push(
       campaignId || !storeSlug
         ? "/seller/campaigns"
-        : `/store/${storeSlug}`
+        : `/seller/campaigns/${nextCampaignId}/products`
     );
     router.refresh();
   };
@@ -237,10 +255,15 @@ export default function CampaignForm({ storeSlug, defaultValues, campaignId }: P
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingBanner}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
                 >
                   <ArrowUpTrayIcon className="h-4 w-4" />
-                  {form.bannerUrl ? "Cambiar imagen" : "Subir imagen"}
+                  {uploadingBanner
+                    ? "Subiendo..."
+                    : form.bannerUrl
+                      ? "Cambiar imagen"
+                      : "Subir imagen"}
                 </button>
                 {form.bannerUrl && (
                   <button
@@ -301,10 +324,10 @@ export default function CampaignForm({ storeSlug, defaultValues, campaignId }: P
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || uploadingBanner}
             className="inline-flex items-center justify-center rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Guardando..." : "Guardar campaña"}
+            {uploadingBanner ? "Subiendo imagen..." : loading ? "Guardando..." : "Guardar campaña"}
           </button>
         </div>
       </div>

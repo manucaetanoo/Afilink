@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import type { Product } from "@prisma/client";
+import { getRenderableProductImageUrls } from "@/lib/product-images";
 
 export default function ProductGallery({ product }: { product: Product }) {
-  const images = product.imageUrls?.length ? product.imageUrls : ["/placeholder.png"];
+  const productImages = getRenderableProductImageUrls(product.imageUrls);
+  const images = productImages.length ? productImages : ["/placeholder.png"];
   const [mainImage, setMainImage] = useState(images[0]);
 
   return (

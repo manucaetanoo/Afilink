@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import ProductsCatalogClient from "@/components/ProductsCatalogClient";
 import { isShopifyEnabled } from "@/lib/features";
 import { parseProductColors } from "@/lib/product-color";
+import { getRenderableProductImageUrls } from "@/lib/product-images";
 
 
 export const metadata: Metadata = {
@@ -49,7 +50,7 @@ async function getActiveProducts() {
       stock: product.stock,
       commissionValue: product.commissionValue,
       colors: parseProductColors(product.colors),
-      imageUrls: product.imageUrls.slice(0, 1),
+      imageUrls: getRenderableProductImageUrls(product.imageUrls, 1),
       isShopifyProduct:
         shopifyEnabled && Boolean(product.shopifyShopDomain && product.shopifyVariantId),
     })),

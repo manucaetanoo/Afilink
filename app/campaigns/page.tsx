@@ -8,6 +8,11 @@ import { unstable_cache } from "next/cache";
 import CampaignsGridClient, {
   type CampaignListItem,
 } from "@/components/CampaignsGridClient";
+import {
+  getFirstRenderableProductImage,
+  getRenderableImageUrl,
+  getRenderableProductImageUrls,
+} from "@/lib/product-images";
 
 export const metadata: Metadata = {
   title: "Campañas - Afilink",
@@ -37,7 +42,7 @@ const getActiveCampaigns = unstable_cache(
   async () => {
     const now = new Date();
 
-    return prisma.campaign.findMany({
+    const campaigns = await prisma.campaign.findMany({
       where: {
         isActive: true,
         OR: [{ startsAt: null }, { startsAt: { lte: now } }],
@@ -69,6 +74,17 @@ const getActiveCampaigns = unstable_cache(
         },
       },
     });
+
+    return campaigns.map((campaign) => ({
+      ...campaign,
+      bannerUrl: getRenderableImageUrl(campaign.bannerUrl),
+      products: campaign.products.map((item) => ({
+        product: {
+          ...item.product,
+          imageUrls: getRenderableProductImageUrls(item.product.imageUrls, 1),
+        },
+      })),
+    }));
   },
   ["active-campaigns"],
   { revalidate: 60, tags: ["campaigns", "products"] }
@@ -92,7 +108,9 @@ export default async function CampaignsPage() {
 
       const mainImage =
         campaign.bannerUrl ||
-        activeProducts.find((product) => product.imageUrls?.[0])?.imageUrls?.[0] ||
+        activeProducts
+          .map((product) => getFirstRenderableProductImage(product.imageUrls))
+          .find((imageUrl): imageUrl is string => Boolean(imageUrl)) ||
         fallbackImage;
 
       const maxCommissionPercent = activeProducts.length

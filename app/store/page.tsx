@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import ButtonScroll from "@/components/ButtonScroll";
 import { Metadata } from "next";
+import { getFirstRenderableProductImage, getRenderableProductImageUrls } from "@/lib/product-images";
 
 
 export const metadata: Metadata = {
@@ -105,7 +106,9 @@ export default async function StoresPage() {
           <div className="mt-10 grid gap-8 lg:grid-cols-3">
             {featuredStores.map((store) => {
                 const cover =
-                store.products.find((p) => p.imageUrls?.[0])?.imageUrls?.[0] ??
+                store.products
+                  .map((p) => getFirstRenderableProductImage(p.imageUrls))
+                  .find((imageUrl): imageUrl is string => Boolean(imageUrl)) ??
                 store.image ??
                 "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80";
                 
@@ -193,7 +196,7 @@ export default async function StoresPage() {
             <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {allStores.map((store) => {
                 const previewImages = store.products
-                .flatMap((p) => p.imageUrls || [])
+                .flatMap((p) => getRenderableProductImageUrls(p.imageUrls))
                 .slice(0, 3);
                 
                 const logo =

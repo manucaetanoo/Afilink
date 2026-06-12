@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole, requireUser } from "@/lib/auth";
 import { normalizeProductColors } from "@/lib/product-color";
+import { normalizeProductImageUrls } from "@/lib/product-images";
 
 const productCategories = [
   "CLOTHING",
@@ -125,13 +126,7 @@ export async function POST(req: Request) {
     const sizes = normalizeSizes(body.sizes);
     const colors = normalizeProductColors(body.colors);
 
-    const imageUrlsRaw = body.imageUrls;
-    const imageUrls: string[] = Array.isArray(imageUrlsRaw)
-      ? imageUrlsRaw
-          .filter((url: unknown): url is string => typeof url === "string")
-          .map((url) => url.trim())
-          .filter(Boolean)
-      : [];
+    const imageUrls = normalizeProductImageUrls(body.imageUrls);
 
     if (name.length < 3) {
       return NextResponse.json(

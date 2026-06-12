@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { normalizeImageUrl } from "@/lib/product-images";
 
 type Context = {
   params: Promise<{ campaignId: string }>;
@@ -94,7 +95,7 @@ export async function PATCH(req: Request, context: Context) {
       title,
       slug,
       description: body?.description || null,
-      bannerUrl: body?.bannerUrl || null,
+      bannerUrl: normalizeImageUrl(body?.bannerUrl),
       isActive: body?.isActive ?? true,
       startsAt: body?.startsAt ? new Date(body.startsAt) : null,
       endsAt: body?.endsAt ? new Date(body.endsAt) : null,

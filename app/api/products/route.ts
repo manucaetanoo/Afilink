@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { isShopifyEnabled } from "@/lib/features";
 import { parseProductColors } from "@/lib/product-color";
+import { getRenderableProductImageUrls } from "@/lib/product-images";
 
 const MAX_PRODUCTS_TAKE = 80;
 type ProductSourceFilter = "all" | "afilink" | "shopify";
@@ -59,7 +60,7 @@ export async function GET(req: Request) {
       stock: product.stock,
       commissionValue: product.commissionValue,
       colors: parseProductColors(product.colors),
-      imageUrls: product.imageUrls.slice(0, 1),
+      imageUrls: getRenderableProductImageUrls(product.imageUrls, 1),
       isShopifyProduct:
         shopifyEnabled && Boolean(product.shopifyShopDomain && product.shopifyVariantId),
     })),
