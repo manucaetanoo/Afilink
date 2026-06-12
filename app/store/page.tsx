@@ -3,7 +3,12 @@ import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import ButtonScroll from "@/components/ButtonScroll";
 import { Metadata } from "next";
-import { getFirstRenderableProductImage, getRenderableProductImageUrls } from "@/lib/product-images";
+import { unstable_cache } from "next/cache";
+import {
+  getFirstRenderableProductImage,
+  getRenderableImageUrl,
+  getRenderableProductImageUrls,
+} from "@/lib/product-images";
 
 
 export const metadata: Metadata = {
@@ -11,11 +16,11 @@ export const metadata: Metadata = {
   description: "Explora empresas con alto potencial de conversion y, si eres afiliado, prioriza las que te dejan mejores comisiones por venta.",
 };
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 60;
 
-export default async function StoresPage() {
-  const stores = await prisma.user.findMany({
+const getActiveStores = unstable_cache(
+  async () => {
+    const stores = await prisma.user.findMany({
     where: {
       role: "SELLER",
       isActive: true,
@@ -28,19 +33,39 @@ export default async function StoresPage() {
       name: true,
       image: true,
       storeSlug: true,
+      _count: {
+        select: {
+          products: { where: { isActive: true } },
+          campaigns: { where: { isActive: true } },
+        },
+      },
       products: {
         where: { isActive: true },
+        orderBy: { createdAt: "desc" },
+        take: 3,
         select: { id: true, imageUrls: true },
-      },
-      campaigns: {
-        where: { isActive: true },
-        select: { id: true },
       },
     },
     orderBy: {
       createdAt: "desc",
     },
-  });
+    });
+
+    return stores.map((store) => ({
+      ...store,
+      image: getRenderableImageUrl(store.image),
+      products: store.products.map((product) => ({
+        ...product,
+        imageUrls: getRenderableProductImageUrls(product.imageUrls, 3),
+      })),
+    }));
+  },
+  ["active-stores"],
+  { revalidate: 60, tags: ["stores", "products", "campaigns"] }
+);
+
+export default async function StoresPage() {
+  const stores = await getActiveStores();
 
   const featuredStores = stores.slice(0, 3);
   const allStores = stores;
@@ -128,7 +153,7 @@ export default async function StoresPage() {
 
                     <div className="absolute bottom-0 left-0 right-0 p-6">
                       <div className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur">
-                        {store.campaigns.length} campañas
+                        {store._count.campaigns} campañas
                       </div>
 
                       <h3 className="mt-3 text-2xl font-semibold text-white">
@@ -145,13 +170,13 @@ export default async function StoresPage() {
                     <div className="flex gap-6 text-sm text-slate-600">
                       <div>
                         <span className="block text-lg font-semibold text-slate-900">
-                          {store.products.length}
+                          {store._count.products}
                         </span>
                         productos
                       </div>
                       <div>
                         <span className="block text-lg font-semibold text-slate-900">
-                          {store.campaigns.length}
+                          {store._count.campaigns}
                         </span>
                         campañas
                       </div>
@@ -230,14 +255,14 @@ export default async function StoresPage() {
                   <div className="mt-5 grid grid-cols-2 gap-3">
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <p className="text-2xl font-bold text-slate-900">
-                        {store.products.length}
+                        {store._count.products}
                       </p>
                       <p className="text-sm text-slate-600">Productos activos</p>
                     </div>
 
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <p className="text-2xl font-bold text-slate-900">
-                        {store.campaigns.length}
+                        {store._count.campaigns}
                       </p>
                       <p className="text-sm text-slate-600">Campañas activas</p>
                     </div>
