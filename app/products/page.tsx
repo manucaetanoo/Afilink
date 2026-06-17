@@ -20,27 +20,33 @@ export type ProductSourceFilter = "all" | "afilink" | "shopify";
 
 async function getActiveProducts() {
   const shopifyEnabled = isShopifyEnabled();
-  const products = await prisma.product.findMany({
-    where: {
+  const where = {
       isActive: true,
-    },
-    orderBy: [{ commissionValue: "desc" }, { createdAt: "desc" }],
-    take: PRODUCTS_PAGE_LIMIT + 1,
-    select: {
-      id: true,
-      name: true,
-      desc: true,
-      price: true,
-      stock: true,
-      commissionValue: true,
-      colors: true,
-      imageUrls: true,
-      shopifyShopDomain: true,
-      shopifyVariantId: true,
-    },
-  });
+    };
+
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy: [{ commissionValue: "desc" }, { createdAt: "desc" }],
+      take: PRODUCTS_PAGE_LIMIT + 1,
+      select: {
+        id: true,
+        name: true,
+        desc: true,
+        price: true,
+        stock: true,
+        commissionValue: true,
+        colors: true,
+        imageUrls: true,
+        shopifyShopDomain: true,
+        shopifyVariantId: true,
+      },
+    }),
+    prisma.product.count({ where }),
+  ]);
 
   return {
+    total,
     hasMore: products.length > PRODUCTS_PAGE_LIMIT,
     products: products.slice(0, PRODUCTS_PAGE_LIMIT).map((product) => ({
       id: product.id,
@@ -58,7 +64,7 @@ async function getActiveProducts() {
 }
 
 export default async function ProductsPage() {
-  const { products, hasMore } = await getActiveProducts();
+  const { products, hasMore, total } = await getActiveProducts();
 
   return (
     <div className="min-h-screen bg-[#fffaf6] text-slate-900">
@@ -90,6 +96,7 @@ export default async function ProductsPage() {
               products={products}
               pageSize={PRODUCTS_PAGE_LIMIT}
               hasMoreInitial={hasMore}
+              totalInitial={total}
             />
           </div>
         </main>

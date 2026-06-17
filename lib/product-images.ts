@@ -1,6 +1,25 @@
 const MAX_PRODUCT_IMAGES = 8;
 const MAX_PRODUCT_IMAGE_URL_LENGTH = 2048;
 
+function isAllowedLocalImageUrl(parsed: URL) {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    parsed.protocol === "http:" &&
+    (parsed.hostname === "localhost" ||
+      parsed.hostname === "127.0.0.1" ||
+      parsed.hostname.endsWith(".local"))
+  );
+}
+
+function isAllowedRemoteImageUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || isAllowedLocalImageUrl(parsed);
+  } catch {
+    return false;
+  }
+}
+
 export function normalizeProductImageUrls(value: unknown) {
   if (!Array.isArray(value)) return [];
 
@@ -21,12 +40,7 @@ export function normalizeProductImageUrls(value: unknown) {
   if (
     urls.some((url) => {
       if (url.startsWith("/")) return false;
-      try {
-        const parsed = new URL(url);
-        return parsed.protocol !== "https:";
-      } catch {
-        return true;
-      }
+      return !isAllowedRemoteImageUrl(url);
     })
   ) {
     throw new Error("URL de imagen invalida");
@@ -42,6 +56,7 @@ export function getRenderableProductImageUrls(value: unknown, limit = MAX_PRODUC
     .filter((url): url is string => typeof url === "string")
     .map((url) => url.trim())
     .filter((url) => url && !url.toLowerCase().startsWith("data:"))
+    .filter((url) => url.startsWith("/") || isAllowedRemoteImageUrl(url))
     .slice(0, limit);
 }
 
@@ -55,8 +70,7 @@ export function getRenderableImageUrl(value: unknown) {
   if (url.startsWith("/")) return url;
 
   try {
-    const parsed = new URL(url);
-    return parsed.protocol === "https:" ? url : null;
+    return isAllowedRemoteImageUrl(url) ? url : null;
   } catch {
     return null;
   }
@@ -77,8 +91,7 @@ export function normalizeImageUrl(value: unknown) {
   if (url.startsWith("/")) return url;
 
   try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:") throw new Error();
+    if (!isAllowedRemoteImageUrl(url)) throw new Error();
   } catch {
     throw new Error("URL de imagen invalida");
   }

@@ -45,6 +45,7 @@ export default function ProductCard({
   const imageUrl = product.imageUrls?.[0] ?? null;
   const showShopifyBranding = isPublicShopifyEnabled() && product.isShopifyProduct;
   const isInlineImage = imageUrl?.startsWith("data:") ?? false;
+  const isRemoteProductImage = /^https?:\/\//i.test(imageUrl ?? "");
   const hasCommission =
     showCommissionBadge &&
     typeof product.commissionValue === "number" &&
@@ -100,7 +101,7 @@ export default function ProductCard({
   
 
         <div className="relative aspect-[4/3.35] w-full overflow-hidden bg-slate-100 sm:aspect-[4/4.6]">
-          {imageUrl && isInlineImage ? (
+          {imageUrl && (isInlineImage || isRemoteProductImage) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={imageUrl}

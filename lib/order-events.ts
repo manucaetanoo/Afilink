@@ -5,6 +5,7 @@ import {
 import { type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendTransactionalEmail } from "@/lib/email";
+import { syncWooCommerceOrder } from "@/lib/woocommerce-orders";
 
 type MarkOrderPaidInput = {
   orderId: string;
@@ -259,6 +260,21 @@ export async function markOrderPaidAndNotify({
 
   if (result.alreadyPaid || !result.order) {
     return result;
+  }
+
+  const wooCommerceSync = await syncWooCommerceOrder(result.order.id).catch((error) => {
+    console.error("WooCommerce order sync error:", error);
+    return [];
+  });
+
+  for (const sync of wooCommerceSync) {
+    if (sync.status === "FAILED") {
+      console.error("WooCommerce order sync failed", {
+        orderId: result.order.id,
+        sellerId: sync.sellerId,
+        error: sync.error,
+      });
+    }
   }
 
   const baseUrl = getBaseUrl();

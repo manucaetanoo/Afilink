@@ -50,6 +50,12 @@ type ShopifyConnection = {
   updatedAt?: string;
 };
 
+type WooCommerceConnection = {
+  storeUrl: string;
+  connectedAt?: string;
+  updatedAt?: string;
+};
+
 const uploadImage = async (file: File) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -119,6 +125,16 @@ function NewProductPageContent() {
   const [activatingShopifyBilling, setActivatingShopifyBilling] = useState(false);
   const [disconnectingShopify, setDisconnectingShopify] = useState(false);
   const [importingShopify, setImportingShopify] = useState(false);
+  const [showWooCommerceImport, setShowWooCommerceImport] = useState(false);
+  const [wooCommerceStoreUrl, setWooCommerceStoreUrl] = useState("");
+  const [wooCommerceConsumerKey, setWooCommerceConsumerKey] = useState("");
+  const [wooCommerceConsumerSecret, setWooCommerceConsumerSecret] = useState("");
+  const [wooCommerceConnection, setWooCommerceConnection] =
+    useState<WooCommerceConnection | null>(null);
+  const [wooCommerceCommissionValue, setWooCommerceCommissionValue] = useState(10);
+  const [connectingWooCommerce, setConnectingWooCommerce] = useState(false);
+  const [disconnectingWooCommerce, setDisconnectingWooCommerce] = useState(false);
+  const [importingWooCommerce, setImportingWooCommerce] = useState(false);
   const [showFenicioImport, setShowFenicioImport] = useState(false);
   const [fenicioDomain, setFenicioDomain] = useState("");
   const [fenicioCommerceCode, setFenicioCommerceCode] = useState("");
@@ -136,7 +152,7 @@ function NewProductPageContent() {
   }, [imageFiles]);
 
   useEffect(() => {
-    if (!showShopifyImport && !showFenicioImport) return;
+    if (!showShopifyImport && !showWooCommerceImport && !showFenicioImport) return;
 
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -144,7 +160,7 @@ function NewProductPageContent() {
     return () => {
       document.body.style.overflow = originalOverflow;
     };
-  }, [showShopifyImport, showFenicioImport]);
+  }, [showShopifyImport, showWooCommerceImport, showFenicioImport]);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,6 +183,26 @@ function NewProductPageContent() {
       })
       .catch(() => {
         // Si no se puede leer el perfil, mantenemos el default local.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/woocommerce/connection", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const connection = data?.connection ?? null;
+        setWooCommerceConnection(connection);
+        if (connection?.storeUrl) setWooCommerceStoreUrl(connection.storeUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setWooCommerceConnection(null);
       });
 
     return () => {
@@ -428,6 +464,102 @@ function NewProductPageContent() {
     }
   }
 
+  async function connectWooCommerce() {
+    setConnectingWooCommerce(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/woocommerce/connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeUrl: wooCommerceStoreUrl,
+          consumerKey: wooCommerceConsumerKey,
+          consumerSecret: wooCommerceConsumerSecret,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok || !data?.connection) {
+        throw new Error(data?.error || "No se pudo conectar WooCommerce");
+      }
+
+      setWooCommerceConnection(data.connection);
+      setWooCommerceStoreUrl(data.connection.storeUrl);
+      setWooCommerceConsumerKey("");
+      setWooCommerceConsumerSecret("");
+      setMessage("WooCommerce conectado. Ya podes importar productos.");
+    } catch (err: unknown) {
+      setMessage(getErrorMessage(err));
+    } finally {
+      setConnectingWooCommerce(false);
+    }
+  }
+
+  async function disconnectWooCommerce() {
+    setDisconnectingWooCommerce(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/woocommerce/connection", {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "No se pudo desconectar WooCommerce");
+      }
+
+      setWooCommerceConnection(null);
+      setWooCommerceStoreUrl("");
+      setWooCommerceConsumerKey("");
+      setWooCommerceConsumerSecret("");
+      setMessage("WooCommerce desconectado.");
+    } catch (err: unknown) {
+      setMessage(getErrorMessage(err));
+    } finally {
+      setDisconnectingWooCommerce(false);
+    }
+  }
+
+  async function importFromWooCommerce(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    if (!wooCommerceConnection) {
+      await connectWooCommerce();
+      return;
+    }
+
+    setImportingWooCommerce(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/seller/products/woocommerce-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          commissionValue: wooCommerceCommissionValue,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "Error importando productos desde WooCommerce");
+      }
+
+      setMessage(
+        `Importacion lista: ${data.imported} productos creados, ${data.skipped} omitidos.`
+      );
+      setShowWooCommerceImport(false);
+      router.push("/seller/products");
+      router.refresh();
+    } catch (err: unknown) {
+      setMessage(getErrorMessage(err));
+    } finally {
+      setImportingWooCommerce(false);
+    }
+  }
+
   async function importFromFenicio(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setImportingFenicio(true);
@@ -493,7 +625,7 @@ function NewProductPageContent() {
                     </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    {shopifyImportEnabled && (
+                      {shopifyImportEnabled && (
                       <button
                         type="button"
                         onClick={() => setShowShopifyImport(true)}
@@ -509,6 +641,15 @@ function NewProductPageContent() {
                         <ArrowDownTrayIcon className="h-4 w-4" />
                       </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => setShowWooCommerceImport(true)}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-orange-50"
+                      >
+                        <span className="text-base font-black text-[#7f54b3]">W</span>
+                        Importar desde WooCommerce
+                        <ArrowDownTrayIcon className="h-4 w-4" />
+                      </button>
                       {/* <button
                         type="button"
                         onClick={() => setShowFenicioImport(true)}
@@ -1211,6 +1352,202 @@ function NewProductPageContent() {
                   </div>
                 )}
                 
+
+                {showWooCommerceImport && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-6">
+                    <div className="flex max-h-[82vh] w-full max-w-md flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                      <div className="shrink-0 flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+                        <div>
+                          <h2 className="text-lg font-semibold text-slate-950">
+                            Importar productos desde WooCommerce
+                          </h2>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Se crearan productos con precio, stock, imagenes y variantes.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowWooCommerceImport(false)}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                          aria-label="Cerrar importacion"
+                          title="Cerrar"
+                        >
+                          <XMarkIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      <form onSubmit={importFromWooCommerce} className="min-h-0 space-y-4 overflow-y-auto px-5 py-4">
+                        <div>
+                          <label
+                            htmlFor="wooCommerceStoreUrl"
+                            className="text-sm font-semibold text-slate-900"
+                          >
+                            URL de la tienda
+                          </label>
+                          <input
+                            id="wooCommerceStoreUrl"
+                            type="url"
+                            value={wooCommerceStoreUrl}
+                            onChange={(e) => setWooCommerceStoreUrl(e.target.value)}
+                            placeholder="https://mitienda.com"
+                            required={!wooCommerceConnection}
+                            disabled={Boolean(wooCommerceConnection)}
+                            className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100 disabled:text-slate-500"
+                          />
+                        </div>
+
+                        {!wooCommerceConnection && (
+                          <>
+                            <div>
+                              <label
+                                htmlFor="wooCommerceConsumerKey"
+                                className="text-sm font-semibold text-slate-900"
+                              >
+                                Consumer key
+                              </label>
+                              <input
+                                id="wooCommerceConsumerKey"
+                                type="text"
+                                value={wooCommerceConsumerKey}
+                                onChange={(e) => setWooCommerceConsumerKey(e.target.value)}
+                                placeholder="ck_xxxxxxxxx"
+                                required
+                                className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                              />
+                            </div>
+
+                            <div>
+                              <label
+                                htmlFor="wooCommerceConsumerSecret"
+                                className="text-sm font-semibold text-slate-900"
+                              >
+                                Consumer secret
+                              </label>
+                              <input
+                                id="wooCommerceConsumerSecret"
+                                type="password"
+                                value={wooCommerceConsumerSecret}
+                                onChange={(e) => setWooCommerceConsumerSecret(e.target.value)}
+                                placeholder="cs_xxxxxxxxx"
+                                required
+                                className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                              />
+                            </div>
+                            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+  <div className="flex items-start gap-3">
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+      ▶
+    </div>
+
+    <div className="flex-1">
+      <p className="text-sm font-semibold text-blue-950">
+        ¿No sabés cómo obtener las API keys?
+      </p>
+
+      <p className="mt-1 text-sm text-blue-700">
+        Mirá este tutorial para crear las claves de WooCommerce con permisos de lectura y escritura.
+      </p>
+
+      <a
+        href="https://drive.google.com/file/d/18VYZ4xaNBc2SvArV4L_ASYTrjtx69X3V/view?usp=sharing"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-4 inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+      >
+        Ver tutorial
+        <span className="ml-2">↗</span>
+      </a>
+    </div>
+  </div>
+</div>
+                          </>
+                        )}
+
+                        {wooCommerceConnection ? (
+                          <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <p className="text-xs font-medium text-emerald-700">
+                                Tienda conectada: {wooCommerceConnection.storeUrl}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={disconnectWooCommerce}
+                                disabled={disconnectingWooCommerce || importingWooCommerce}
+                                className="self-start text-xs font-semibold text-slate-700 underline-offset-4 transition hover:text-slate-950 hover:underline disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto"
+                              >
+                                {disconnectingWooCommerce ? "Desconectando..." : "Desconectar"}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                            La API key debe tener permisos de lectura y escritura.
+                          </div>
+                          
+                          
+                        )}
+
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                          Cuando una compra de estos productos se pague en Afilink, se creara
+                          una orden pagada en WooCommerce para descontar stock.
+                        </div>
+
+                        {wooCommerceConnection && (
+                          <div className="border-t border-slate-200 pt-4">
+                            <div className="mb-3 flex items-center justify-between gap-4">
+                              <div>
+                                <h3 className="text-sm font-semibold text-slate-900">
+                                  Comision de importacion
+                                </h3>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  Se aplicara a todos los productos importados.
+                                </p>
+                              </div>
+                              <span className="text-sm font-semibold text-slate-900">
+                                {wooCommerceCommissionValue}%
+                              </span>
+                            </div>
+
+                            <CommissionRange
+                              type="PERCENT"
+                              min={5}
+                              max={90}
+                              step={5}
+                              initialValue={wooCommerceCommissionValue}
+                              onChange={(value) => setWooCommerceCommissionValue(value)}
+                            />
+                          </div>
+                        )}
+
+                        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setShowWooCommerceImport(false)}
+                            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            Cancelar
+                          </button>
+
+                          <button
+                            type="submit"
+                            disabled={importingWooCommerce || connectingWooCommerce}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <ArrowDownTrayIcon className="h-4 w-4" />
+                            {importingWooCommerce
+                              ? "Importando..."
+                              : wooCommerceConnection
+                                ? "Importar productos"
+                                : connectingWooCommerce
+                                  ? "Conectando..."
+                                  : "Conectar WooCommerce"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
 
                 {showFenicioImport && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-6">

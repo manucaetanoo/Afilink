@@ -127,10 +127,15 @@ const integrations = [
   //   logo: "/img/Shopify-Logo-PNG.png",
   //   description: "Importa productos, precios, imagenes y stock desde tu tienda.",
   // },
-  {
-    name: "Fenicio",
-    logo: "/img/fenicio-logo.png",
-    description: "Conecta catalogos Fenicio mediante el feed del comercio.",
+  // {
+    // name: "Fenicio",
+  //   logo: "/img/fenicio-logo.png",
+   //  description: "Conecta catalogos Fenicio mediante el feed del comercio.",
+  // },
+    {
+    name: "WooCommerce",
+    logo: "/img/WooCommerce-Logo-New.png",
+    description: "Conectá tu tienda WooCommerce con Afilink y mantené sincronizados tus productos, stock y órdenes en un solo lugar.",
   },
 ];
 
@@ -259,7 +264,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+         <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
           <div className="grid items-center gap-10 rounded-3xl bg-white p-6 shadow-sm sm:p-10 lg:grid-cols-[0.9fr_1.1fr]">
             <div>
               <p className="text-base font-semibold text-[#F78211]">
@@ -269,9 +274,7 @@ export default function Home() {
                 Conectá tu tienda sin cargar todo a mano
               </h2>
               <p className="mt-4 text-base leading-7 text-gray-500">
-                Afilink permite importar productos desde tiendas Fenicio
-                para publicar catalogos mas rapido y empezar a trabajar con
-                afiliados en menos pasos.
+                Afilink te permite importar productos desde WooCommerce para publicar tu catálogo más rápido y empezar a trabajar con afiliados en menos pasos.
               </p>
             </div>
 
@@ -286,7 +289,7 @@ export default function Home() {
                       {integration.name}
                     </h3>
                     <div className="flex h-16 items-center justify-center">
-                      {/* eslint-disable-next-line @next/next/no-img-element 
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={integration.logo}
                         alt={integration.name}
@@ -302,7 +305,7 @@ export default function Home() {
             </div>
           </div>
         </section>
-              */}
+        
         <section className="py-24 sm:py-32">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mx-auto max-w-3xl text-center">

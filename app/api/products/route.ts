@@ -23,34 +23,40 @@ export async function GET(req: Request) {
     ? parseSourceFilter(url.searchParams.get("source"))
     : "all";
 
-  const products = await prisma.product.findMany({
-    where: {
+  const where = {
       isActive: true,
       ...(source === "shopify"
         ? { shopifyShopDomain: { not: null }, shopifyVariantId: { not: null } }
         : source === "afilink"
           ? { shopifyVariantId: null }
           : {}),
-    },
-    orderBy: [{ commissionValue: "desc" }, { createdAt: "desc" }],
-    skip,
-    take: take + 1,
-    select: {
-      id: true,
-      name: true,
-      desc: true,
-      price: true,
-      stock: true,
-      commissionValue: true,
-      colors: true,
-      imageUrls: true,
-      shopifyShopDomain: true,
-      shopifyVariantId: true,
-    },
-  });
+    };
+
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy: [{ commissionValue: "desc" }, { createdAt: "desc" }],
+      skip,
+      take: take + 1,
+      select: {
+        id: true,
+        name: true,
+        desc: true,
+        price: true,
+        stock: true,
+        commissionValue: true,
+        colors: true,
+        imageUrls: true,
+        shopifyShopDomain: true,
+        shopifyVariantId: true,
+      },
+    }),
+    prisma.product.count({ where }),
+  ]);
 
   return NextResponse.json({
     ok: true,
+    total,
     hasMore: products.length > take,
     products: products.slice(0, take).map((product) => ({
       id: product.id,

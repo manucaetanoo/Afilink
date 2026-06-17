@@ -65,6 +65,7 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   shopifyConnection       ShopifyConnection?
+  wooCommerceConnection   WooCommerceConnection?
 
   @@index([role])
   @@index([isActive])
@@ -77,18 +78,35 @@ model ShopifyConnection {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  shopDomain  String  @unique @db.VarChar(191)
-  accessToken String  @db.Text
-  accessTokenExpiresAt DateTime?
-  refreshToken String? @db.Text
+  shopDomain            String    @unique @db.VarChar(191)
+  accessToken           String    @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshToken          String?   @db.Text
   refreshTokenExpiresAt DateTime?
-  scope       String? @db.Text
+  scope                 String?   @db.Text
 
   installedAt DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([shopDomain])
+}
+
+model WooCommerceConnection {
+  id String @id @default(cuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  storeUrl       String @unique @db.VarChar(191)
+  consumerKey    String @db.Text
+  consumerSecret String @db.Text
+
+  connectedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([storeUrl])
 }
 
 model PasswordResetToken {
@@ -153,6 +171,11 @@ model Product {
   shopifyVariantId  String? @db.VarChar(80)
   shopifyVariants   Json?
 
+  wooCommerceStoreUrl    String? @db.VarChar(191)
+  wooCommerceProductId   String? @db.VarChar(80)
+  wooCommerceVariationId String? @db.VarChar(80)
+  wooCommerceVariants    Json?
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -175,6 +198,9 @@ model Product {
   @@index([stock])
   @@index([shopifyShopDomain])
   @@index([shopifyVariantId])
+  @@index([wooCommerceStoreUrl])
+  @@index([wooCommerceProductId])
+  @@index([wooCommerceVariationId])
   @@index([sellerId, isActive])
   @@index([isActive, commissionValue, createdAt], map: "idx_product_active_commission_created")
 }
@@ -351,12 +377,12 @@ model Order {
   paymentId       String? @db.VarChar(191)
   paymentStatus   String? @db.VarChar(50)
 
-  shopifyShopDomain String? @db.VarChar(191)
-  shopifyOrderId    String? @db.VarChar(80)
-  shopifyOrderName  String? @db.VarChar(80)
-  shopifyBillingStatus String? @db.VarChar(50)
+  shopifyShopDomain           String? @db.VarChar(191)
+  shopifyOrderId              String? @db.VarChar(80)
+  shopifyOrderName            String? @db.VarChar(80)
+  shopifyBillingStatus        String? @db.VarChar(50)
   shopifyBillingUsageRecordId String? @db.VarChar(191)
-  shopifyBillingError String? @db.Text
+  shopifyBillingError         String? @db.Text
 
   // Datos de contacto y entrega
   buyerName          String? @db.VarChar(140)
@@ -371,11 +397,13 @@ model Order {
   shippingCountry    String? @db.VarChar(2)
   shippingNotes      String? @db.Text
 
-  commissions Commission[]
-  settlements Settlement[]
-  items       OrderItem[]
+  commissions          Commission[]
+  settlements          Settlement[]
+  items                OrderItem[]
   shopifyBillingCharge ShopifyBillingCharge?
+  externalOrderSyncs   ExternalOrderSync[]
 
+  @@unique([shopifyShopDomain, shopifyOrderId])
   @@index([productId])
   @@index([sellerId])
   @@index([affiliateId])
@@ -386,9 +414,35 @@ model Order {
   @@index([createdAt])
   @@index([shopifyShopDomain])
   @@index([shopifyOrderId])
-  @@unique([shopifyShopDomain, shopifyOrderId])
   @@index([sellerId, status])
   @@index([affiliateId, status])
+}
+
+model ExternalOrderSync {
+  id String @id @default(cuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  sellerId String
+  channel  String @db.VarChar(40)
+
+  externalStoreUrl String?   @db.VarChar(191)
+  externalOrderId  String?   @db.VarChar(80)
+  status           String    @default("PENDING") @db.VarChar(40)
+  error            String?   @db.Text
+  lastAttemptAt    DateTime?
+  syncedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orderId, sellerId, channel])
+  @@index([orderId])
+  @@index([sellerId])
+  @@index([channel, status])
+  @@index([externalStoreUrl])
+  @@index([externalOrderId])
 }
 
 model ShopifyBillingCharge {
@@ -508,11 +562,11 @@ model OrderItem {
   campaignClickId String?
   campaignClick   CampaignClick? @relation(fields: [campaignClickId], references: [id], onDelete: SetNull)
 
-  quantity     Int     @default(1)
-  selectedSize String? @db.VarChar(30)
+  quantity      Int     @default(1)
+  selectedSize  String? @db.VarChar(30)
   selectedColor String? @db.VarChar(40)
-  unitPrice    Int
-  total        Int
+  unitPrice     Int
+  total         Int
 
   // Snapshot de comision afiliado al momento de la compra
   commissionValue Int

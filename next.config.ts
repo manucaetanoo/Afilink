@@ -1,5 +1,23 @@
 import type { NextConfig } from "next";
 
+const localImagePatterns =
+  process.env.NODE_ENV === "production"
+    ? []
+    : [
+        {
+          protocol: "http" as const,
+          hostname: "*.local",
+        },
+        {
+          protocol: "http" as const,
+          hostname: "localhost",
+        },
+        {
+          protocol: "http" as const,
+          hostname: "127.0.0.1",
+        },
+      ];
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -27,6 +45,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "readymadeui.com",
       },
+      ...localImagePatterns,
     ],
   },
 };

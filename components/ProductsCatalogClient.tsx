@@ -11,6 +11,7 @@ type Props = {
   products: ProductCardProduct[];
   pageSize: number;
   hasMoreInitial: boolean;
+  totalInitial: number;
 };
 
 const formatMoney = (value: number) =>
@@ -29,11 +30,14 @@ export default function ProductsCatalogClient({
   products,
   pageSize,
   hasMoreInitial,
+  totalInitial,
 }: Props) {
   const { data } = useSession();
   const [items, setItems] = useState(products);
   const [hasMore, setHasMore] = useState(hasMoreInitial);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalItems, setTotalItems] = useState(totalInitial);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loadingPage, setLoadingPage] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<ProductSourceFilter>("all");
   const shopifyEnabled = isPublicShopifyEnabled();
   const role = data?.user?.role;
@@ -69,10 +73,11 @@ export default function ProductsCatalogClient({
           { value: "shopify", label: "Shopify" },
         ]
       : [];
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
-  async function fetchProducts(source: ProductSourceFilter, skip = 0) {
+  async function fetchProducts(source: ProductSourceFilter, page = 1) {
     const params = new URLSearchParams({
-      skip: String(skip),
+      skip: String((page - 1) * pageSize),
       take: String(pageSize),
       source,
     });
@@ -86,43 +91,51 @@ export default function ProductsCatalogClient({
     return {
       products: data.products as ProductCardProduct[],
       hasMore: Boolean(data.hasMore),
+      total: Number(data.total ?? 0),
     };
   }
 
   async function changeSourceFilter(source: ProductSourceFilter) {
-    if (source === sourceFilter || loadingMore) return;
+    if (source === sourceFilter || loadingPage) return;
 
     setSourceFilter(source);
-    setLoadingMore(true);
+    setLoadingPage(true);
+    setCurrentPage(1);
 
     try {
       if (source === "all") {
         setItems(products);
         setHasMore(hasMoreInitial);
+        setTotalItems(totalInitial);
         return;
       }
 
-      const result = await fetchProducts(source);
+      const result = await fetchProducts(source, 1);
       if (!result) return;
 
       setItems(result.products);
       setHasMore(result.hasMore);
+      setTotalItems(result.total);
     } finally {
-      setLoadingMore(false);
+      setLoadingPage(false);
     }
   }
 
-  async function loadMore() {
-    setLoadingMore(true);
+  async function goToPage(page: number) {
+    if (page < 1 || page > totalPages || page === currentPage || loadingPage) return;
+
+    setLoadingPage(true);
 
     try {
-      const result = await fetchProducts(sourceFilter, items.length);
+      const result = await fetchProducts(sourceFilter, page);
       if (!result) return;
 
-      setItems((current) => [...current, ...result.products]);
+      setItems(result.products);
       setHasMore(result.hasMore);
+      setTotalItems(result.total);
+      setCurrentPage(page);
     } finally {
-      setLoadingMore(false);
+      setLoadingPage(false);
     }
   }
 
@@ -163,7 +176,7 @@ export default function ProductsCatalogClient({
                     key={tab.value}
                     type="button"
                     onClick={() => changeSourceFilter(tab.value)}
-                    disabled={loadingMore && !isActive}
+                    disabled={loadingPage && !isActive}
                     className={`rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                       isActive
                         ? "bg-slate-900 text-white"
@@ -205,7 +218,11 @@ export default function ProductsCatalogClient({
               Products
             </h2>
 
-            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 sm:gap-y-10 xl:grid-cols-3 xl:gap-x-8 2xl:grid-cols-4">
+            <div
+              className={`grid grid-cols-1 gap-x-6 gap-y-5 transition-opacity sm:grid-cols-2 sm:gap-y-10 xl:grid-cols-3 xl:gap-x-8 2xl:grid-cols-4 ${
+                loadingPage ? "opacity-50" : "opacity-100"
+              }`}
+            >
               {filteredItems.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -215,16 +232,36 @@ export default function ProductsCatalogClient({
                 />
               ))}
             </div>
-            {hasMore && (
-              <div className="mt-10 flex justify-center">
-                <button
-                  type="button"
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="rounded-2xl border border-orange-200 bg-white px-6 py-3 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loadingMore ? "Cargando..." : "Cargar mas productos"}
-                </button>
+
+            {totalItems > pageSize && (
+              <div className="mt-10 flex flex-col items-center justify-between gap-3 rounded-2xl border border-orange-100 bg-white px-4 py-3 shadow-sm sm:flex-row">
+                <p className="text-sm text-slate-500">
+                  Pagina {currentPage} de {totalPages} · {totalItems} productos
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1 || loadingPage}
+                    className="rounded-xl border border-orange-200 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Anterior
+                  </button>
+
+                  <span className="rounded-xl bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-800">
+                    {currentPage} / {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={!hasMore || currentPage >= totalPages || loadingPage}
+                    className="rounded-xl border border-orange-200 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Siguiente
+                  </button>
+                </div>
               </div>
             )}
           </section>
