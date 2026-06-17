@@ -73,7 +73,7 @@ export default async function EditProductPage({ params }: Props) {
                 href="/seller/products"
                 className="text-sm font-semibold text-orange-600 hover:text-orange-700"
               >
-                Volver a productos
+               ← Volver a productos
               </Link>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight">
                 Editar producto

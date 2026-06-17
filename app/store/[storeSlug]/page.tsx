@@ -42,8 +42,27 @@ async function getSellerStore(storeSlug: string) {
           slug: true,
           description: true,
           isActive: true,
-          _count: { select: { products: true } },
+          _count: {
+            select: {
+              products: {
+                where: {
+                  product: {
+                    is: {
+                      isActive: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
           products: {
+            where: {
+              product: {
+                is: {
+                  isActive: true,
+                },
+              },
+            },
             take: 8,
             select: {
               product: {
@@ -71,6 +90,7 @@ async function getSellerStore(storeSlug: string) {
       ...product,
       imageUrls: product.imageUrls.slice(0, 1),
     })),
+    campaigns: seller.campaigns.filter((campaign) => campaign._count.products > 0),
   };
 }
 
@@ -334,7 +354,9 @@ export default async function StorePage(props: {
             ) : (
               <div className="space-y-5">
                 {seller.campaigns.map((c) => {
-                  const campaignProducts = c.products.map((cp) => cp.product);
+                  const campaignProducts = c.products
+                    .map((cp) => cp.product)
+                    .filter((product) => product.isActive);
                   const campaignProductsCount = c._count.products;
                   const firstProduct = campaignProducts[0];
 

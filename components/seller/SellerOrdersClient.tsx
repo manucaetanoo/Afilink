@@ -130,6 +130,19 @@ function statusClasses(status: FulfillmentStatus | SettlementStatus) {
   return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
+function fulfillmentPriority(status: FulfillmentStatus) {
+  const priorities: Record<FulfillmentStatus, number> = {
+    PENDING: 0,
+    PREPARING: 1,
+    SHIPPED: 2,
+    DELIVERY_REQUESTED: 3,
+    DELIVERED: 4,
+    CANCELED: 5,
+  };
+
+  return priorities[status];
+}
+
 function shippingAddress(order: SellerOrder["order"]) {
   return [
     order.shippingStreet && order.shippingNumber
@@ -158,8 +171,24 @@ export default function SellerOrdersClient({
 }) {
   const router = useRouter();
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const activeOrders = orders.filter((order) => order.status !== "PAID");
+  const [orderError, setOrderError] = useState<{
+    id: string;
+    text: string;
+  } | null>(null);
+  const activeOrders = orders
+    .filter((order) => order.status !== "PAID")
+    .toSorted((first, second) => {
+      const priorityDiff =
+        fulfillmentPriority(first.fulfillmentStatus) -
+        fulfillmentPriority(second.fulfillmentStatus);
+
+      if (priorityDiff !== 0) return priorityDiff;
+
+      return (
+        new Date(second.createdAt).getTime() -
+        new Date(first.createdAt).getTime()
+      );
+    });
   const paidOrders = orders.filter((order) => order.status === "PAID");
 
   async function updateFulfillment(
@@ -168,7 +197,7 @@ export default function SellerOrdersClient({
     fulfillmentStatus: FulfillmentStatus
   ) {
     setSavingId(settlement.id);
-    setMessage(null);
+    setOrderError(null);
 
     const payload = {
       fulfillmentStatus,
@@ -192,7 +221,10 @@ export default function SellerOrdersClient({
 
       router.refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Ocurrio un error");
+      setOrderError({
+        id: settlement.id,
+        text: error instanceof Error ? error.message : "Ocurrio un error",
+      });
     } finally {
       setSavingId(null);
     }
@@ -427,6 +459,12 @@ export default function SellerOrdersClient({
                   </a>
                 )}
 
+                {orderError?.id === settlement.id && (
+                  <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                    {orderError.text}
+                  </div>
+                )}
+
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
                     type="submit"
@@ -504,12 +542,6 @@ export default function SellerOrdersClient({
 
   return (
     <div className="space-y-8">
-      {message && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {message}
-        </div>
-      )}
-
       {orders.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm">
           Todavia no hay pedidos pagos para gestionar.

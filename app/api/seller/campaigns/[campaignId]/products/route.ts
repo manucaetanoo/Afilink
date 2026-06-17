@@ -31,6 +31,13 @@ export async function GET(_req: Request, context: RouteContext) {
       },
       include: {
         products: {
+          where: {
+            product: {
+              is: {
+                isActive: true,
+              },
+            },
+          },
           include: {
             product: true,
           },
@@ -104,6 +111,7 @@ export async function POST(req: Request, context: RouteContext) {
       where: {
         id: productId,
         sellerId: session.user.id,
+        isActive: true,
       },
       select: {
         id: true,
@@ -113,7 +121,7 @@ export async function POST(req: Request, context: RouteContext) {
 
     if (!product) {
       return NextResponse.json(
-        { error: "Producto no encontrado o no pertenece al seller" },
+        { error: "Producto no encontrado, inactivo o no pertenece al seller" },
         { status: 404 }
       );
     }

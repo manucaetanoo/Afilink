@@ -176,6 +176,20 @@ export async function PATCH(
         sellerId: true,
         imageUrls: true,
         updatedAt: true,
+        seller: {
+          select: {
+            storeSlug: true,
+          },
+        },
+        campaignProducts: {
+          select: {
+            campaign: {
+              select: {
+                slug: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -186,8 +200,18 @@ export async function PATCH(
     revalidatePath("/campaigns");
     revalidatePath("/store");
     revalidatePath(`/products/${updated.id}`);
+    if (updated.seller.storeSlug) {
+      revalidatePath(`/store/${updated.seller.storeSlug}`);
+      for (const campaignProduct of updated.campaignProducts) {
+        revalidatePath(
+          `/store/${updated.seller.storeSlug}/campaign/${campaignProduct.campaign.slug}`
+        );
+      }
+    }
 
-    return NextResponse.json({ ok: true, product: updated });
+    const { seller: _seller, campaignProducts: _campaignProducts, ...product } = updated;
+
+    return NextResponse.json({ ok: true, product });
   } catch (e: unknown) {
     const msg = getErrorMessage(e);
     const status =

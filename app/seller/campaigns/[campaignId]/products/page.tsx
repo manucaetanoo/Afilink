@@ -27,6 +27,13 @@ export default async function SellerCampaignProductsPage({ params }: PageProps) 
       description: true,
       isActive: true,
       products: {
+        where: {
+          product: {
+            is: {
+              isActive: true,
+            },
+          },
+        },
         select: {
           productId: true,
           product: {
@@ -78,7 +85,7 @@ export default async function SellerCampaignProductsPage({ params }: PageProps) 
                 href="/seller/campaigns"
                 className="text-sm font-semibold text-orange-600 hover:text-orange-700"
               >
-                Volver a campañas
+               ← Volver a campañas
               </Link>
               <h1 className="mt-4 text-3xl font-semibold tracking-tight">
                 Productos de la campaña
@@ -109,7 +116,9 @@ export default async function SellerCampaignProductsPage({ params }: PageProps) 
 
             <CampaignProductsManager
               campaignId={campaign.id}
-              linkedProducts={campaign.products.map((item) => item.product)}
+              linkedProducts={campaign.products
+                .map((item) => item.product)
+                .filter((product) => product.isActive)}
               availableProducts={availableProducts}
             />
           </div>

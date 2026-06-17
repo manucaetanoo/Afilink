@@ -259,7 +259,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+        {/* <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
           <div className="grid items-center gap-10 rounded-3xl bg-white p-6 shadow-sm sm:p-10 lg:grid-cols-[0.9fr_1.1fr]">
             <div>
               <p className="text-base font-semibold text-[#F78211]">
@@ -286,7 +286,7 @@ export default function Home() {
                       {integration.name}
                     </h3>
                     <div className="flex h-16 items-center justify-center">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {/* eslint-disable-next-line @next/next/no-img-element 
                       <img
                         src={integration.logo}
                         alt={integration.name}
@@ -302,6 +302,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+              */}
         <section className="py-24 sm:py-32">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mx-auto max-w-3xl text-center">

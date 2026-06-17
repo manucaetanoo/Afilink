@@ -68,6 +68,13 @@ const getActiveCampaign = unstable_cache(
           },
         },
         products: {
+          where: {
+            product: {
+              is: {
+                isActive: true,
+              },
+            },
+          },
           select: {
             product: {
               select: {
@@ -77,6 +84,7 @@ const getActiveCampaign = unstable_cache(
                 desc: true,
                 imageUrls: true,
                 stock: true,
+                isActive: true,
                 commissionValue: true,
                 commissionType: true,
               },
@@ -91,12 +99,14 @@ const getActiveCampaign = unstable_cache(
     return {
       ...campaign,
       bannerUrl: getRenderableImageUrl(campaign.bannerUrl),
-      products: campaign.products.map((item) => ({
-        product: {
-          ...item.product,
-          imageUrls: getRenderableProductImageUrls(item.product.imageUrls, 1),
-        },
-      })),
+      products: campaign.products
+        .map((item) => ({
+          product: {
+            ...item.product,
+            imageUrls: getRenderableProductImageUrls(item.product.imageUrls, 1),
+          },
+        }))
+        .filter((item) => item.product.isActive),
     };
   },
   ["active-campaign-detail"],

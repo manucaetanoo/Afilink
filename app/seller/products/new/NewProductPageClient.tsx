@@ -509,12 +509,12 @@ function NewProductPageContent() {
                         <ArrowDownTrayIcon className="h-4 w-4" />
                       </button>
                       )}
-                      <button
+                      {/* <button
                         type="button"
                         onClick={() => setShowFenicioImport(true)}
                         className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-orange-50"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {/* eslint-disable-next-line @next/next/no-img-element 
                         <img
                           src="/img/fenicio-logo.png"
                           alt=""
@@ -522,7 +522,7 @@ function NewProductPageContent() {
                         />
                         Importar desde Fenicio
                         <ArrowDownTrayIcon className="h-4 w-4" />
-                      </button>
+                      </button> */}
 
                       <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
                         Publicacion nueva
