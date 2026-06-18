@@ -33,78 +33,98 @@ function redirectToProducts(params: Record<string, string>) {
 }
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const shop = normalizeShopDomain(url.searchParams.get("shop"));
-  const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state") ?? "";
-  const verifiedState = verifyShopifyState(state);
+  try {
+    const url = new URL(req.url);
+    const shop = normalizeShopDomain(url.searchParams.get("shop"));
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state") ?? "";
+    const verifiedState = verifyShopifyState(state);
 
-  if (!shop || !code || !verifiedState || verifiedState.shop !== shop) {
-    return redirectToProducts({ shopify: "error", reason: "invalid_oauth" });
+    if (!shop || !code || !verifiedState || verifiedState.shop !== shop) {
+      return redirectToProducts({ shopify: "error", reason: "invalid_oauth" });
+    }
+
+    if (!verifyShopifyCallbackHmac(url.searchParams)) {
+      return redirectToProducts({ shopify: "error", reason: "invalid_signature" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: verifiedState.userId },
+      select: { email: true },
+    });
+
+    if (!user || !isShopifyEnabledForEmail(user.email)) {
+      return redirectToProducts({ shopify: "error", reason: "shopify_disabled" });
+    }
+
+    const tokenRes = await fetch(`https://${shop}/admin/oauth/access_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: getShopifyClientId(),
+        client_secret: process.env.SHOPIFY_API_SECRET,
+        code,
+        expiring: "1",
+      }),
+      cache: "no-store",
+    });
+
+    if (!tokenRes.ok) {
+      console.error("Shopify OAuth token exchange failed", {
+        shop,
+        status: tokenRes.status,
+        body: await tokenRes.text().catch(() => ""),
+      });
+      return redirectToProducts({ shopify: "error", reason: "token_exchange" });
+    }
+
+    const tokenData = (await tokenRes.json()) as ShopifyTokenResponse;
+    const accessToken = tokenData.access_token?.trim();
+    const refreshToken = tokenData.refresh_token?.trim();
+
+    if (!accessToken || !refreshToken) {
+      return redirectToProducts({ shopify: "error", reason: "missing_token" });
+    }
+
+    const encryptedAccessToken = encryptShopifyToken(accessToken);
+    const encryptedRefreshToken = encryptShopifyToken(refreshToken);
+    const accessTokenExpiresAt = getExpiresAt(tokenData.expires_in);
+    const refreshTokenExpiresAt = getExpiresAt(tokenData.refresh_token_expires_in);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.shopifyConnection.deleteMany({
+        where: {
+          shopDomain: shop,
+          userId: { not: verifiedState.userId },
+        },
+      });
+
+      await tx.shopifyConnection.upsert({
+        where: { userId: verifiedState.userId },
+        update: {
+          shopDomain: shop,
+          accessToken: encryptedAccessToken,
+          accessTokenExpiresAt,
+          refreshToken: encryptedRefreshToken,
+          refreshTokenExpiresAt,
+          scope: tokenData.scope ?? null,
+          installedAt: new Date(),
+        },
+        create: {
+          userId: verifiedState.userId,
+          shopDomain: shop,
+          accessToken: encryptedAccessToken,
+          accessTokenExpiresAt,
+          refreshToken: encryptedRefreshToken,
+          refreshTokenExpiresAt,
+          scope: tokenData.scope ?? null,
+        },
+      });
+    });
+
+    return redirectToProducts({ shopify: "connected", shop });
+  } catch (error) {
+    console.error("Shopify OAuth callback error", error);
+    return redirectToProducts({ shopify: "error", reason: "callback_error" });
   }
-
-  if (!verifyShopifyCallbackHmac(url.searchParams)) {
-    return redirectToProducts({ shopify: "error", reason: "invalid_signature" });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: verifiedState.userId },
-    select: { email: true },
-  });
-
-  if (!user || !isShopifyEnabledForEmail(user.email)) {
-    return redirectToProducts({ shopify: "error", reason: "shopify_disabled" });
-  }
-
-  const tokenRes = await fetch(`https://${shop}/admin/oauth/access_token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_id: getShopifyClientId(),
-      client_secret: process.env.SHOPIFY_API_SECRET,
-      code,
-      expiring: "1",
-    }),
-    cache: "no-store",
-  });
-
-  if (!tokenRes.ok) {
-    return redirectToProducts({ shopify: "error", reason: "token_exchange" });
-  }
-
-  const tokenData = (await tokenRes.json()) as ShopifyTokenResponse;
-  const accessToken = tokenData.access_token?.trim();
-  const refreshToken = tokenData.refresh_token?.trim();
-
-  if (!accessToken || !refreshToken) {
-    return redirectToProducts({ shopify: "error", reason: "missing_token" });
-  }
-
-  const encryptedRefreshToken = encryptShopifyToken(refreshToken);
-  const accessTokenExpiresAt = getExpiresAt(tokenData.expires_in);
-  const refreshTokenExpiresAt = getExpiresAt(tokenData.refresh_token_expires_in);
-
-  await prisma.shopifyConnection.upsert({
-    where: { userId: verifiedState.userId },
-    update: {
-      shopDomain: shop,
-      accessToken: encryptShopifyToken(accessToken),
-      accessTokenExpiresAt,
-      refreshToken: encryptedRefreshToken,
-      refreshTokenExpiresAt,
-      scope: tokenData.scope ?? null,
-      installedAt: new Date(),
-    },
-    create: {
-      userId: verifiedState.userId,
-      shopDomain: shop,
-      accessToken: encryptShopifyToken(accessToken),
-      accessTokenExpiresAt,
-      refreshToken: encryptedRefreshToken,
-      refreshTokenExpiresAt,
-      scope: tokenData.scope ?? null,
-    },
-  });
-
-  return redirectToProducts({ shopify: "connected", shop });
 }

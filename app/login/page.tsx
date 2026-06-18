@@ -34,6 +34,20 @@ export default function LoginPage() {
 
     setLoading(true);
     const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
+    const onboardingRes = await fetch("/api/onboarding/seller", {
+      cache: "no-store",
+    }).catch(() => null);
+    const onboardingData = await onboardingRes?.json().catch(() => null);
+
+    if (
+      onboardingRes?.ok &&
+      onboardingData?.user?.role === "SELLER" &&
+      !onboardingData.user.storeSlug
+    ) {
+      router.push("/onboarding/seller");
+      return;
+    }
+
     const safeCallbackUrl =
       callbackUrl?.startsWith("/") && !callbackUrl.startsWith("//")
         ? callbackUrl

@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "9606901f7fdeb6af2113bd2582e636b7"
-application_url = "https://afilink.com.uy/"
+application_url = "https://www.afilink.com.uy/"
 embedded = false
 name = "ImplementacionProducts-Afilink"
 
@@ -10,11 +10,11 @@ api_version = "2026-04"
 
 [[webhooks.subscriptions]]
 compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
-uri = "https://afilink.com.uy/api/shopify/webhooks"
+uri = "https://www.afilink.com.uy/api/shopify/webhooks"
 
 [[webhooks.subscriptions]]
 topics = [ "app/uninstalled" ]
-uri = "https://afilink.com.uy/api/shopify/webhooks"
+uri = "https://www.afilink.com.uy/api/shopify/webhooks"
 
 [access_scopes]
 scopes = "read_products,read_inventory,write_orders"
