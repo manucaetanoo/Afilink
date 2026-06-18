@@ -1,6 +1,6 @@
 client_id = "TU_ID_DE_CLIENTE"
 name = "ImplementacionProducts-Afilink"
-application_url = "https://www.afilink.lat/"
+application_url = "https://afilink.com.uy/"
 embedded = false
 
 [access_scopes]
@@ -8,7 +8,7 @@ scopes = "read_products,read_inventory,read_orders,write_orders"
 
 [auth]
 redirect_urls = [
-  "https://www.afilink.lat/api/shopify/oauth/callback"
+  "https://afilink.com.uy/api/shopify/oauth/callback"
 ]
 
 [webhooks]
@@ -16,8 +16,8 @@ api_version = "2026-04"
 
 [[webhooks.subscriptions]]
 compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
-uri = "https://www.afilink.lat/api/shopify/webhooks"
+uri = "https://afilink.com.uy/api/shopify/webhooks"
 
 [[webhooks.subscriptions]]
 topics = ["app/uninstalled", "orders/paid"]
-uri = "https://www.afilink.lat/api/shopify/webhooks"
+uri = "https://afilink.com.uy/api/shopify/webhooks"

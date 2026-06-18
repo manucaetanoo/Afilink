@@ -30,16 +30,18 @@ export async function POST(req: Request) {
   const topic = req.headers.get("x-shopify-topic") ?? "";
   const shop = normalizeShopDomain(req.headers.get("x-shopify-shop-domain"));
 
-  if (!isShopifyEnabled()) {
-    return NextResponse.json({ ok: true, ignored: "shopify_disabled" });
-  }
-
   if (topic === "app/uninstalled" || topic === "shop/redact") {
     if (shop) {
       await prisma.shopifyConnection.deleteMany({
         where: { shopDomain: shop },
       });
     }
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (!isShopifyEnabled()) {
+    return NextResponse.json({ ok: true, ignored: "shopify_disabled" });
   }
 
   if ((topic === "orders/paid" || topic === "orders/create") && shop) {
