@@ -23,7 +23,6 @@ import {
   getFirstRenderableProductImage,
   getRenderableProductImageUrls,
 } from "@/lib/product-images";
-import { isShopifyEnabled } from "@/lib/features";
 import { unstable_cache } from "next/cache";
 
 const categoryLabels: Record<string, string> = {
@@ -88,7 +87,6 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const categoryName = categoryLabels[product.category] ?? "Producto";
-  const shopifyEnabled = isShopifyEnabled();
   const hasStock = product.stock > 0;
   const colors = parseProductColors(product.colors);
   const sellerNet = getSellerNetAmount({
@@ -188,9 +186,6 @@ export default async function ProductPage({
                   imageUrl: getFirstRenderableProductImage(product.imageUrls),
                   sizes: product.sizes,
                   colors,
-                  usesShopifyCheckout: Boolean(
-                    shopifyEnabled && product.shopifyShopDomain && product.shopifyVariantId
-                  ),
                 }}
               />
 

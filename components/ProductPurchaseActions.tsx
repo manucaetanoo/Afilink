@@ -14,7 +14,6 @@ type Props = {
     imageUrl: string | null;
     sizes: string[];
     colors: ProductColorOption[];
-    usesShopifyCheckout?: boolean;
   };
   refCode?: string | null;
   disabled?: boolean;
@@ -124,11 +123,7 @@ export default function ProductPurchaseActions({
         </div>
       )}
 
-      <div
-        className={`mt-7 grid gap-3 ${
-          product.usesShopifyCheckout ? "" : "sm:grid-cols-2"
-        }`}
-      >
+      <div className="mt-7 grid gap-3 sm:grid-cols-2">
         <BuyButton
           productId={product.id}
           refCode={resolvedRefCode}
@@ -137,20 +132,18 @@ export default function ProductPurchaseActions({
           disabled={actionsDisabled}
           disabledReason={disabledReason}
         />
-        {!product.usesShopifyCheckout && (
-          <AddToCartButton
-            disabled={actionsDisabled}
-            disabledLabel={disabledReason}
-            product={{
-              productId: product.id,
-              name: product.name,
-              price: product.price,
-              imageUrl: product.imageUrl,
-              selectedSize,
-              selectedColor,
-            }}
-          />
-        )}
+        <AddToCartButton
+          disabled={actionsDisabled}
+          disabledLabel={disabledReason}
+          product={{
+            productId: product.id,
+            name: product.name,
+            price: product.price,
+            imageUrl: product.imageUrl,
+            selectedSize,
+            selectedColor,
+          }}
+        />
       </div>
     </>
   );

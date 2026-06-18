@@ -7,8 +7,6 @@ import {
 } from "@/lib/prisma-enums";
 import { calculateSplit } from "@/lib/payments/calculateSplit";
 import { resolveAttribution } from "@/lib/payments/createOrder";
-import { createShopifyUsageCharge } from "@/lib/shopify-billing";
-import { isShopifyBillingEnabled } from "@/lib/features";
 
 type ShopifyOrderAttribute = {
   name?: unknown;
@@ -100,10 +98,6 @@ function getSelectedSize(lineItem: ShopifyOrderLineItem) {
   return cleanString(lineItem.variant_title, 30);
 }
 
-function getCurrency(value: unknown) {
-  return cleanString(value, 10) ?? "USD";
-}
-
 async function findProductForLineItem({
   shopDomain,
   lineItem,
@@ -169,15 +163,16 @@ export async function processShopifyPaidOrder({
     },
     select: {
       id: true,
-      shopifyBillingStatus: true,
-      platformAmount: true,
-      affiliateAmount: true,
-      shopifyOrderName: true,
+      paymentProvider: true,
     },
   });
 
-  if (existingOrder?.shopifyBillingStatus === "CHARGED") {
-    return { orderId: existingOrder.id, created: false, billingStatus: "CHARGED" };
+  if (existingOrder && existingOrder.paymentProvider !== "shopify") {
+    return {
+      orderId: existingOrder.id,
+      created: false,
+      billingStatus: "IGNORED_AFILINK_CHECKOUT",
+    };
   }
 
   const attrs = getAttributes(payload);
@@ -191,16 +186,7 @@ export async function processShopifyPaidOrder({
   }
 
   if (existingOrder) {
-    const billingStatus = await chargeShopifyOrderCommission({
-      orderId: existingOrder.id,
-      shopDomain,
-      shopifyOrderId,
-      shopifyOrderName: existingOrder.shopifyOrderName,
-      amount: existingOrder.platformAmount + existingOrder.affiliateAmount,
-      currency: getCurrency(payload.currency),
-    });
-
-    return { orderId: existingOrder.id, created: false, billingStatus };
+    return { orderId: existingOrder.id, created: false, billingStatus: "DISABLED" };
   }
 
   const resolvedItems: Array<{
@@ -273,7 +259,6 @@ export async function processShopifyPaidOrder({
     0
   );
   const shopifyOrderName = cleanString(payload.name, 80);
-  const currency = getCurrency(payload.currency);
 
   const order = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const createdOrder = await tx.order.create({
@@ -299,7 +284,6 @@ export async function processShopifyPaidOrder({
         shopifyShopDomain: shopDomain,
         shopifyOrderId,
         shopifyOrderName,
-        shopifyBillingStatus: "PENDING",
         buyerName: getBuyerName(payload),
         buyerEmail:
           cleanString(payload.email, 191) ??
@@ -377,141 +361,5 @@ export async function processShopifyPaidOrder({
     return createdOrder;
   });
 
-  const billingStatus = await chargeShopifyOrderCommission({
-    orderId: order.id,
-    shopDomain,
-    shopifyOrderId,
-    shopifyOrderName,
-    amount: platformAmount + affiliateAmount,
-    currency,
-  });
-
-  return { orderId: order.id, created: true, billingStatus };
-}
-
-async function chargeShopifyOrderCommission({
-  orderId,
-  shopDomain,
-  shopifyOrderId,
-  shopifyOrderName,
-  amount,
-  currency,
-}: {
-  orderId: string;
-  shopDomain: string;
-  shopifyOrderId: string;
-  shopifyOrderName: string | null;
-  amount: number;
-  currency: string;
-}) {
-  if (!isShopifyBillingEnabled()) {
-    await prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          shopifyBillingStatus: "DISABLED",
-          shopifyBillingError: "Shopify Billing deshabilitado",
-        },
-      });
-      await tx.shopifyBillingCharge.upsert({
-        where: { orderId },
-        update: {
-          amount,
-          currency,
-          status: "DISABLED",
-          error: "Shopify Billing deshabilitado",
-        },
-        create: {
-          orderId,
-          shopDomain,
-          shopifyOrderId,
-          amount,
-          currency,
-          status: "DISABLED",
-          error: "Shopify Billing deshabilitado",
-        },
-      });
-    });
-
-    return "DISABLED";
-  }
-
-  try {
-    const usageRecordId = await createShopifyUsageCharge({
-      shopDomain,
-      orderId,
-      shopifyOrderName,
-      amount,
-      currency,
-    });
-
-    await prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          shopifyBillingStatus: "CHARGED",
-          shopifyBillingUsageRecordId: usageRecordId,
-          shopifyBillingError: null,
-        },
-      });
-      await tx.shopifyBillingCharge.upsert({
-        where: { orderId },
-        update: {
-          amount,
-          currency,
-          status: "CHARGED",
-          usageRecordId,
-          error: null,
-        },
-        create: {
-          orderId,
-          shopDomain,
-          shopifyOrderId,
-          amount,
-          currency,
-          status: "CHARGED",
-          usageRecordId,
-        },
-      });
-      await tx.commission.updateMany({
-        where: { orderId },
-        data: { status: CommissionStatus.APPROVED },
-      });
-    });
-
-    return "CHARGED";
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "No se pudo cobrar en Shopify";
-
-    await prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          shopifyBillingStatus: "FAILED",
-          shopifyBillingError: message,
-        },
-      });
-      await tx.shopifyBillingCharge.upsert({
-        where: { orderId },
-        update: {
-          amount,
-          currency,
-          status: "FAILED",
-          error: message,
-        },
-        create: {
-          orderId,
-          shopDomain,
-          shopifyOrderId,
-          amount,
-          currency,
-          status: "FAILED",
-          error: message,
-        },
-      });
-    });
-
-    return "FAILED";
-  }
+  return { orderId: order.id, created: true, billingStatus: "DISABLED" };
 }

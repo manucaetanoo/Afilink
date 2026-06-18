@@ -5,6 +5,7 @@ import {
 import { type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendTransactionalEmail } from "@/lib/email";
+import { syncShopifyOrder } from "@/lib/shopify-sync";
 import { syncWooCommerceOrder } from "@/lib/woocommerce-orders";
 
 type MarkOrderPaidInput = {
@@ -270,6 +271,21 @@ export async function markOrderPaidAndNotify({
   for (const sync of wooCommerceSync) {
     if (sync.status === "FAILED") {
       console.error("WooCommerce order sync failed", {
+        orderId: result.order.id,
+        sellerId: sync.sellerId,
+        error: sync.error,
+      });
+    }
+  }
+
+  const shopifySync = await syncShopifyOrder(result.order.id).catch((error) => {
+    console.error("Shopify order sync error:", error);
+    return [];
+  });
+
+  for (const sync of shopifySync) {
+    if (sync.status === "FAILED") {
+      console.error("Shopify order sync failed", {
         orderId: result.order.id,
         sellerId: sync.sellerId,
         error: sync.error,
