@@ -130,6 +130,10 @@ function getCurrency() {
     .toUpperCase();
 }
 
+function formatShopifyAmount(amount: number) {
+  return amount.toFixed(2);
+}
+
 async function refreshShopifyToken(params: {
   userId: string;
   shopDomain: string;
@@ -340,6 +344,7 @@ export async function syncShopifyOrder(orderId: string) {
     try {
       const accessToken = await getShopifyAccessToken({ userId: sellerId, shopDomain });
       const currency = getCurrency();
+      const sellerTotal = items.reduce((sum, item) => sum + item.total, 0);
 
       const lineItems = items.map((item) => {
         const variantId = getShopifyVariantId({
@@ -356,6 +361,12 @@ export async function syncShopifyOrder(orderId: string) {
         return {
           variantId: getShopifyGid("ProductVariant", variantId),
           quantity: item.quantity,
+          priceSet: {
+            shopMoney: {
+              amount: formatShopifyAmount(item.unitPrice),
+              currencyCode: currency,
+            },
+          },
         };
       });
 
@@ -371,7 +382,7 @@ export async function syncShopifyOrder(orderId: string) {
             status: "SUCCESS",
             amountSet: {
               shopMoney: {
-                amount: order.total,
+                amount: formatShopifyAmount(sellerTotal),
                 currencyCode: currency,
               },
             },
