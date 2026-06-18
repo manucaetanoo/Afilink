@@ -1,11 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { isShopifyEnabled } from "@/lib/features";
 import { parseProductColors } from "@/lib/product-color";
 import { getRenderableProductImageUrls } from "@/lib/product-images";
 
 const MAX_PRODUCTS_TAKE = 80;
-type ProductSourceFilter = "all" | "afilink" | "shopify";
 
 function getPaginationValue(value: string | null, fallback: number, max: number) {
   if (value === null || value.trim() === "") return fallback;
@@ -18,18 +16,9 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const skip = getPaginationValue(url.searchParams.get("skip"), 0, 10_000);
   const take = getPaginationValue(url.searchParams.get("take"), 40, MAX_PRODUCTS_TAKE);
-  const shopifyEnabled = isShopifyEnabled();
-  const source = shopifyEnabled
-    ? parseSourceFilter(url.searchParams.get("source"))
-    : "all";
 
   const where = {
       isActive: true,
-      ...(source === "shopify"
-        ? { shopifyShopDomain: { not: null }, shopifyVariantId: { not: null } }
-        : source === "afilink"
-          ? { shopifyVariantId: null }
-          : {}),
     };
 
   const [products, total] = await Promise.all([
@@ -47,8 +36,6 @@ export async function GET(req: Request) {
         commissionValue: true,
         colors: true,
         imageUrls: true,
-        shopifyShopDomain: true,
-        shopifyVariantId: true,
       },
     }),
     prisma.product.count({ where }),
@@ -67,15 +54,8 @@ export async function GET(req: Request) {
       commissionValue: product.commissionValue,
       colors: parseProductColors(product.colors),
       imageUrls: getRenderableProductImageUrls(product.imageUrls, 1),
-      isShopifyProduct:
-        shopifyEnabled && Boolean(product.shopifyShopDomain && product.shopifyVariantId),
     })),
   });
-}
-
-function parseSourceFilter(value: string | null): ProductSourceFilter {
-  if (value === "afilink" || value === "shopify") return value;
-  return "all";
 }
 
 export async function POST() {

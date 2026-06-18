@@ -22,7 +22,6 @@ import {
 import { PRODUCT_COLOR_PRESETS, type ProductColorOption } from "@/lib/product-color";
 import { formatMoney, getSellerNetAmount } from "@/lib/pricing";
 import Sidebar from "@/components/Sidebar";
-import { isPublicShopifyEnabled } from "@/lib/features";
 
 const productCategories = [
   { value: "CLOTHING", label: "Ropa", sizes: ["XS", "S", "M", "L", "XL", "XXL"] },
@@ -74,7 +73,11 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Ocurrio un error";
 }
 
-export default function NewProductPage() {
+export default function NewProductPage({
+  shopifyImportEnabled = false,
+}: {
+  shopifyImportEnabled?: boolean;
+}) {
   return (
     <Suspense
       fallback={
@@ -83,12 +86,16 @@ export default function NewProductPage() {
         </div>
       }
     >
-      <NewProductPageContent />
+      <NewProductPageContent shopifyImportEnabled={shopifyImportEnabled} />
     </Suspense>
   );
 }
 
-function NewProductPageContent() {
+function NewProductPageContent({
+  shopifyImportEnabled,
+}: {
+  shopifyImportEnabled: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -111,7 +118,6 @@ function NewProductPageContent() {
   >(DEFAULT_PLATFORM_COMMISSION_TYPE);
   const [priceValue, setPriceValue] = useState("");
   const [showShopifyImport, setShowShopifyImport] = useState(false);
-  const shopifyImportEnabled = isPublicShopifyEnabled();
   const [shopifyDomain, setShopifyDomain] = useState("");
   const [shopifyConnection, setShopifyConnection] =
     useState<ShopifyConnection | null>(null);

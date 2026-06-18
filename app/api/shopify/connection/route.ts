@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decryptShopifyToken, SHOPIFY_API_VERSION } from "@/lib/shopify";
+import { isShopifyEnabledForEmail } from "@/lib/features";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "ERROR";
@@ -41,6 +42,10 @@ export async function GET() {
   try {
     const user = await requireUser();
     requireRole(user, ["SELLER", "ADMIN"]);
+
+    if (!isShopifyEnabledForEmail(user.email)) {
+      return NextResponse.json({ ok: true, connection: null });
+    }
 
     const connection = await prisma.shopifyConnection.findUnique({
       where: { userId: user.id },
@@ -87,6 +92,13 @@ export async function DELETE() {
   try {
     const user = await requireUser();
     requireRole(user, ["SELLER", "ADMIN"]);
+
+    if (!isShopifyEnabledForEmail(user.email)) {
+      return NextResponse.json(
+        { ok: false, error: "Shopify no esta habilitado para esta cuenta" },
+        { status: 404 }
+      );
+    }
 
     await prisma.shopifyConnection.deleteMany({ where: { userId: user.id } });
     return NextResponse.json({ ok: true });

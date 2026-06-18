@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { isPublicShopifyEnabled } from "@/lib/features";
 import type { ProductColorOption } from "@/lib/product-color";
 
 export type ProductCardProduct = {
@@ -12,7 +11,6 @@ export type ProductCardProduct = {
   commissionValue: number;
   colors?: ProductColorOption[];
   imageUrls: string[];
-  isShopifyProduct?: boolean;
 };
 
 type ProductCardProps = {
@@ -43,7 +41,6 @@ export default function ProductCard({
   showCommissionBadge = showAffiliateHighlights,
 }: ProductCardProps) {
   const imageUrl = product.imageUrls?.[0] ?? null;
-  const showShopifyBranding = isPublicShopifyEnabled() && product.isShopifyProduct;
   const isInlineImage = imageUrl?.startsWith("data:") ?? false;
   const isRemoteProductImage = /^https?:\/\//i.test(imageUrl ?? "");
   const hasCommission =
@@ -78,25 +75,11 @@ export default function ProductCard({
               <p className="mt-1 text-xs text-white/85">por venta</p>
             </div>
 
-            <div className="flex flex-col items-end gap-2">
-              {showShopifyBranding && (
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/70 bg-white/95 p-1.5 shadow-sm sm:h-12 sm:w-12 sm:rounded-2xl">
-                  <Image
-                    src="/img/Shopify-Logo-PNG.png"
-                    alt="Shopify"
-                    width={40}
-                    height={40}
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-              )}
-
-              {hasAffiliateCommission && (
-                <div className="rounded-full border border-white/60 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm sm:px-3 sm:text-xs">
-                  Ganas {formatPrice(commissionEarning)}
-                </div>
-              )}
-            </div>
+            {hasAffiliateCommission && (
+              <div className="rounded-full border border-white/60 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm sm:px-3 sm:text-xs">
+                Ganas {formatPrice(commissionEarning)}
+              </div>
+            )}
           </div>
   
 

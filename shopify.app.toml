@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "9606901f7fdeb6af2113bd2582e636b7"
-application_url = "https://www.afilink.lat/"
+application_url = "https://afilink.com.uy/"
 embedded = false
 name = "ImplementacionProducts-Afilink"
 
@@ -10,21 +10,19 @@ api_version = "2026-04"
 
 [[webhooks.subscriptions]]
 compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
-uri = "https://www.afilink.lat/api/shopify/webhooks"
+uri = "https://afilink.com.uy/api/shopify/webhooks"
 
 [[webhooks.subscriptions]]
 topics = [ "app/uninstalled" ]
-uri = "https://www.afilink.lat/api/shopify/webhooks"
-
-[[webhooks.subscriptions]]
-topics = [ "orders/paid" ]
-uri = "https://www.afilink.lat/api/shopify/webhooks"
+uri = "https://afilink.com.uy/api/shopify/webhooks"
 
 [access_scopes]
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_inventory,read_orders,read_products"
+scopes = "read_products,read_inventory,write_orders"
 optional_scopes = [ ]
 use_legacy_install_flow = false
 
 [auth]
-redirect_urls = [ "https://www.afilink.lat/api/shopify/oauth/callback" ]
+redirect_urls = [
+  "https://afilink.com.uy/api/shopify/oauth/callback",
+  "https://www.afilink.com.uy/api/shopify/oauth/callback"
+]

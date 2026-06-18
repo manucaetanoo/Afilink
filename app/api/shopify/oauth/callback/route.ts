@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isShopifyEnabledForEmail } from "@/lib/features";
 import {
   encryptShopifyToken,
   getAppUrl,
@@ -44,6 +45,15 @@ export async function GET(req: Request) {
 
   if (!verifyShopifyCallbackHmac(url.searchParams)) {
     return redirectToProducts({ shopify: "error", reason: "invalid_signature" });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: verifiedState.userId },
+    select: { email: true },
+  });
+
+  if (!user || !isShopifyEnabledForEmail(user.email)) {
+    return redirectToProducts({ shopify: "error", reason: "shopify_disabled" });
   }
 
   const tokenRes = await fetch(`https://${shop}/admin/oauth/access_token`, {

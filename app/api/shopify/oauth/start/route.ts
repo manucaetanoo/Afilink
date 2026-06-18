@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole, requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { isShopifyEnabledForEmail } from "@/lib/features";
 import {
   createShopifyState,
   getAppUrl,
@@ -17,6 +19,13 @@ export async function POST(req: Request) {
     const user = await requireUser();
     requireRole(user, ["SELLER", "ADMIN"]);
 
+    if (!isShopifyEnabledForEmail(user.email)) {
+      return NextResponse.json(
+        { ok: false, error: "Shopify no esta habilitado para esta cuenta" },
+        { status: 404 }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const shop = normalizeShopDomain(body.shopDomain);
 
@@ -26,6 +35,12 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    await prisma.shopifyConnection.deleteMany({
+      where: {
+        userId: user.id,
+      },
+    });
 
     const redirectUri = `${getAppUrl()}/api/shopify/oauth/callback`;
     const url = new URL(`https://${shop}/admin/oauth/authorize`);

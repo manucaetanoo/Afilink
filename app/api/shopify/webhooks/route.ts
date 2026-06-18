@@ -5,13 +5,15 @@ import { normalizeShopDomain } from "@/lib/shopify";
 import { processShopifyPaidOrder } from "@/lib/shopify-orders";
 import { isShopifyEnabled } from "@/lib/features";
 
-function verifyShopifyWebhookHmac(rawBody: string, hmacHeader: string | null) {
+export const runtime = "nodejs";
+
+function verifyShopifyWebhookHmac(rawBody: Buffer, hmacHeader: string | null) {
   const secret = process.env.SHOPIFY_API_SECRET?.trim();
   if (!secret || !hmacHeader) return false;
 
   const digest = crypto
     .createHmac("sha256", secret)
-    .update(rawBody, "utf8")
+    .update(rawBody)
     .digest("base64");
 
   if (digest.length !== hmacHeader.length) return false;
@@ -20,7 +22,7 @@ function verifyShopifyWebhookHmac(rawBody: string, hmacHeader: string | null) {
 }
 
 export async function POST(req: Request) {
-  const rawBody = await req.text();
+  const rawBody = Buffer.from(await req.arrayBuffer());
   const hmac = req.headers.get("x-shopify-hmac-sha256");
 
   if (!verifyShopifyWebhookHmac(rawBody, hmac)) {
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
   }
 
   if ((topic === "orders/paid" || topic === "orders/create") && shop) {
-    const payload = JSON.parse(rawBody);
+    const payload = JSON.parse(rawBody.toString("utf8"));
     await processShopifyPaidOrder({ shopDomain: shop, payload });
   }
 

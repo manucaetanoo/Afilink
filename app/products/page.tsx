@@ -3,7 +3,6 @@ import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import type { Metadata } from "next";
 import ProductsCatalogClient from "@/components/ProductsCatalogClient";
-import { isShopifyEnabled } from "@/lib/features";
 import { parseProductColors } from "@/lib/product-color";
 import { getRenderableProductImageUrls } from "@/lib/product-images";
 
@@ -16,10 +15,7 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 export const PRODUCTS_PAGE_LIMIT = 40;
 
-export type ProductSourceFilter = "all" | "afilink" | "shopify";
-
 async function getActiveProducts() {
-  const shopifyEnabled = isShopifyEnabled();
   const where = {
       isActive: true,
     };
@@ -38,8 +34,6 @@ async function getActiveProducts() {
         commissionValue: true,
         colors: true,
         imageUrls: true,
-        shopifyShopDomain: true,
-        shopifyVariantId: true,
       },
     }),
     prisma.product.count({ where }),
@@ -57,8 +51,6 @@ async function getActiveProducts() {
       commissionValue: product.commissionValue,
       colors: parseProductColors(product.colors),
       imageUrls: getRenderableProductImageUrls(product.imageUrls, 1),
-      isShopifyProduct:
-        shopifyEnabled && Boolean(product.shopifyShopDomain && product.shopifyVariantId),
     })),
   };
 }

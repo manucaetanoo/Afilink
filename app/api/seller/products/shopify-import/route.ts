@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireRole, requireUser } from "@/lib/auth";
 import { demoShopifyProducts } from "@/lib/demo-import-products";
+import { isShopifyEnabledForEmail } from "@/lib/features";
 import { prisma } from "@/lib/prisma";
 import {
   decryptShopifyToken,
@@ -205,6 +206,13 @@ export async function POST(req: Request) {
   try {
     const user = await requireUser();
     requireRole(user, ["SELLER", "ADMIN"]);
+
+    if (!isShopifyEnabledForEmail(user.email)) {
+      return NextResponse.json(
+        { ok: false, error: "Shopify no esta habilitado para esta cuenta" },
+        { status: 404 }
+      );
+    }
 
     const body = await req.json();
     let shopDomain = normalizeShopDomain(body.shopDomain);
