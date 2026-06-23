@@ -4,7 +4,6 @@ export const SHOPIFY_API_VERSION = "2026-04";
 export const SHOPIFY_SCOPES = [
   "read_products",
   "read_inventory",
-  "read_orders",
   "write_orders",
 ].join(",");
 

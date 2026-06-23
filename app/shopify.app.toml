@@ -4,7 +4,7 @@ application_url = "https://afilink.com.uy/"
 embedded = false
 
 [access_scopes]
-scopes = "read_products,read_inventory,read_orders,write_orders"
+scopes = "read_products,read_inventory,write_orders"
 
 [auth]
 redirect_urls = [
