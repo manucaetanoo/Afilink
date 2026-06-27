@@ -377,12 +377,9 @@ model Order {
   paymentId       String? @db.VarChar(191)
   paymentStatus   String? @db.VarChar(50)
 
-  shopifyShopDomain           String? @db.VarChar(191)
-  shopifyOrderId              String? @db.VarChar(80)
-  shopifyOrderName            String? @db.VarChar(80)
-  shopifyBillingStatus        String? @db.VarChar(50)
-  shopifyBillingUsageRecordId String? @db.VarChar(191)
-  shopifyBillingError         String? @db.Text
+  shopifyShopDomain String? @db.VarChar(191)
+  shopifyOrderId    String? @db.VarChar(80)
+  shopifyOrderName  String? @db.VarChar(80)
 
   // Datos de contacto y entrega
   buyerName          String? @db.VarChar(140)
@@ -397,11 +394,10 @@ model Order {
   shippingCountry    String? @db.VarChar(2)
   shippingNotes      String? @db.Text
 
-  commissions          Commission[]
-  settlements          Settlement[]
-  items                OrderItem[]
-  shopifyBillingCharge ShopifyBillingCharge?
-  externalOrderSyncs   ExternalOrderSync[]
+  commissions        Commission[]
+  settlements        Settlement[]
+  items              OrderItem[]
+  externalOrderSyncs ExternalOrderSync[]
 
   @@unique([shopifyShopDomain, shopifyOrderId])
   @@index([productId])
@@ -443,30 +439,6 @@ model ExternalOrderSync {
   @@index([channel, status])
   @@index([externalStoreUrl])
   @@index([externalOrderId])
-}
-
-model ShopifyBillingCharge {
-  id String @id @default(cuid())
-
-  orderId String @unique
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  shopDomain     String @db.VarChar(191)
-  shopifyOrderId String @db.VarChar(80)
-
-  amount   Int
-  currency String @db.VarChar(10)
-  status   String @db.VarChar(50)
-
-  usageRecordId String? @db.VarChar(191)
-  error         String? @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([shopDomain])
-  @@index([shopifyOrderId])
-  @@index([status])
 }
 
 model Commission {

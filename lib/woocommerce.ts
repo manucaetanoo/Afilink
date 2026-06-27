@@ -34,6 +34,14 @@ type WooCommerceRequestOptions = {
   body?: unknown;
 };
 
+export type WooCommerceWebhook = {
+  id: number;
+  name?: string;
+  status?: string;
+  topic?: string;
+  delivery_url?: string;
+};
+
 function encodeOAuthValue(value: string | number) {
   return encodeURIComponent(String(value))
     .replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
@@ -239,6 +247,115 @@ export function createWooCommerceClient({
   }
 
   return { request, storeUrl: baseUrl };
+}
+
+function getBaseUrl() {
+  return (
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXTAUTH_URL ||
+    "http://localhost:3000"
+  ).replace(/\/$/, "");
+}
+
+export function getWooCommerceWebhookSecret() {
+  const secret =
+    process.env.WOOCOMMERCE_WEBHOOK_SECRET ||
+    process.env.NEXTAUTH_SECRET ||
+    process.env.AUTH_SECRET;
+
+  if (!secret?.trim()) {
+    throw new Error(
+      "Falta WOOCOMMERCE_WEBHOOK_SECRET, NEXTAUTH_SECRET o AUTH_SECRET"
+    );
+  }
+
+  return secret.trim();
+}
+
+export function getWooCommerceWebhookUrl() {
+  return `${getBaseUrl()}/api/woocommerce/webhooks`;
+}
+
+export function verifyWooCommerceWebhookSignature({
+  body,
+  signature,
+}: {
+  body: string;
+  signature: string | null;
+}) {
+  if (!signature) return false;
+
+  const expected = crypto
+    .createHmac("sha256", getWooCommerceWebhookSecret())
+    .update(body, "utf8")
+    .digest("base64");
+
+  const signatureBuffer = Buffer.from(signature.trim());
+  const expectedBuffer = Buffer.from(expected);
+
+  if (signatureBuffer.length !== expectedBuffer.length) return false;
+  return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+}
+
+export async function ensureWooCommerceStockWebhooks(
+  client: ReturnType<typeof createWooCommerceClient>
+) {
+  const deliveryUrl = getWooCommerceWebhookUrl();
+  const secret = getWooCommerceWebhookSecret();
+  const topics = ["order.created", "order.updated", "product.updated"];
+  const existingWebhooks = await client.request<WooCommerceWebhook[]>(
+    "webhooks?per_page=100"
+  );
+
+  await Promise.all(
+    topics.map(async (topic) => {
+      const existing = existingWebhooks.find(
+        (webhook) =>
+          webhook.topic === topic && webhook.delivery_url === deliveryUrl
+      );
+      const payload = {
+        name: `Afilink stock sync ${topic}`,
+        topic,
+        delivery_url: deliveryUrl,
+        secret,
+        status: "active",
+      };
+
+      if (existing?.id) {
+        await client.request(`webhooks/${existing.id}`, {
+          method: "PUT",
+          body: payload,
+        });
+        return;
+      }
+
+      await client.request("webhooks", {
+        method: "POST",
+        body: payload,
+      });
+    })
+  );
+}
+
+export async function deleteWooCommerceStockWebhooks(
+  client: ReturnType<typeof createWooCommerceClient>
+) {
+  const deliveryUrl = getWooCommerceWebhookUrl();
+  const existingWebhooks = await client.request<WooCommerceWebhook[]>(
+    "webhooks?per_page=100"
+  );
+  const matchingWebhooks = existingWebhooks.filter(
+    (webhook) => webhook.delivery_url === deliveryUrl
+  );
+
+  await Promise.all(
+    matchingWebhooks.map((webhook) =>
+      client.request(`webhooks/${webhook.id}?force=true`, {
+        method: "DELETE",
+      })
+    )
+  );
 }
 
 export function stripWooCommerceHtml(value: string | null | undefined) {

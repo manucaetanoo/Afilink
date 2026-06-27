@@ -3,8 +3,10 @@ import { requireRole, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   createWooCommerceClient,
+  deleteWooCommerceStockWebhooks,
   decryptWooCommerceSecret,
   encryptWooCommerceSecret,
+  ensureWooCommerceStockWebhooks,
   normalizeWooCommerceStoreUrl,
 } from "@/lib/woocommerce";
 
@@ -94,6 +96,10 @@ export async function POST(req: Request) {
       },
     });
 
+    await ensureWooCommerceStockWebhooks(client).catch((error) => {
+      console.error("WooCommerce webhook setup failed", error);
+    });
+
     return NextResponse.json({ ok: true, connection });
   } catch (error) {
     const msg = getErrorMessage(error);
@@ -109,9 +115,30 @@ export async function DELETE() {
     const user = await requireUser();
     requireRole(user, ["SELLER", "ADMIN"]);
 
-    await prisma.wooCommerceConnection.deleteMany({
+    const connection = await prisma.wooCommerceConnection.findUnique({
       where: { userId: user.id },
+      select: {
+        storeUrl: true,
+        consumerKey: true,
+        consumerSecret: true,
+      },
     });
+
+    if (connection) {
+      const client = createWooCommerceClient({
+        storeUrl: connection.storeUrl,
+        consumerKey: decryptWooCommerceSecret(connection.consumerKey),
+        consumerSecret: decryptWooCommerceSecret(connection.consumerSecret),
+      });
+
+      await deleteWooCommerceStockWebhooks(client).catch((error) => {
+        console.error("WooCommerce webhook cleanup failed", error);
+      });
+
+      await prisma.wooCommerceConnection.deleteMany({
+        where: { userId: user.id },
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
