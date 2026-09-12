@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { trackAffiliateRegistration } from "@/lib/meta-pixel";
 import Link from "next/link";
-import { FiArrowRight, FiBriefcase } from "react-icons/fi";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -217,29 +216,6 @@ export default function RegisterPage() {
           </p>
         </form>
 
-        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-950 text-white">
-              <FiBriefcase className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-950">
-                ¿Querés registrarte como empresa?
-              </p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                Las cuentas de empresa se crean luego de revisar la solicitud
-                por mail.
-              </p>
-              <Link
-                href="/contacto?tipo=empresa"
-                className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[#F78211] transition hover:text-orange-600"
-              >
-                Solicitar cuenta empresa
-                <FiArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
     </div>

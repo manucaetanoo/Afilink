@@ -18,7 +18,7 @@ const navigation: Navigation = {
     { name: "Consultar compra", href: "/pedido" },
   ],
   sellers: [
-    { name: "Solicitar cuenta empresa", href: "/contacto?tipo=empresa" },
+    { name: "Quiero vender mis productos", href: "/contacto?tipo=empresa" },
     { name: "Ingresar", href: "/login" },
     { name: "Panel vendedor", href: "/dashboard/seller" },
   ],
@@ -46,16 +46,16 @@ export default function Footer() {
 
             <div className="rounded-lg border border-orange-100 bg-orange-50 p-4">
               <p className="text-sm font-semibold text-slate-950">
-                ¿Querés vender en Afilink?
+                ¿Querés vender tus propios productos digitales?
               </p>
               <p className="mt-1 text-sm/6 text-slate-600">
-                Completá el formulario y revisamos tu solicitud de empresa por mail.
+                Solicitá una cuenta empresa para publicar y vender tus propios productos.
               </p>
               <Link
                 href="/contacto?tipo=empresa"
                 className="mt-3 inline-flex rounded-md bg-[#F78211] px-3 py-2 text-sm font-semibold text-white transition hover:bg-orange-500"
               >
-                Solicitar cuenta empresa
+                Quiero vender mis productos
               </Link>
             </div>
 
