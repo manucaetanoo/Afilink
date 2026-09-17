@@ -359,7 +359,7 @@ export default function Navbar() {
                     className="size-10 rounded-full bg-gray-100 outline -outline-offset-1 outline-black/5"
                   />
                 </div>
-                <div className="ml-3">
+                <div className="ml-3 min-w-0 [overflow-wrap:anywhere]">
                   <div className="text-base font-medium text-gray-800">{userName}</div>
                   <div className="text-sm font-medium text-gray-500">{user.email ?? ""}</div>
                 </div>

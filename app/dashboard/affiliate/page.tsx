@@ -9,6 +9,7 @@ import PayoutRequestButton from "@/components/PayoutRequestButton";
 import AffiliateLinks from "@/components/affiliate/AffiliateLinks";
 import DashboardActivity from "@/components/affiliate/DashboardActivity";
 import DashboardPeriodPicker from "@/components/affiliate/DashboardPeriodPicker";
+import PromotionGuide from "@/components/affiliate/PromotionGuide";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getAvailablePayoutAmount, getMissingPayoutFields } from "@/lib/payouts";
@@ -84,7 +85,10 @@ export default async function AffiliateDashboardPage({ searchParams }: { searchP
           <div className={s.wrap}>
             <header className={s.header}>
               <div><p className={s.eyebrow}>TU ESPACIO DE AFILIADO</p><h1>Tus enlaces. Tus resultados.</h1><p>Compartí productos, seguí tus comisiones y gestioná tus cobros.</p></div>
-              <Link href="/products" className={s.primary}>Elegir un producto<ArrowRightIcon aria-hidden="true" /></Link>
+              <div className={s.headerActions}>
+                <PromotionGuide fontClassName={`${bodyFont.variable} ${headingFont.variable}`} />
+                <Link href="/products" className={s.primary}>Elegir un producto<ArrowRightIcon aria-hidden="true" /></Link>
+              </div>
             </header>
 
             <nav aria-label="Secciones del dashboard" className={s.mobileNav}>

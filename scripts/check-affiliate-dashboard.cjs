@@ -92,6 +92,7 @@ async function integration(period) {
     '@heroicons/react/24/solid': { ArrowRightIcon: 'Arrow' },
     '@/components/Navbar': 'Navbar', '@/components/Sidebar': 'Sidebar', '@/components/PayoutRequestButton': 'PayoutButton',
     '@/components/affiliate/AffiliateLinks': 'AffiliateLinks', '@/components/affiliate/DashboardActivity': 'Activity', '@/components/affiliate/DashboardPeriodPicker': 'Picker',
+    '@/components/affiliate/PromotionGuide': 'PromotionGuide',
     '@/lib/prisma': { prisma }, '@/app/api/auth/[...nextauth]/route': { authOptions: {} },
     '@/lib/payouts': { getAvailablePayoutAmount: async (id, kind) => { assert.equal(id, 'affiliate-A'); assert.equal(kind, 'AFFILIATE'); return 100; }, getMissingPayoutFields: () => [] },
     '@/lib/affiliate-dashboard': { ...helpers, getDashboardPeriod: value => helpers.getDashboardPeriod(value, now) },

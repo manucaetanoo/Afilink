@@ -14,6 +14,7 @@ import {
   FiShoppingBag,
 } from "react-icons/fi";
 import Navbar from "@/components/Navbar";
+import PromotionGuideCallout from "@/components/affiliate/PromotionGuideCallout";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { getRenderableProductImageUrls } from "@/lib/product-images";
@@ -43,12 +44,14 @@ function PageShell({
   eyebrow,
   title,
   description,
+  guidance,
   children,
 }: {
   name: string;
   eyebrow: string;
   title: string;
   description: string;
+  guidance?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -59,7 +62,7 @@ function PageShell({
         <div className="absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_18%_18%,rgba(249,115,22,0.18),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(15,23,42,0.09),transparent_30%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.035)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_72%)]" />
       </div>
-      <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-24 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full min-w-0 max-w-6xl [overflow-wrap:anywhere] px-4 pb-16 pt-24 sm:px-6 lg:px-8">
         <section className="relative overflow-hidden rounded-xl border border-white/70 bg-white/82 p-6 shadow-[0_24px_90px_rgba(15,23,42,0.10)] backdrop-blur sm:p-8">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 via-amber-300 to-slate-900" />
           <div className="relative">
@@ -72,6 +75,7 @@ function PageShell({
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
               {description}
             </p>
+            {guidance}
           </div>
         </section>
         <div className="relative">{children}</div>
@@ -96,7 +100,7 @@ function ActionCard({
   return (
     <Link
       href={href}
-      className={`group rounded-lg border p-5 shadow-sm transition hover:-translate-y-0.5 ${
+      className={`group min-w-0 rounded-lg border p-5 shadow-sm transition hover:-translate-y-0.5 ${
         primary
           ? "border-slate-950 bg-slate-950 text-white shadow-[0_18px_50px_rgba(15,23,42,0.18)]"
           : "border-white/80 bg-white/88 text-slate-950 backdrop-blur hover:border-orange-200"
@@ -128,7 +132,7 @@ function Metric({
   detail: string;
 }) {
   return (
-    <div className="rounded-lg border border-white/80 bg-white/88 p-4 shadow-sm backdrop-blur">
+    <div className="min-w-0 rounded-lg border border-white/80 bg-white/88 p-4 shadow-sm backdrop-blur">
       <p className="text-sm font-medium text-slate-500">{label}</p>
       <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
       <p className="mt-2 text-xs leading-5 text-slate-500">{detail}</p>
@@ -148,7 +152,7 @@ function Recommendation({
   label: string;
 }) {
   return (
-    <section className="rounded-lg border border-orange-200/70 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-5 shadow-sm">
+    <section className="min-w-0 rounded-lg border border-orange-200/70 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-5 shadow-sm">
       <p className="text-sm font-semibold text-orange-950">Siguiente paso</p>
       <h2 className="mt-2 text-xl font-semibold tracking-tight text-orange-950">
         {title}
@@ -156,7 +160,7 @@ function Recommendation({
       <p className="mt-2 text-sm leading-6 text-orange-900">{description}</p>
       <Link
         href={href}
-        className="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+        className="mt-4 inline-flex max-w-full items-center gap-2 rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
       >
         {label}
         <FiArrowRight />
@@ -175,7 +179,7 @@ function ListPanel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-white/80 bg-white/88 p-5 shadow-sm backdrop-blur">
+    <section className="min-w-0 rounded-lg border border-white/80 bg-white/88 p-5 shadow-sm backdrop-blur">
       <h2 className="text-lg font-semibold">{title}</h2>
       {empty ? (
         <p className="mt-4 rounded-lg border border-dashed border-slate-200 p-5 text-sm leading-6 text-slate-500">
@@ -211,7 +215,7 @@ function ProductPreviewCard({
   return (
     <Link
       href={mode === "seller" ? `/seller/products/${product.id}/edit` : `/products/${product.id}`}
-      className="group overflow-hidden rounded-lg border border-white/75 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
+      className="group min-w-0 overflow-hidden rounded-lg border border-white/75 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
     >
       <div className="relative aspect-[4/2.7] overflow-hidden bg-gradient-to-br from-orange-100 via-white to-amber-50">
         {imageUrl ? (
@@ -245,7 +249,7 @@ function ProductPreviewCard({
         <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-slate-950 transition group-hover:text-orange-700">
           {product.name}
         </h3>
-        <div className="mt-3 flex items-end justify-between gap-3">
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-medium text-slate-500">Precio</p>
             <p className="text-base font-semibold text-slate-950">
@@ -285,8 +289,8 @@ function MarketplaceLiveBlock({
 
   return (
     <section className="mt-6 overflow-hidden rounded-xl border border-orange-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-orange-800 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
-      <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[0.85fr_1.15fr] lg:p-7">
-        <div className="flex flex-col justify-between gap-6 text-white">
+      <div className="grid min-w-0 grid-cols-1 gap-6 p-5 sm:p-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:p-7">
+        <div className="flex min-w-0 flex-col justify-between gap-6 text-white">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-200">
               Marketplace vivo
@@ -301,7 +305,7 @@ function MarketplaceLiveBlock({
 
           <Link
             href={href}
-            className="inline-flex w-fit items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-orange-50"
+            className="inline-flex w-fit max-w-full items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-orange-50"
           >
             {label}
             <FiArrowRight />
@@ -315,7 +319,7 @@ function MarketplaceLiveBlock({
               : "Todavía no tenés productos para mostrar en esta vista."}
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
             {products.slice(0, 3).map((product) => (
               <ProductPreviewCard
                 key={product.id}
@@ -431,7 +435,7 @@ async function SellerStart({ userId, name }: { userId: string; name: string }) {
       title="elegí una acción."
       description="Esta pantalla no es un reporte: es el lugar para decidir rápido qué hacer ahora con tus productos digitales."
     >
-      <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-6 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <ActionCard
           href="/seller/products/new"
           title="Crear producto digital"
@@ -459,7 +463,7 @@ async function SellerStart({ userId, name }: { userId: string; name: string }) {
         />
       </section>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-3">
+      <section className="mt-6 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
         <Metric label="Productos activos" value={number(activeProducts)} detail={`${number(products.length)} productos creados`} />
         <Metric label="Ventas confirmadas" value={number(sales)} detail={`Ingreso neto ${money(net)}`} />
         <Metric label="Por liquidar" value={money(available)} detail={`${number(clicks)} clicks en links de afiliado`} />
@@ -480,12 +484,12 @@ async function SellerStart({ userId, name }: { userId: string; name: string }) {
           }))}
       />
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+      <section className="mt-6 grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <Recommendation {...recommendation} />
         <ListPanel title="Últimas ventas" empty={settlements.length === 0}>
           {settlements.map((settlement) => (
-            <div key={settlement.id} className="flex items-start justify-between gap-4 py-3">
-              <div className="min-w-0">
+            <div key={settlement.id} className="flex min-w-0 flex-col items-start justify-between gap-2 py-3 sm:flex-row sm:gap-4">
+              <div className="min-w-0 max-w-full">
                 <p className="truncate font-medium">
                   {settlement.order.items.map((item) => item.product.name).join(", ") ||
                     "Venta digital"}
@@ -593,8 +597,9 @@ async function AffiliateStart({ userId, name }: { userId: string; name: string }
       eyebrow="Inicio"
       title="elegí una acción."
       description="Esta pantalla te ayuda a decidir rápido: buscar productos, revisar links o controlar comisiones."
+      guidance={<PromotionGuideCallout />}
     >
-      <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-6 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <ActionCard
           href="/products"
           title="Buscar productos"
@@ -622,7 +627,7 @@ async function AffiliateStart({ userId, name }: { userId: string; name: string }
         />
       </section>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-3">
+      <section className="mt-6 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
         <Metric label="Links creados" value={number(links.length)} detail={`${number(clicks)} clicks registrados`} />
         <Metric label="Ventas atribuidas" value={number(sales)} detail="Compras confirmadas desde tus links" />
         <Metric label="Comisión generada" value={money(generated)} detail={`${money(available)} por liquidar`} />
@@ -639,17 +644,17 @@ async function AffiliateStart({ userId, name }: { userId: string; name: string }
         }))}
       />
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+      <section className="mt-6 grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <Recommendation {...recommendation} />
         <ListPanel title="Productos para empezar" empty={products.length === 0}>
           {products.map((product) => (
             <Link
               key={product.id}
               href={`/products/${product.id}`}
-              className="flex items-start justify-between gap-4 py-3"
+              className="flex min-w-0 flex-col items-start justify-between gap-2 py-3 sm:flex-row sm:gap-4"
             >
-              <div className="min-w-0">
-                <p className="truncate font-medium">{product.name}</p>
+              <div className="min-w-0 max-w-full">
+                <p className="font-medium">{product.name}</p>
                 <p className="mt-1 text-xs text-slate-500">{money(product.price)}</p>
               </div>
               <span className="shrink-0 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
@@ -677,13 +682,13 @@ async function AdminStart({ name }: { name: string }) {
       title="elegí una acción."
       description="Accesos directos para revisar lo importante de la plataforma sin entrar a reportes."
     >
-      <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-6 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <ActionCard href="/admin/orders" title="Ventas" description="Revisar compras y cancelaciones." icon={<FiShoppingBag />} primary />
         <ActionCard href="/admin/deliveries" title="Liquidaciones digitales" description="Controlar montos a liquidar." icon={<FiCreditCard />} />
         <ActionCard href="/admin/payouts" title="Pagos" description="Aprobar o rechazar solicitudes." icon={<FiBarChart2 />} />
         <ActionCard href="/admin/orders" title="Panel admin" description="Accedé al control operativo de la plataforma." icon={<FiBarChart2 />} />
       </section>
-      <section className="mt-6 grid gap-4 md:grid-cols-3">
+      <section className="mt-6 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
         <Metric label="Ventas pagas" value={number(orders)} detail="Compras confirmadas" />
         <Metric label="Pagos pendientes" value={number(payouts)} detail="Solicitudes por revisar" />
         <Metric label="Productos activos" value={number(products)} detail="Catálogo disponible" />

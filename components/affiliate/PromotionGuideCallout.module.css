@@ -1,0 +1,6 @@
+.callout { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 24px; padding-top: 20px; border-top: 1px solid #f0dfd0; }
+.copy { min-width: 0; }
+.title { margin: 0; color: #763200; font-size: 15px; font-weight: 700; line-height: 1.5; }
+.description { margin: 5px 0 0; color: #62645f; font-size: 13px; line-height: 1.65; max-width: 560px; }
+.callout > button { flex-shrink: 0; }
+@media (max-width: 640px) { .callout { align-items: flex-start; flex-direction: column; gap: 14px; margin-top: 20px; padding-top: 18px; } }
