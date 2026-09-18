@@ -11,7 +11,7 @@ import DashboardPeriodPicker from "@/components/affiliate/DashboardPeriodPicker"
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getAvailablePayoutAmount, getMissingPayoutFields } from "@/lib/payouts";
-import { getDashboardPeriod, inDashboardPeriod, salesComparison } from "@/lib/affiliate-dashboard";
+import { getDashboardPeriod, getDashboardClickDates, getSellerProductLinkScope, inDashboardPeriod, salesComparison } from "@/lib/affiliate-dashboard";
 import s from "../affiliate/dashboard.module.css";
 
 const bodyFont = DM_Sans({ subsets: ["latin"], variable: "--dashboard-body" });
@@ -26,7 +26,7 @@ export default async function SellerDashboardPage({ searchParams }: { searchPara
   if (session.user.role !== "SELLER") redirect("/dashboard/affiliate");
   const sellerId = session.user.id;
   const period = getDashboardPeriod((await searchParams).period);
-  const currentDates = { ...(period.start ? { gte: period.start } : {}), lte: period.end };
+  const currentDates = getDashboardClickDates(period);
   const historyDates = { ...(period.previousStart ? { gte: period.previousStart } : {}), lte: period.end };
   // Period metrics are complete; withdrawable balances always use the payout endpoint's rules.
   const [products, settlements, productLinks, requests, available, paidTotal, payoutUser] = await Promise.all([
@@ -39,7 +39,7 @@ export default async function SellerDashboardPage({ searchParams }: { searchPara
           items: { where: { sellerId }, select: { total: true, quantity: true, affiliateId: true, product: { select: { id: true, name: true } } } } } },
       },
     }),
-    prisma.affiliateLink.findMany({ where: { product: { sellerId } }, select: { affiliateId: true, productId: true, _count: { select: { clicks: { where: { createdAt: currentDates } } } } } }),
+    prisma.affiliateLink.findMany({ where: getSellerProductLinkScope(sellerId), select: { affiliateId: true, productId: true, _count: { select: { clicks: { where: { createdAt: currentDates } } } } } }),
     prisma.payoutRequest.findMany({ where: { requesterId: sellerId, kind: "SELLER" }, orderBy: { requestedAt: "desc" }, select: { id: true, amount: true, status: true, requestedAt: true, paidAt: true, settlementIds: true } }),
     getAvailablePayoutAmount(sellerId, "SELLER"),
     prisma.settlement.aggregate({ where: { sellerId, status: "PAID" }, _sum: { netAmount: true } }),

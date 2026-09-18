@@ -119,8 +119,8 @@ const menuSeller: Menu = {
 
 const menuAdmin: Menu = {
   cta: {
-    title: "Control ventas",
-    href: "/admin/orders",
+    title: "Dashboard admin",
+    href: "/admin",
     icon: <FiFileText />,
   },
   helpHref: "/contacto",
@@ -128,6 +128,8 @@ const menuAdmin: Menu = {
     {
       title: "PLATAFORMA",
       items: [
+        { title: "Dashboard", href: "/admin", icon: <FiBarChart2 /> },
+        { title: "Actividad de afiliados", href: "/admin/affiliates", icon: <FiUsers /> },
         { title: "Liquidaciones digitales", href: "/admin/deliveries", icon: <FiCreditCard /> },
         { title: "Ventas", href: "/admin/orders", icon: <FiFileText /> },
         { title: "Liquidaciones", href: "/admin/payouts", icon: <FiCreditCard /> },
@@ -259,6 +261,7 @@ export default function Sidebar() {
                 const isSamePath =
                   pathname === targetPath ||
                   (targetPath !== "/" &&
+                    targetPath !== "/admin" &&
                     targetPath !== "/seller/orders" &&
                     pathname.startsWith(targetPath));
                 const active = targetHash

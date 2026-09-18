@@ -5,7 +5,6 @@ import { getServerSession } from "next-auth";
 import {
   FiArrowRight,
   FiBarChart2,
-  FiCreditCard,
   FiDollarSign,
   FiLink,
   FiPackage,
@@ -668,35 +667,6 @@ async function AffiliateStart({ userId, name }: { userId: string; name: string }
   );
 }
 
-async function AdminStart({ name }: { name: string }) {
-  const [orders, payouts, products] = await Promise.all([
-    prisma.order.count({ where: { status: "PAID" } }),
-    prisma.payoutRequest.count({ where: { status: "PENDING" } }),
-    prisma.product.count({ where: { isActive: true } }),
-  ]);
-
-  return (
-    <PageShell
-      name={name}
-      eyebrow="Inicio"
-      title="elegí una acción."
-      description="Accesos directos para revisar lo importante de la plataforma sin entrar a reportes."
-    >
-      <section className="mt-6 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <ActionCard href="/admin/orders" title="Ventas" description="Revisar compras y cancelaciones." icon={<FiShoppingBag />} primary />
-        <ActionCard href="/admin/deliveries" title="Liquidaciones digitales" description="Controlar montos a liquidar." icon={<FiCreditCard />} />
-        <ActionCard href="/admin/payouts" title="Pagos" description="Aprobar o rechazar solicitudes." icon={<FiBarChart2 />} />
-        <ActionCard href="/admin/orders" title="Panel admin" description="Accedé al control operativo de la plataforma." icon={<FiBarChart2 />} />
-      </section>
-      <section className="mt-6 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
-        <Metric label="Ventas pagas" value={number(orders)} detail="Compras confirmadas" />
-        <Metric label="Pagos pendientes" value={number(payouts)} detail="Solicitudes por revisar" />
-        <Metric label="Productos activos" value={number(products)} detail="Catálogo disponible" />
-      </section>
-    </PageShell>
-  );
-}
-
 export default async function InicioPage() {
   const session = await getServerSession(authOptions);
 
@@ -712,7 +682,7 @@ export default async function InicioPage() {
   }
 
   if (role === "ADMIN") {
-    return <AdminStart name={name} />;
+    redirect("/admin");
   }
 
   return <AffiliateStart userId={session.user.id} name={name} />;

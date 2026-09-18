@@ -123,7 +123,9 @@ export default function Navbar() {
       : role === "ADMIN"
         ? [
           { href: "/inicio", label: "Inicio" },
+          { href: "/admin", label: "Dashboard admin" },
           { href: "/admin/orders", label: "Ventas" },
+          { href: "/admin/affiliates", label: "Actividad de afiliados" },
           { href: "/admin/deliveries", label: "Liquidaciones digitales" },
           { href: "/admin/payouts", label: "Liquidaciones" },
         ]

@@ -20,6 +20,14 @@ export function getDashboardPeriod(value: unknown, now = new Date()) {
 
 export type DashboardPeriod = ReturnType<typeof getDashboardPeriod>;
 
+export function getDashboardClickDates(period: DashboardPeriod) {
+  return { ...(period.start ? { gte: period.start } : {}), lte: period.end };
+}
+
+export function getSellerProductLinkScope(sellerId: string) {
+  return { product: { sellerId } };
+}
+
 export function inDashboardPeriod(date: Date | string, period: DashboardPeriod, previous = false) {
   const time = new Date(date).getTime();
   if (previous) {
