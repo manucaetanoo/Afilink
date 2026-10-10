@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { sessionCookie, isSessionId, sessionCookieOptions } from "@/lib/purchase-session";
 
 const protectedPrefixes = [
   "/admin",
@@ -30,7 +31,15 @@ export async function proxy(req: NextRequest) {
     return redirectToLogin(req);
   }
 
-  return NextResponse.next();
+  const existingSession = req.cookies.get(sessionCookie)?.value;
+  const sessionId = isSessionId(existingSession) ? existingSession! : crypto.randomUUID();
+  // Establish the cookie on the document response before parallel browser events.
+  req.cookies.set(sessionCookie, sessionId);
+  const headers = new Headers(req.headers);
+  headers.set("cookie", req.cookies.toString());
+  const response = NextResponse.next({ request: { headers } });
+  response.cookies.set(sessionCookie, sessionId, sessionCookieOptions());
+  return response;
 }
 
 export const config = {

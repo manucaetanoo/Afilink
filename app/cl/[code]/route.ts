@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getPurchaseSession } from "@/lib/purchase-analytics";
 
 type Props = {
   params: Promise<{
@@ -69,6 +70,7 @@ export async function GET(req: NextRequest, context: Props) {
         linkId: link.id,
         ip,
         userAgent: ua ?? null,
+        sessionId: await getPurchaseSession(),
       },
       select: {
         id: true,

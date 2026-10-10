@@ -9,8 +9,9 @@ import {
   UserRound,
 } from "lucide-react";
 import Script from "next/script";
+import { trackPurchaseStage } from "@/lib/purchase-tracking";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ShippingData = {
   buyerName: string;
@@ -50,6 +51,8 @@ type Props = {
   order: OrderCheckoutData;
   publicKey: string;
   sdkUrl: string;
+  checkoutId?: string;
+  productId: string;
   draftItems?: Array<{
     productId: string;
     quantity?: number;
@@ -90,51 +93,7 @@ const ALLOWED_SHIPPING_COUNTRY = "UY";
 const paymentBrickContainerId = "paymentBrick_container";
 
 const inputClassName =
-  "mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-orange-400 focus:ring-4 focus:ring-orange-100";
-
-function normalizeUruguayanCi(value: string) {
-  return value.replace(/\D/g, "").slice(0, 8);
-}
-
-function isValidUruguayanCi(value: string) {
-  const digits = normalizeUruguayanCi(value);
-
-  if (digits.length < 7) return false;
-
-  const padded = digits.padStart(8, "0");
-  const factors = [2, 9, 8, 7, 6, 3, 4];
-  const sum = factors.reduce(
-    (total, factor, index) => total + Number(padded[index]) * factor,
-    0
-  );
-  const checkDigit = (10 - (sum % 10)) % 10;
-
-  return checkDigit === Number(padded[7]);
-}
-
-function dispatchMercadoPagoInputEvents(input: HTMLInputElement, value: string) {
-  const valueSetter = Object.getOwnPropertyDescriptor(
-    HTMLInputElement.prototype,
-    "value"
-  )?.set;
-
-  valueSetter?.call(input, value);
-
-  try {
-    input.dispatchEvent(
-      new InputEvent("input", {
-        bubbles: true,
-        data: value,
-        inputType: "insertText",
-      })
-    );
-  } catch {
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  }
-
-  input.dispatchEvent(new Event("change", { bubbles: true }));
-  input.dispatchEvent(new Event("blur", { bubbles: true }));
-}
+  "mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-orange-400 focus:ring-4 focus:ring-orange-100";
 
 function getStatusMessage(status: string | null) {
   switch (status) {
@@ -142,7 +101,14 @@ function getStatusMessage(status: string | null) {
       return "Pago aprobado. Ya registramos tu compra.";
     case "pending":
     case "in_process":
+    case "authorized":
       return "Tu pago esta pendiente de confirmacion.";
+    case "processing":
+    case "unknown":
+    case "pending_wallet":
+      return "Estamos verificando el pago con Mercado Pago. No vuelvas a pagar hasta conocer el resultado.";
+    case "failed":
+      return "El intento no pudo iniciarse. Podés volver a preparar el pago.";
     case "rejected":
       return "Mercado Pago rechazo el pago. Proba con otro medio.";
     case "cancelled":
@@ -159,22 +125,105 @@ export default function MercadoPagoCheckoutClient({
   publicKey,
   sdkUrl,
   draftItems,
+  checkoutId,
+  productId,
 }: Props) {
   const brickControllerRef = useRef<MercadoPagoBrickController | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [brickReady, setBrickReady] = useState(false);
+  const [brickRevision, setBrickRevision] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [accessConfirmed, setAccessConfirmed] = useState(false);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [paymentOrderId, setPaymentOrderId] = useState(order.id);
+  const [total, setTotal] = useState(order.total);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(
     order.paymentStatus
   );
   const [shipping, setShipping] = useState<ShippingData>(order.shipping);
-  const [payerDocument, setPayerDocument] = useState("");
-  const [isMobileCheckout, setIsMobileCheckout] = useState(false);
+  const attemptIdRef = useRef<string | null>(null);
+  const paymentPromiseRef = useRef<Promise<void> | null>(null);
+  const lastSubmissionRef = useRef<{ selectedPaymentMethod?: string; formData: Record<string, unknown> } | null>(null);
+  const preparingRef = useRef(false);
+  const paymentLocked = ["pending", "in_process", "authorized", "processing", "unknown", "pending_wallet", "approved"].includes(paymentStatus ?? "");
 
+  useEffect(() => { trackPurchaseStage("checkout_started", productId); }, [productId]);
+
+  const releaseRejectedAttempt = useCallback(() => {
+    const hadSubmission = Boolean(attemptIdRef.current || lastSubmissionRef.current);
+    attemptIdRef.current = null;
+    lastSubmissionRef.current = null;
+    if (hadSubmission) {
+      paymentPromiseRef.current = null;
+      // An HTTP 200 can still contain a rejected payment. The Brick's completed
+      // submission and card token cannot be reused as a fresh payment attempt.
+      setBrickReady(false);
+      setBrickRevision(current => current + 1);
+    }
+  }, []);
+
+  const verifyPayment = useCallback(async () => {
+    if (paymentOrderId === "pendiente") return;
+    const verifyingAttemptId = attemptIdRef.current;
+    const response = await fetch("/api/payments/mercadopago/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: paymentOrderId }) });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error ?? "No se pudo verificar el pago");
+    if (attemptIdRef.current !== verifyingAttemptId) return;
+    setPaymentStatus(data.attemptStatus === "unknown" ? "unknown" : data.payment.status);
+    if (["rejected", "cancelled", "failed"].includes(data.attemptStatus)) releaseRejectedAttempt();
+    if (data.orderStatus === "PAID" && data.redirectUrl) window.location.href = data.redirectUrl;
+  }, [paymentOrderId, releaseRejectedAttempt]);
+
+  useEffect(() => {
+    if (!paymentLocked || paymentStatus === "approved" || paymentOrderId === "pendiente") return;
+    const timer = window.setInterval(() => { if (!document.hidden) void verifyPayment().catch(() => {}); }, 10_000);
+    return () => window.clearInterval(timer);
+    // Poll only the active order; the endpoint always queries Mercado Pago.
+  }, [paymentLocked, paymentStatus, paymentOrderId, verifyPayment]);
+
+  const submitPayment = useCallback((submission: { selectedPaymentMethod?: string; formData: Record<string, unknown> }) => {
+    if (paymentPromiseRef.current) return paymentPromiseRef.current;
+    const work = async () => {
+      if (!attemptIdRef.current) {
+        const prepared = await fetch("/api/payments/mercadopago/process", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: paymentOrderId, shippingData: shipping }) });
+        const data = await prepared.json();
+        if (!prepared.ok || !data.ok) throw new Error(data.error ?? "No se pudo preparar otro intento");
+        attemptIdRef.current = String(data.attemptId);
+      }
+      lastSubmissionRef.current = submission;
+      const submittedAttemptId = attemptIdRef.current;
+      setPaymentStatus("processing");
+      setError(null);
+      const response = await fetch("/api/payments/mercadopago/confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: paymentOrderId, attemptId: submittedAttemptId, ...submission }) });
+      const data = await response.json();
+      // A newer verification can reject and release this attempt while this
+      // request is still in flight. Its older result must not lock the new form.
+      if (attemptIdRef.current !== submittedAttemptId) return;
+      if (!response.ok || !data.ok) {
+        await verifyPayment().catch(() => setPaymentStatus("unknown"));
+        throw new Error(data.error ?? "No se pudo confirmar el pago");
+      }
+      const status = String(data.payment?.status ?? "unknown");
+      setPaymentStatus(status);
+      if (["rejected", "cancelled", "failed"].includes(status)) {
+        releaseRejectedAttempt();
+        // Tell the SDK the submission failed instead of resolving it as success.
+        throw new Error(getStatusMessage(status) ?? "El pago no fue aprobado. Podés volver a intentarlo.");
+      }
+      if (status === "approved" && data.checkout?.redirectUrl) window.location.href = data.checkout.redirectUrl;
+    };
+    const promise = work().catch(err => {
+      if (paymentPromiseRef.current === promise) {
+        setPaymentStatus(current => current === "processing" ? "unknown" : current);
+        setError(err instanceof Error ? err.message : "No se pudo procesar el pago");
+        trackPurchaseStage("checkout_error", productId, paymentOrderId);
+      }
+      throw err;
+    }).finally(() => { if (paymentPromiseRef.current === promise) paymentPromiseRef.current = null; });
+    paymentPromiseRef.current = promise;
+    return promise;
+  }, [paymentOrderId, shipping, verifyPayment, productId, releaseRejectedAttempt]);
   const resetBrickSession = (accessConfirmedValue = false) => {
     brickControllerRef.current?.unmount();
     brickControllerRef.current = null;
@@ -206,18 +255,12 @@ export default function MercadoPagoCheckoutClient({
           paymentBrickContainerId,
           {
             initialization: {
-              amount: Number(order.total),
+              amount: Number(total),
               preferenceId,
               payer: {
                 email: shipping.buyerEmail,
                 name: shipping.buyerName,
                 firstName: shipping.buyerName,
-                identification: isMobileCheckout
-                  ? {
-                      type: "CI",
-                      number: payerDocument,
-                    }
-                  : undefined,
               },
             },
             customization: {
@@ -233,51 +276,15 @@ export default function MercadoPagoCheckoutClient({
               onReady: () => {
                 if (alive) {
                   setBrickReady(true);
+                  trackPurchaseStage("payment_ready", productId, paymentOrderId);
                   setError(null);
                 }
               },
-              onSubmit: ({ formData }: { formData: Record<string, unknown> }) =>
-                new Promise<void>((resolve, reject) => {
-                  fetch("/api/payments/mercadopago/confirm", {
-                    method: "POST",
-                    credentials: "same-origin",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      orderId: paymentOrderId,
-                      formData,
-                    }),
-                  })
-                    .then((response) =>
-                      response.json().then((data) => ({ response, data }))
-                    )
-                    .then(({ response, data }) => {
-                      if (!response.ok || !data.ok) {
-                        throw new Error(
-                          data.error ?? "No se pudo confirmar el pago"
-                        );
-                      }
-
-                      const status = String(data.payment?.status ?? "pending");
-                      setPaymentStatus(status);
-
-                      if (data.checkout?.redirectUrl) {
-                        window.location.href = String(data.checkout.redirectUrl);
-                      }
-
-                      resolve();
-                    })
-                    .catch((err) => {
-                      const message =
-                        err instanceof Error
-                          ? err.message
-                          : "No se pudo procesar el pago";
-                      setError(message);
-                      reject(err);
-                    });
-                }),
+              onSubmit: (submission: Parameters<typeof submitPayment>[0]) => alive
+                ? submitPayment(submission)
+                : Promise.reject(new Error("El formulario se actualizó. Volvé a intentar en el formulario actual.")),
               onError: (err: unknown) => {
+                if (!alive) return;
                 setError(
                   err instanceof Error
                     ? err.message
@@ -309,108 +316,16 @@ export default function MercadoPagoCheckoutClient({
       brickControllerRef.current = null;
     };
   }, [
+    brickRevision,
     preferenceId,
     publicKey,
     sdkReady,
-    order.total,
+    total,
     paymentOrderId,
     shipping.buyerEmail,
     shipping.buyerName,
-    payerDocument,
-    isMobileCheckout,
-  ]);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 639px)");
-    const updateIsMobileCheckout = () => {
-      setIsMobileCheckout(mediaQuery.matches);
-    };
-
-    updateIsMobileCheckout();
-
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", updateIsMobileCheckout);
-    } else {
-      mediaQuery.addListener(updateIsMobileCheckout);
-    }
-
-    return () => {
-      if (typeof mediaQuery.removeEventListener === "function") {
-        mediaQuery.removeEventListener("change", updateIsMobileCheckout);
-      } else {
-        mediaQuery.removeListener(updateIsMobileCheckout);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!accessConfirmed || !isMobileCheckout) return;
-
-    const container = document.getElementById(paymentBrickContainerId);
-    const buyerName = shipping.buyerName.trim();
-
-    if (!container || !buyerName || !payerDocument) return;
-
-    const syncMercadoPagoPayerFields = () => {
-      const holderNameInput = container.querySelector<HTMLInputElement>(
-        'input[name="HOLDER_NAME"]'
-      );
-      const documentInput = container.querySelector<HTMLInputElement>(
-        'input[name="DOCUMENT"]'
-      );
-
-      if (holderNameInput) {
-        dispatchMercadoPagoInputEvents(
-          holderNameInput,
-          holderNameInput.value.trim() || buyerName
-        );
-      }
-
-      if (documentInput) {
-        dispatchMercadoPagoInputEvents(
-          documentInput,
-          normalizeUruguayanCi(documentInput.value) || payerDocument
-        );
-      }
-    };
-
-    const timeouts: number[] = [];
-    const scheduleSync = () => {
-      timeouts.push(window.setTimeout(syncMercadoPagoPayerFields, 50));
-      timeouts.push(window.setTimeout(syncMercadoPagoPayerFields, 300));
-    };
-    const syncBeforeValidation = (event: Event) => {
-      const target = event.target;
-
-      if (
-        target instanceof Element &&
-        target.closest("button")?.textContent?.includes("Pagar")
-      ) {
-        syncMercadoPagoPayerFields();
-      }
-    };
-
-    scheduleSync();
-
-    const observer = new MutationObserver(scheduleSync);
-    observer.observe(container, { childList: true, subtree: true });
-    container.addEventListener("pointerdown", syncBeforeValidation, true);
-    container.addEventListener("click", syncBeforeValidation, true);
-    container.addEventListener("focusout", scheduleSync, true);
-
-    return () => {
-      observer.disconnect();
-      container.removeEventListener("pointerdown", syncBeforeValidation, true);
-      container.removeEventListener("click", syncBeforeValidation, true);
-      container.removeEventListener("focusout", scheduleSync, true);
-      timeouts.forEach((timeout) => window.clearTimeout(timeout));
-    };
-  }, [
-    accessConfirmed,
-    brickReady,
-    isMobileCheckout,
-    payerDocument,
-    shipping.buyerName,
+    productId,
+    submitPayment,
   ]);
 
   const statusMessage = getStatusMessage(paymentStatus);
@@ -429,17 +344,11 @@ export default function MercadoPagoCheckoutClient({
     if (!/^\S+@\S+\.\S+$/.test(shipping.buyerEmail.trim())) {
       return "Ingresa un email valido para recibir la confirmacion.";
     }
-    if (isMobileCheckout && !payerDocument) {
-      return "Ingresa la cedula del titular antes de continuar al pago.";
-    }
-    if (isMobileCheckout && !isValidUruguayanCi(payerDocument)) {
-      return "Ingresa una cedula uruguaya valida para continuar al pago.";
-    }
-
     return null;
   };
 
   const createPaymentSession = async () => {
+    if (preparingRef.current) return;
     const shippingError = validateShipping();
 
     if (shippingError) {
@@ -447,6 +356,7 @@ export default function MercadoPagoCheckoutClient({
       return;
     }
 
+    preparingRef.current = true;
     setLoading(true);
     setError(null);
     resetBrickSession(false);
@@ -461,6 +371,7 @@ export default function MercadoPagoCheckoutClient({
         body: JSON.stringify({
           orderId: paymentOrderId === "pendiente" ? undefined : paymentOrderId,
           items: draftItems,
+          checkoutId,
           shippingData: {
             ...shipping,
             shippingCountry: ALLOWED_SHIPPING_COUNTRY,
@@ -476,6 +387,10 @@ export default function MercadoPagoCheckoutClient({
 
       const data = await response.json();
 
+      if (data.orderIds?.[0]) {
+        setPaymentOrderId(String(data.orderIds[0]));
+        window.history.replaceState(null, "", `/checkout/${data.orderIds[0]}`);
+      }
       if (!response.ok || !data.ok) {
         throw new Error(data.error ?? "No se pudo iniciar el pago con Mercado Pago");
       }
@@ -487,6 +402,8 @@ export default function MercadoPagoCheckoutClient({
         throw new Error("Mercado Pago no devolvio la preferencia para Bricks");
       }
 
+      attemptIdRef.current = String(data.attemptId);
+      if (typeof data.total === "number") setTotal(data.total);
       setPaymentOrderId(resolvedOrderId);
       setPaymentStatus(String(data.payment?.status ?? "pending"));
       setPreferenceId(String(resolvedPreferenceId));
@@ -494,15 +411,17 @@ export default function MercadoPagoCheckoutClient({
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar el pago");
     } finally {
+      preparingRef.current = false;
       setLoading(false);
     }
   };
 
   return (
     <>
-      <Script src={sdkUrl} strategy="afterInteractive" onLoad={() => setSdkReady(true)} />
+      <Script src={sdkUrl} strategy="afterInteractive" onReady={() => setSdkReady(true)} onError={() => setError("No pudimos cargar Mercado Pago. Revisá tu conexión y recargá la página.")} />
 
       <div className="space-y-6">
+        {paymentLocked && !accessConfirmed && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900"><p>{statusMessage}</p><button type="button" className="mt-3 min-h-11 rounded-lg border px-4 font-semibold" onClick={() => void verifyPayment().catch(err => setError(err.message))}>Consultar estado del pago</button></div>}
         <div className="overflow-hidden rounded-[2rem] border border-orange-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
           <div className="border-b border-orange-100 bg-gradient-to-r from-orange-50 via-white to-amber-50 px-5 py-5 sm:px-7">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -541,20 +460,6 @@ export default function MercadoPagoCheckoutClient({
                 <TextField label="Nombre completo" value={shipping.buyerName} onChange={(value) => setShippingField("buyerName", value)} autoComplete="name" />
                 <TextField label="Email" value={shipping.buyerEmail} onChange={(value) => setShippingField("buyerEmail", value)} type="email" autoComplete="email" />
                 <TextField label="Telefono" value={shipping.buyerPhone} onChange={(value) => setShippingField("buyerPhone", value.replace(/\D/g, "").slice(0, 9).replace(/(\d{3})(\d{3})(\d{0,3})/, (_match, g1, g2, g3) => (g3 ? `${g1} ${g2} ${g3}` : `${g1} ${g2}`)))} type="tel" autoComplete="tel" />
-                <label className="block text-sm font-medium text-slate-700 sm:hidden">
-                  Cedula del titular
-                  <input
-                    value={payerDocument}
-                    onChange={(event) => {
-                      setPayerDocument(normalizeUruguayanCi(event.target.value));
-                      resetBrickSession(false);
-                    }}
-                    className={inputClassName}
-                    inputMode="numeric"
-                    autoComplete="off"
-                    placeholder="Ej: 45454545"
-                  />
-                </label>
                 <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
                   Indicaciones para el vendedor
                   <textarea
@@ -569,7 +474,7 @@ export default function MercadoPagoCheckoutClient({
               <button
                 type="button"
                 onClick={createPaymentSession}
-                disabled={loading}
+                disabled={loading || paymentLocked}
                 className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/15 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <UserRound className="h-4 w-4" />
@@ -592,9 +497,14 @@ export default function MercadoPagoCheckoutClient({
                   />
                   <div
                     id={paymentBrickContainerId}
-                    className="min-h-72 max-w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-0 sm:p-2 [&_form]:!max-w-full [&_form]:!min-w-0"
+                    className={`${paymentLocked ? "hidden" : ""} min-h-72 max-w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-0 sm:p-2 [&_form]:!max-w-full [&_form]:!min-w-0`}
                   />
-                  {!brickReady && (
+                  {paymentLocked && <div role="status" className="rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                    <p>{statusMessage}</p>
+                    <button type="button" className="mt-3 min-h-11 rounded-lg border border-amber-300 px-4 font-semibold" onClick={() => void verifyPayment().catch(err => setError(err.message))}>Consultar estado del pago</button>
+                    {paymentStatus === "unknown" && lastSubmissionRef.current && lastSubmissionRef.current.selectedPaymentMethod !== "wallet_purchase" && <button type="button" className="ml-2 mt-3 min-h-11 rounded-lg border border-amber-300 px-4 font-semibold" onClick={() => void submitPayment(lastSubmissionRef.current!).catch(() => {})}>Reenviar el mismo intento</button>}
+                  </div>}
+                  {!brickReady && !paymentLocked && (
                     <div className="flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-800">
                       <CreditCard className="mt-0.5 h-5 w-5 shrink-0" />
                       <span>Cargando Mercado Pago...</span>
@@ -657,7 +567,7 @@ export default function MercadoPagoCheckoutClient({
                 <div className="mt-4 flex items-center justify-between rounded-2xl bg-slate-950 px-4 py-3 text-sm text-white">
                   <span className="font-medium">Total</span>
                   <span className="text-xl font-bold">
-                    ${Number(order.total).toFixed(2)}
+                    ${Number(total).toFixed(2)} UYU
                   </span>
                 </div>
                 <p className="mt-3 flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
@@ -682,7 +592,7 @@ export default function MercadoPagoCheckoutClient({
             )}
 
             {error && (
-              <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
+              <div role="alert" className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <span>{error}</span>
               </div>

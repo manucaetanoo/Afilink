@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getMercadoPagoPublicConfig } from "@/lib/payments/mercadopago";
 import { prisma } from "@/lib/prisma";
 import MercadoPagoCheckoutClient from "./MercadoPagoCheckoutClient";
@@ -14,6 +14,7 @@ export default async function CheckoutOrderPage({ params }: Props) {
     where: { id: orderId },
     select: {
       id: true,
+      productId: true,
       total: true,
       status: true,
       paymentStatus: true,
@@ -57,6 +58,7 @@ export default async function CheckoutOrderPage({ params }: Props) {
   if (!checkoutOrder) {
     notFound();
   }
+  if (checkoutOrder.status === "PAID") redirect(`/orders/${orderId}/success`);
 
   const items = checkoutOrder.items.length
     ? checkoutOrder.items
@@ -105,6 +107,7 @@ export default async function CheckoutOrderPage({ params }: Props) {
       <div className="mx-auto max-w-6xl">
         <MercadoPagoCheckoutClient
           order={order}
+          productId={checkoutOrder.productId}
           publicKey={mercadoPagoConfig.publicKey}
           sdkUrl={mercadoPagoConfig.sdkUrl}
         />

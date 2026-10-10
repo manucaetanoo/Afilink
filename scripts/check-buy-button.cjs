@@ -10,6 +10,7 @@ function mount(fetch, disabled = false) {
   const jsx = (type, props) => ({ type, props });
   vm.runInNewContext(source, { module, exports: module.exports, window, fetch, require: name => {
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
+    if (name === '@/lib/purchase-tracking') return { trackPurchaseStage: () => {} };
     if (name === 'react') return { useId: () => 'test-error', useRef: value => ({ current: value }), useState: initial => { const i = states.length; states.push(initial); return [initial, value => states[i] = value]; } };
     throw new Error(name);
   } });

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { getMercadoPagoPublicConfig } from "@/lib/payments/mercadopago";
 import { prisma } from "@/lib/prisma";
 import MercadoPagoCheckoutClient from "./[orderId]/MercadoPagoCheckoutClient";
+import { randomUUID } from "crypto";
+import { isSessionId } from "@/lib/purchase-analytics";
 
 type DraftCheckoutItem = {
   productId: string;
@@ -47,9 +49,9 @@ function decodeCheckoutItems(value?: string | string[]) {
 export default async function DraftCheckoutPage({
   searchParams,
 }: {
-  searchParams: Promise<{ items?: string | string[] }>;
+  searchParams: Promise<{ items?: string | string[]; checkoutId?: string }>;
 }) {
-  const { items: encodedItems } = await searchParams;
+  const { items: encodedItems, checkoutId } = await searchParams;
   const draftItems = decodeCheckoutItems(encodedItems);
 
   if (draftItems.length !== 1) {
@@ -119,6 +121,8 @@ export default async function DraftCheckoutPage({
             items: checkoutItems,
           }}
           draftItems={draftItems}
+          checkoutId={isSessionId(checkoutId) ? checkoutId : randomUUID()}
+          productId={draftItems[0].productId}
           publicKey={mercadoPagoConfig.publicKey}
           sdkUrl={mercadoPagoConfig.sdkUrl}
         />

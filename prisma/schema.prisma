@@ -247,12 +247,14 @@ model Click {
   // Analytics
   ip        String? @db.VarChar(64)
   userAgent String? @db.Text
+  sessionId String? @db.VarChar(36)
 
   orders     Order[]
   orderItems OrderItem[]
 
   @@index([linkId])
   @@index([createdAt])
+  @@index([sessionId, createdAt])
 }
 
 model CampaignClick {
@@ -266,12 +268,14 @@ model CampaignClick {
   // Analytics
   ip        String? @db.VarChar(64)
   userAgent String? @db.Text
+  sessionId String? @db.VarChar(36)
 
   orders     Order[]
   orderItems OrderItem[]
 
   @@index([linkId])
   @@index([createdAt])
+  @@index([sessionId, createdAt])
 }
 
 model Order {
@@ -320,6 +324,12 @@ model Order {
   paymentProvider String? @db.VarChar(50)
   paymentId       String? @db.VarChar(191)
   paymentStatus   String? @db.VarChar(50)
+  sessionId       String? @db.VarChar(36)
+  checkoutKey     String? @unique @db.VarChar(64)
+  preferenceId    String? @db.VarChar(191)
+  paidAt          DateTime?
+  paymentAttempts PaymentAttempt[]
+  purchaseEvents  PurchaseEvent[]
 
   // Datos de contacto y entrega
   buyerName          String? @db.VarChar(140)
@@ -348,6 +358,41 @@ model Order {
   @@index([createdAt])
   @@index([sellerId, status])
   @@index([affiliateId, status])
+  @@index([sessionId, createdAt])
+}
+
+// Durable provider idempotency and outcome history; never stores card data or tokens.
+model PaymentAttempt {
+  id           String   @id @db.VarChar(36)
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  status       String   @default("ready") @db.VarChar(50)
+  method       String?  @db.VarChar(50)
+  requestHash  String?  @db.VarChar(64)
+  paymentId    String?  @unique @db.VarChar(191)
+  statusDetail String?  @db.VarChar(100)
+  startedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([orderId, createdAt])
+}
+
+// One event store for the purchase funnel. Sessions live in an anonymous cookie.
+model PurchaseEvent {
+  id        String   @id @default(cuid())
+  eventKey  String   @unique @db.VarChar(191)
+  name      String   @db.VarChar(50)
+  sessionId String?  @db.VarChar(36)
+  productId String?
+  orderId   String?
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  device    String   @default("unknown") @db.VarChar(20)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt, name])
+  @@index([sessionId, productId, name])
+  @@index([orderId])
 }
 
 model Commission {

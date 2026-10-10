@@ -1,4 +1,6 @@
-import { createHmac, randomUUID, timingSafeEqual } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
+import { claimPaymentAttempt, PaymentConflict, terminalAttemptStatuses } from "@/lib/payments/attempts";
+import { recordPurchaseEvent } from "@/lib/purchase-analytics";
 import { financialTransaction } from "@/lib/financial-transaction";
 import {
   CommissionStatus,
@@ -15,6 +17,8 @@ type MercadoPagoPaymentResponse = {
   external_reference?: string;
   currency_id?: string;
   transaction_amount?: number;
+  date_created?: string;
+  metadata?: { afilink_attempt_id?: string };
   payer?: {
     email?: string;
   };
@@ -101,13 +105,13 @@ function getMercadoPagoPublicKey() {
   return publicKey;
 }
 
-function getMercadoPagoHeaders() {
+function getMercadoPagoHeaders(idempotencyKey?: string) {
   const { accessToken } = getMercadoPagoConfig();
 
   return {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
-    "X-Idempotency-Key": randomUUID(),
+    ...(idempotencyKey ? { "X-Idempotency-Key": idempotencyKey } : {}),
   };
 }
 
@@ -167,8 +171,6 @@ function isApprovedMercadoPagoStatus(status?: string | null) {
 
 function isCanceledMercadoPagoStatus(status?: string | null) {
   return (
-    status === "rejected" ||
-    status === "cancelled" ||
     status === "refunded" ||
     status === "charged_back"
   );
@@ -214,6 +216,8 @@ export async function createMercadoPagoPreference(
   if (order.status === OrderStatus.PAID) {
     throw new Error("La orden ya fue pagada");
   }
+
+  if (order.preferenceId) return { id: order.preferenceId };
 
   const { apiUrl } = getMercadoPagoConfig();
   const baseUrl = resolveBaseUrl();
@@ -290,7 +294,8 @@ export async function createMercadoPagoPreference(
     where: { id: order.id },
     data: {
       paymentProvider: "mercadopago",
-      paymentStatus: "pending",
+      preferenceId: preference.id,
+      ...(order.paymentStatus === "not_started" ? { paymentStatus: "ready" } : {}),
     },
   });
 
@@ -300,9 +305,11 @@ export async function createMercadoPagoPreference(
 export async function createMercadoPagoPayment({
   orderId,
   formData,
+  attemptId,
 }: {
   orderId: string;
   formData: MercadoPagoBrickFormData;
+  attemptId: string;
 }) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -328,15 +335,10 @@ export async function createMercadoPagoPayment({
     throw new Error("Orden no encontrada");
   }
 
-  if (order.status === OrderStatus.PAID) {
-    throw new Error("La orden ya fue pagada");
-  }
-
   const { apiUrl } = getMercadoPagoConfig();
   const baseUrl = resolveBaseUrl();
   const useNotificationUrl = !isLocalUrl(baseUrl);
   const paymentPayload = cleanUndefined({
-    ...formData,
     transaction_amount: Number(order.total),
     token: formData.token,
     description: getDescription(order),
@@ -354,34 +356,62 @@ export async function createMercadoPagoPayment({
     },
     metadata: {
       afilink_order_id: order.id,
+      afilink_attempt_id: attemptId,
     },
     ...(useNotificationUrl
       ? { notification_url: `${baseUrl}/api/payments/mercadopago/webhook` }
       : {}),
   });
 
-  const response = await fetch(`${apiUrl}/v1/payments`, {
+  const requestHash = createHash("sha256").update(JSON.stringify(paymentPayload)).digest("hex");
+  const claim = await claimPaymentAttempt(orderId, attemptId, requestHash, formData.payment_method_id ?? "card");
+  if (!claim.send) {
+    if (claim.attempt.paymentId) {
+      const existingPayment = await fetchMercadoPagoPayment(claim.attempt.paymentId);
+      await syncOrderWithMercadoPagoPayment(existingPayment);
+      return existingPayment;
+    }
+    return { id: "", status: "processing", external_reference: orderId };
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${apiUrl}/v1/payments`, {
     method: "POST",
-    headers: getMercadoPagoHeaders(),
+    headers: getMercadoPagoHeaders(attemptId),
     body: JSON.stringify(paymentPayload),
-  });
+    signal: AbortSignal.timeout(20_000),
+    });
+  } catch {
+    await prisma.paymentAttempt.updateMany({ where: { id: attemptId, paymentId: null }, data: { status: "unknown" } });
+    throw new PaymentConflict("No recibimos la respuesta del pago. Estamos verificándolo; no inicies otro intento");
+  }
 
   if (!response.ok) {
+    const definitiveFailure = [400, 422].includes(response.status);
+    await prisma.paymentAttempt.updateMany({ where: { id: attemptId, paymentId: null }, data: { status: definitiveFailure ? "failed" : "unknown" } });
+    await prisma.order.updateMany({ where: { id: orderId, status: "PENDING", paymentStatus: "processing" }, data: { paymentStatus: definitiveFailure ? "failed" : "unknown" } });
     throw new Error(
       `Mercado Pago rechazo el pago: ${await parseMercadoPagoError(response)}`
     );
   }
 
   const payment = (await response.json()) as MercadoPagoPaymentResponse;
-  await syncOrderWithMercadoPagoPayment(payment);
+  await prisma.paymentAttempt.updateMany({ where: { id: attemptId, paymentId: null }, data: { paymentId: String(payment.id), status: "unknown" } });
+  // Query the provider again before updating the sale or granting commissions.
+  const verifiedPayment = await fetchMercadoPagoPayment(String(payment.id));
+  if (verifiedPayment.external_reference !== orderId) throw new Error("El pago no corresponde a la orden");
+  await syncOrderWithMercadoPagoPayment(verifiedPayment, attemptId);
 
-  return payment;
+  return verifiedPayment;
 }
 
 export async function fetchMercadoPagoPayment(paymentId: string) {
   const { apiUrl } = getMercadoPagoConfig();
   const response = await fetch(`${apiUrl}/v1/payments/${paymentId}`, {
     headers: getMercadoPagoHeaders(),
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!response.ok) {
@@ -394,7 +424,8 @@ export async function fetchMercadoPagoPayment(paymentId: string) {
 }
 
 export async function syncOrderWithMercadoPagoPayment(
-  payment: MercadoPagoPaymentResponse
+  payment: MercadoPagoPaymentResponse,
+  requestedAttemptId?: string
 ) {
   const orderId = payment.external_reference;
 
@@ -402,13 +433,29 @@ export async function syncOrderWithMercadoPagoPayment(
     return null;
   }
 
-  const expected = await prisma.order.findUnique({ where: { id: orderId }, select: { total: true } });
+  const expected = await prisma.order.findUnique({ where: { id: orderId }, select: { total: true, sessionId: true, productId: true } });
   if (!expected) throw new Error("Orden no encontrada");
   if (typeof payment.transaction_amount !== "number" || !Number.isFinite(payment.transaction_amount) ||
       Math.round(payment.transaction_amount * 100) !== Math.round(expected.total * 100) ||
       payment.currency_id !== (process.env.MERCADOPAGO_CURRENCY || "UYU")) {
     throw new Error("El importe o la moneda del pago no coincide con la orden");
   }
+
+  const attemptId = requestedAttemptId || payment.metadata?.afilink_attempt_id;
+  let attempt = attemptId
+    ? await prisma.paymentAttempt.findUnique({ where: { id: attemptId } })
+    : await prisma.paymentAttempt.findFirst({ where: { orderId, paymentId: String(payment.id) } });
+  if (!attempt && !attemptId) {
+    const wallet = await prisma.paymentAttempt.findFirst({ where: { orderId, method: "wallet", status: { in: ["processing", "unknown", "pending_wallet"] } }, orderBy: { createdAt: "desc" } });
+    // Native Wallet payments have no attempt metadata. A previous payment must
+    // never be attached to the current redirect, including legacy payments.
+    if (wallet?.startedAt && payment.date_created &&
+        new Date(payment.date_created).getTime() >= wallet.startedAt.getTime()) attempt = wallet;
+  }
+  if (attempt && attempt.orderId !== orderId) throw new Error("El intento no corresponde a la orden");
+  if (attempt) await prisma.paymentAttempt.updateMany({ where: { id: attempt.id, status: { notIn: ["refunded", "charged_back", ...(!["approved", "refunded", "charged_back"].includes(payment.status ?? "") ? ["approved"] : [])] } }, data: {
+    paymentId: String(payment.id), status: payment.status ?? "pending", statusDetail: payment.status_detail?.slice(0, 100) ?? null,
+  } });
 
   if (isApprovedMercadoPagoStatus(payment.status)) {
     await markOrderPaidAndNotify({ orderId, buyerEmail: payment.payer?.email ?? null,
@@ -417,15 +464,23 @@ export async function syncOrderWithMercadoPagoPayment(
     await financialTransaction(async tx => {
       const order = await tx.order.findUnique({ where: { id: orderId } });
       if (!order) throw new Error("Orden no encontrada");
+      const latest = await tx.paymentAttempt.findFirst({ where: { orderId }, orderBy: { createdAt: "desc" } });
+      if (attempt && latest && attempt.id !== latest.id && !["refunded", "charged_back"].includes(payment.status ?? "")) return;
       const reversal = payment.status === "refunded" || payment.status === "charged_back";
+      if (!attempt && latest && ["processing", "unknown", "pending_wallet"].includes(latest.status) && !reversal) return;
       // A failed/late attempt must never undo a different successful payment.
       if (order.status === OrderStatus.PAID && (!reversal || order.paymentId !== String(payment.id))) return;
       if (["refunded", "charged_back", "canceled"].includes(order.paymentStatus?.toLowerCase() ?? "")) return;
+      // A late failed attempt cannot hide a newer pending payment.
+      if (order.paymentId && order.paymentId !== String(payment.id) && ["pending", "in_process", "authorized"].includes(order.paymentStatus ?? "")) return;
       const canceled = isCanceledMercadoPagoStatus(payment.status);
       await tx.order.update({ where: { id: orderId }, data: {
         ...(canceled ? { status: OrderStatus.CANCELED } : {}),
         paymentId: String(payment.id), paymentProvider: "mercadopago", paymentStatus: payment.status ?? "pending",
       } });
+      if (["pending", "in_process", "rejected", "cancelled"].includes(payment.status ?? "")) {
+        await recordPurchaseEvent({ name: payment.status === "rejected" || payment.status === "cancelled" ? "payment_rejected" : "payment_pending", eventKey: `payment:${payment.id}:${payment.status}`, orderId, productId: order.productId, sessionId: order.sessionId }, tx);
+      }
       if (canceled) {
         // Keep already transferred earnings in the audit history after a refund.
         await tx.commission.updateMany({ where: { orderId, status: { not: CommissionStatus.PAID } }, data: { status: CommissionStatus.CANCELED } });
@@ -435,6 +490,30 @@ export async function syncOrderWithMercadoPagoPayment(
   }
 
   return orderId;
+}
+
+export async function reconcileMercadoPagoOrder(orderId: string) {
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) throw new Error("Orden no encontrada");
+  const active = await prisma.paymentAttempt.findFirst({ where: { orderId, status: { notIn: terminalAttemptStatuses } }, orderBy: { createdAt: "desc" } });
+  const knownIds = new Set([order.paymentId, active?.paymentId].filter((id): id is string => Boolean(id)));
+  for (const id of knownIds) await syncOrderWithMercadoPagoPayment(await fetchMercadoPagoPayment(id));
+  if (!active || active.paymentId || active.status === "ready") return prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+  const { apiUrl } = getMercadoPagoConfig();
+  // Search is required after an unknown result or a Wallet redirect, where the
+  // browser may never receive a payment ID. Never treat an empty search as rejection.
+  const response = await fetch(`${apiUrl}/v1/payments/search?external_reference=${encodeURIComponent(orderId)}&sort=date_created&criteria=desc`, {
+    headers: getMercadoPagoHeaders(), cache: "no-store", signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) throw new Error("No se pudo verificar el estado del pago");
+  const result = await response.json() as { results?: MercadoPagoPaymentResponse[] };
+  for (const payment of (result.results ?? []).filter(p => p.external_reference === orderId &&
+    (p.metadata?.afilink_attempt_id === active.id || (active.method === "wallet" && active.startedAt && p.date_created &&
+      new Date(p.date_created).getTime() >= active.startedAt.getTime()))).reverse()) {
+    const verified = await fetchMercadoPagoPayment(String(payment.id));
+    await syncOrderWithMercadoPagoPayment(verified);
+  }
+  return prisma.order.findUniqueOrThrow({ where: { id: orderId } });
 }
 
 export function verifyMercadoPagoWebhookSignature({

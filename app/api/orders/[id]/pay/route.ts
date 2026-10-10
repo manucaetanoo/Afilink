@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { OrderStatus } from "@/lib/prisma-enums";
-import { markOrderPaidAndNotify } from "@/lib/order-events";
+import { fetchMercadoPagoPayment, syncOrderWithMercadoPagoPayment } from "@/lib/payments/mercadopago";
 import { requireUser, requireRole } from "@/lib/auth";
 
 export async function POST(
@@ -30,19 +29,10 @@ export async function POST(
       );
     }
 
-    if (order.status === OrderStatus.PAID) {
-      return NextResponse.json(
-        { ok: true, message: "La orden ya estaba pagada" },
-        { status: 200 }
-      );
-    }
-
-    await markOrderPaidAndNotify({
-      orderId,
-      paymentProvider: order.paymentProvider ?? "demo",
-      paymentId: order.paymentId ?? `demo_${orderId}`,
-      paymentStatus: "approved",
-    });
+    if (order.paymentProvider !== "mercadopago" || !order.paymentId) return NextResponse.json({ ok: false, error: "La orden no tiene un pago verificable en Mercado Pago" }, { status: 409 });
+    const payment = await fetchMercadoPagoPayment(order.paymentId);
+    if (payment.external_reference !== orderId || payment.status !== "approved") return NextResponse.json({ ok: false, error: "Mercado Pago todavía no aprobó este pago" }, { status: 409 });
+    await syncOrderWithMercadoPagoPayment(payment);
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (e) {

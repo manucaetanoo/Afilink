@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
+import { trackPurchaseStage } from "@/lib/purchase-tracking";
 
 type BuyButtonProps = {
   productId: string;
@@ -21,6 +22,7 @@ export function BuyButton({ productId, refCode, selectedSize, selectedColor, cla
   const buy = async () => {
     if (disabled || submitting.current) return;
     submitting.current = true;
+    trackPurchaseStage("buy_click", productId);
     setPending(true);
     setError(null);
 

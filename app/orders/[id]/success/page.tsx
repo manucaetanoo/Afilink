@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getProductDigitalAccessMessage } from "@/lib/product-access";
+import { reconcileMercadoPagoOrder } from "@/lib/payments/mercadopago";
+import VerifiedPurchaseTracking from "@/components/VerifiedPurchaseTracking";
 
 function money(value: number) {
   return new Intl.NumberFormat("es-UY", {
@@ -19,10 +21,15 @@ export default async function SuccessPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const initial = await prisma.order.findUnique({ where: { id }, select: { status: true, paymentProvider: true } });
+  if (initial?.status === "PENDING" && initial.paymentProvider === "mercadopago") await reconcileMercadoPagoOrder(id).catch(() => null);
   const order = await prisma.order.findUnique({
     where: { id },
     select: {
       id: true,
+      productId: true,
+      paidAt: true,
+      paymentProvider: true,
       status: true,
       total: true,
       buyerName: true,
@@ -51,6 +58,7 @@ export default async function SuccessPage({
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10 text-slate-950 sm:px-6">
+      {isPaid && order.paidAt && order.paymentProvider === "mercadopago" && <VerifiedPurchaseTracking orderId={order.id} productId={order.productId} total={order.total} />}
       <section className="w-full max-w-2xl bg-white px-6 py-8 text-center shadow-sm sm:px-10 sm:py-10">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-orange-500 text-orange-500">
           <CheckCircle2 className="h-9 w-9" />

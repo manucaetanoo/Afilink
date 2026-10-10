@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { createMercadoPagoPayment } from "@/lib/payments/mercadopago";
+import { createMercadoPagoPayment, fetchMercadoPagoPayment, syncOrderWithMercadoPagoPayment } from "@/lib/payments/mercadopago";
 import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/lib/prisma-enums";
 import { rateLimit } from "@/lib/rate-limit";
+import { claimPaymentAttempt, PaymentConflict } from "@/lib/payments/attempts";
+import { isSessionId } from "@/lib/purchase-analytics";
+import { createHash } from "crypto";
 
 function cleanString(value: unknown, maxLength: number) {
   if (typeof value !== "string") return "";
@@ -27,8 +30,9 @@ export async function POST(req: Request) {
     const body = await req.json();
     const orderId = cleanString(body?.orderId, 191);
     const formData = body?.formData;
+    const attemptId = cleanString(body?.attemptId, 36);
 
-    if (!orderId || !formData || typeof formData !== "object") {
+    if (!orderId || !isSessionId(attemptId) || !formData || typeof formData !== "object") {
       return NextResponse.json(
         { ok: false, error: "Datos de pago incompletos" },
         { status: 400 }
@@ -37,8 +41,17 @@ export async function POST(req: Request) {
 
     const existingOrder = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { id: true, status: true, paymentStatus: true },
+      select: { id: true, status: true, paymentStatus: true, preferenceId: true, paymentId: true },
     });
+
+    if (existingOrder?.status === OrderStatus.PAID && existingOrder.paymentId) {
+      const attempt = await prisma.paymentAttempt.findUnique({ where: { id: attemptId } });
+      if (!attempt || attempt.orderId !== orderId) throw new PaymentConflict("Intento inválido");
+      const payment = await fetchMercadoPagoPayment(existingOrder.paymentId);
+      if (payment.external_reference !== orderId) throw new PaymentConflict("El pago no corresponde a la orden");
+      await syncOrderWithMercadoPagoPayment(payment);
+      return NextResponse.json({ ok: true, payment: { id: payment.id, status: payment.status }, checkout: { redirectUrl: payment.status === "approved" ? `/orders/${orderId}/success` : null } });
+    }
 
     if (
       !existingOrder ||
@@ -51,15 +64,25 @@ export async function POST(req: Request) {
       );
     }
 
+    if (body.selectedPaymentMethod === "wallet_purchase") {
+      if (!existingOrder.preferenceId) throw new PaymentConflict("Prepará el pago antes de continuar");
+      const hash = createHash("sha256").update(`wallet:${existingOrder.preferenceId}`).digest("hex");
+      const claim = await claimPaymentAttempt(orderId, attemptId, hash, "wallet");
+      if (!claim.send) throw new PaymentConflict("Ya hay un pago con Mercado Pago en verificación");
+      await prisma.paymentAttempt.updateMany({ where: { id: attemptId, paymentId: null }, data: { status: "pending_wallet" } });
+      return NextResponse.json({ ok: true, payment: { status: "pending_wallet" } });
+    }
+
     const payment = await createMercadoPagoPayment({
       orderId,
       formData,
+      attemptId,
     });
 
     return NextResponse.json({
       ok: true,
       orderIds: [orderId],
-      payment,
+      payment: { id: payment.id, status: payment.status, status_detail: "status_detail" in payment ? payment.status_detail : undefined },
       checkout: {
         redirectUrl:
           payment.status === "approved" ? `/orders/${orderId}/success` : null,
@@ -73,7 +96,7 @@ export async function POST(req: Request) {
         error:
           error instanceof Error ? error.message : "No se pudo confirmar el pago",
       },
-      { status: 500 }
+      { status: error instanceof PaymentConflict ? 409 : 500 }
     );
   }
 }

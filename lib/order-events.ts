@@ -7,6 +7,7 @@ import { type Prisma } from "@prisma/client";
 import { sendTransactionalEmail } from "@/lib/email";
 import { getProductDigitalAccessMessage } from "@/lib/product-access";
 import { financialTransaction } from "@/lib/financial-transaction";
+import { recordPurchaseEvent } from "@/lib/purchase-analytics";
 
 type MarkOrderPaidInput = {
   orderId: string;
@@ -141,11 +142,14 @@ export async function markOrderPaidAndNotify({
       where: { id: order.id },
       data: {
         status: OrderStatus.PAID,
+        paidAt: new Date(),
         paymentStatus,
         paymentProvider: paymentProvider ?? order.paymentProvider ?? "mercadopago",
         paymentId: paymentId ?? order.paymentId ?? `pay_${order.id}`,
       },
     });
+
+    await recordPurchaseEvent({ name: "purchase_approved", eventKey: `order:${order.id}:approved`, orderId: order.id, sessionId: order.sessionId, productId: order.productId }, tx);
 
     for (const item of items) {
       if (item.affiliateId && item.affiliateAmount > 0) {

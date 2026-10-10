@@ -7,11 +7,13 @@ type PixelCommand =
   | ["init", string]
   | ["set", "autoConfig", boolean, string]
   | ["trackSingle", string, MetaPixelEvent];
+type CommerceEvent = "ViewContent" | "InitiateCheckout" | "AddPaymentInfo" | "Purchase";
 
+type CommerceCommand = ["trackSingle", string, CommerceEvent, { content_ids: string[]; content_type: "product"; currency: "UYU"; value?: number }, { eventID: string }?];
 type PixelQueue = {
-  (...args: PixelCommand): void;
-  callMethod?: (...args: PixelCommand) => void;
-  queue: PixelCommand[];
+  (...args: PixelCommand | CommerceCommand): void;
+  callMethod?: (...args: PixelCommand | CommerceCommand) => void;
+  queue: (PixelCommand | CommerceCommand)[];
   push: PixelQueue;
   loaded: boolean;
   version: string;
@@ -37,11 +39,11 @@ function initializePixel() {
 
   if (!window.fbq) {
     const fbq: PixelQueue = Object.assign(
-      (...args: PixelCommand) => {
+      (...args: PixelCommand | CommerceCommand) => {
         if (fbq.callMethod) fbq.callMethod(...args);
         else fbq.queue.push(args);
       },
-      { queue: [] as PixelCommand[], loaded: true, version: "2.0" },
+      { queue: [] as (PixelCommand | CommerceCommand)[], loaded: true, version: "2.0" },
     ) as PixelQueue;
     fbq.push = fbq;
     window.fbq = fbq;
@@ -60,6 +62,13 @@ function initializePixel() {
 /** Queues events even when the external script has not finished loading. */
 export function trackMetaEvent(event: MetaPixelEvent) {
   initializePixel()?.("trackSingle", META_PIXEL_ID, event);
+}
+
+export function trackMetaCommerce(event: CommerceEvent, productId: string, value?: number, eventId?: string) {
+  const command: CommerceCommand = ["trackSingle", META_PIXEL_ID, event,
+    { content_ids: [productId], content_type: "product", currency: "UYU", ...(value !== undefined ? { value } : {}) }];
+  if (eventId) command.push({ eventID: eventId });
+  initializePixel()?.(...command);
 }
 
 /** Consecutive route deduplication survives Strict Mode and component remounts. */

@@ -4,6 +4,9 @@ import { createCheckoutOrder } from "@/lib/payments/createOrder";
 import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/lib/prisma-enums";
 import { rateLimit } from "@/lib/rate-limit";
+import { createHash } from "crypto";
+import { preparePaymentAttempt, PaymentConflict } from "@/lib/payments/attempts";
+import { getPurchaseSession, isSessionId, recordBrowserEvent, getDevice } from "@/lib/purchase-analytics";
 
 type ShippingData = {
   buyerName?: unknown;
@@ -89,6 +92,7 @@ function parseItems(items: CheckoutItemInput[]) {
 }
 
 export async function POST(req: Request) {
+  let resolvedOrderId = "";
   try {
     const limit = rateLimit(req, {
       key: "payments:mercadopago:process",
@@ -117,21 +121,24 @@ export async function POST(req: Request) {
     }
 
     const shippingData = parseShippingData(body?.shippingData);
-    let resolvedOrderId = orderId;
+    const sessionId = await getPurchaseSession();
+    resolvedOrderId = orderId;
 
     if (!resolvedOrderId && items?.length) {
-      const order = await createCheckoutOrder(parseItems(items), shippingData);
+      if (!isSessionId(body.checkoutId) || items.length !== 1) return NextResponse.json({ ok: false, error: "Checkout inválido" }, { status: 400 });
+      const checkoutKey = createHash("sha256").update(body.checkoutId).digest("hex");
+      const order = await createCheckoutOrder(parseItems(items), shippingData, { sessionId, checkoutKey });
       resolvedOrderId = order.id;
     }
 
     const existingOrder = await prisma.order.findUnique({
       where: { id: resolvedOrderId },
-      select: { id: true, status: true, paymentStatus: true },
+      select: { id: true, status: true, paymentStatus: true, productId: true, sessionId: true, total: true },
     });
 
     if (
       !existingOrder ||
-      existingOrder.status !== OrderStatus.PENDING ||
+      (existingOrder.status !== OrderStatus.PENDING && existingOrder.paymentStatus !== "rejected") ||
       existingOrder.paymentStatus?.toUpperCase() === "PAID"
     ) {
       return NextResponse.json(
@@ -144,6 +151,8 @@ export async function POST(req: Request) {
       where: { id: resolvedOrderId },
       data: shippingData,
     });
+    const attempt = await preparePaymentAttempt(resolvedOrderId);
+    await recordBrowserEvent({ name: "details_submitted", eventKey: `order:${resolvedOrderId}:details`, sessionId: existingOrder.sessionId ?? sessionId, orderId: resolvedOrderId, productId: existingOrder.productId, device: getDevice(req.headers.get("user-agent")) });
 
     const preference = await createMercadoPagoPreference(
       resolvedOrderId,
@@ -153,8 +162,10 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       orderIds: [resolvedOrderId],
+      attemptId: attempt.id,
+      total: existingOrder.total,
       payment: {
-        status: "pending",
+        status: attempt.status,
       },
       checkout: {
         preferenceId: preference.id,
@@ -165,10 +176,11 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         ok: false,
+        orderIds: resolvedOrderId ? [resolvedOrderId] : [],
         error:
           error instanceof Error ? error.message : "No se pudo procesar el pago",
       },
-      { status: isShippingValidationError(error) ? 400 : 500 }
+      { status: error instanceof PaymentConflict ? 409 : isShippingValidationError(error) ? 400 : 500 }
     );
   }
 }

@@ -6,11 +6,12 @@ import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import AdminConversion from "@/components/admin/AdminConversion";
 
 export const dynamic = "force-dynamic";
 const number = (value: number) => value.toLocaleString("es-UY");
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({ searchParams }: { searchParams: Promise<{ period?: string; productId?: string; device?: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
   if (session.user.role !== "ADMIN") redirect("/dashboard/affiliate");
@@ -50,6 +51,7 @@ export default async function AdminDashboardPage() {
             </div>)}
           </dl>
         </section>
+        <AdminConversion params={await searchParams} />
         <section aria-labelledby="activity-heading" className="mt-8 rounded-2xl bg-slate-900 p-6 text-white sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-6">
             <div className="max-w-xl"><FiUsers className="mb-4 h-7 w-7 text-orange-400" aria-hidden="true" />

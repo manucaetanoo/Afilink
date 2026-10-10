@@ -2,6 +2,8 @@
 
 import { useSearchParams } from "next/navigation";
 import { BuyButton } from "@/components/BuyButton";
+import { useEffect } from "react";
+import { trackPurchaseStage } from "@/lib/purchase-tracking";
 
 type Props = {
   product: {
@@ -22,6 +24,7 @@ export default function ProductPurchaseActions({
   const searchParams = useSearchParams();
   const resolvedRefCode = refCode ?? searchParams.get("ref");
   const disabledReason = disabled ? "No disponible" : undefined;
+  useEffect(() => { trackPurchaseStage("product_view", product.id); }, [product.id]);
 
   return (
     <div className="mt-7">

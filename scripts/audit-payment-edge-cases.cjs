@@ -22,11 +22,12 @@ const enums = load('lib/prisma-enums.ts');
     commission: { updateMany: async ({data}) => { if (data.status === 'APPROVED') commissionsApproved++; else canceled++; } },
     settlement: { updateMany: async () => {} },
     notification: { createMany: async () => notifications++ },
+    paymentAttempt: { findFirst: async () => null, updateMany: async () => ({ count: 0 }) },
   };
   const financial = { financialTransaction: async work => work(tx) };
   const events = load('lib/order-events.ts', { '@/lib/prisma-enums': enums, '@/lib/financial-transaction': financial,
-    '@/lib/email': { sendTransactionalEmail: async () => { throw new Error('Unexpected email'); } }, '@/lib/product-access': {} });
-  const mp = load('lib/payments/mercadopago.ts', { '@/lib/prisma-enums': enums, '@/lib/prisma': { prisma: tx }, '@/lib/order-events': events, '@/lib/financial-transaction': financial });
+    '@/lib/email': { sendTransactionalEmail: async () => { throw new Error('Unexpected email'); } }, '@/lib/product-access': {}, '@/lib/purchase-analytics': { recordPurchaseEvent: async () => {} } });
+  const mp = load('lib/payments/mercadopago.ts', { '@/lib/prisma-enums': enums, '@/lib/prisma': { prisma: tx }, '@/lib/order-events': events, '@/lib/financial-transaction': financial, '@/lib/payments/attempts': {}, '@/lib/purchase-analytics': { recordPurchaseEvent: async () => {} } });
   const payment = { id: 'payment', external_reference: 'order', status: 'approved', transaction_amount: 9900, currency_id: 'UYU' };
   for (const invalid of [{ transaction_amount: 1 }, { currency_id: 'USD' }, { transaction_amount: undefined }, { currency_id: undefined }]) {
     await assert.rejects(mp.syncOrderWithMercadoPagoPayment({ ...payment, ...invalid }), /importe o la moneda/);
@@ -47,7 +48,8 @@ const enums = load('lib/prisma-enums.ts');
   let cookie = 'old-click'; let ref = 'new-ref';
   const checkout = load('app/api/checkout/route.ts', {
     'next/server': { NextResponse: { json: body => body } },
-    'next/headers': { cookies: async () => ({ get: key => ({ value: key === 'aff_click_id' ? cookie : 'old-campaign' }) }) },
+    'next/headers': { cookies: async () => ({ get: key => ({ value: key === 'aff_click_id' ? cookie : 'old-campaign' }), set: () => {}, delete: () => {} }) },
+    '@/lib/purchase-analytics': { getPurchaseSession: async () => 'test-session' },
     '@/lib/prisma': { prisma: {
       affiliateLink: { findUnique: async ({where}) => where.code === 'new-ref' ? { id: 'new-link', productId: 'product-B' } : null },
       click: { findUnique: async () => ({ linkId: cookie === 'matching-click' ? 'new-link' : 'old-link', link: { productId: 'product-A' } }), create: async () => { createdClicks++; return { id: 'new-click' }; } },

@@ -207,7 +207,8 @@ export async function getCheckoutDraft(items: CheckoutItemInput[]) {
 
 export async function createCheckoutOrder(
   items: CheckoutItemInput[],
-  shippingData?: CheckoutShippingData
+  shippingData?: CheckoutShippingData,
+  context?: { sessionId: string; checkoutKey: string }
 ) {
   const { total, items: resolvedItems } = await getCheckoutDraft(items);
   const first = resolvedItems[0];
@@ -249,7 +250,14 @@ export async function createCheckoutOrder(
     sellerTotals.set(item.product.sellerId, current);
   }
 
-  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+  try { return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    if (context) {
+      const existing = await tx.order.findUnique({ where: { checkoutKey: context.checkoutKey } });
+      if (existing) {
+        if (existing.productId !== first.product.id) throw new Error("El checkout pertenece a otro producto");
+        return existing;
+      }
+    }
     const order = await tx.order.create({
       data: {
         productId: first.product.id,
@@ -271,7 +279,8 @@ export async function createCheckoutOrder(
 
         sellerAmount,
         paymentProvider: "mercadopago",
-        paymentStatus: "pending",
+        paymentStatus: "not_started",
+        ...(context ?? {}),
         ...(shippingData ? shippingData : {}),
       },
     });
@@ -329,7 +338,16 @@ export async function createCheckoutOrder(
     }
 
     return order;
-  });
+  }); } catch (error) {
+    if (context && error && typeof error === "object" && "code" in error && error.code === "P2002") {
+      const existing = await prisma.order.findUnique({ where: { checkoutKey: context.checkoutKey } });
+      if (existing) {
+        if (existing.productId !== first.product.id) throw new Error("El checkout pertenece a otro producto");
+        return existing;
+      }
+    }
+    throw error;
+  }
 }
 
 export async function createOrder({
