@@ -19,6 +19,7 @@ import {
 import { formatMoney, getSellerNetAmount } from "@/lib/pricing";
 import Sidebar from "@/components/Sidebar";
 import { ProductDigitalAccessType } from "@/lib/product-access";
+import ProductCategorySelect from "@/components/ProductCategorySelect";
 
 const accessExamples = [
   {
@@ -172,6 +173,7 @@ function NewProductPageContent() {
         body: JSON.stringify({
           name,
           desc,
+          category: String(fd.get("category") || "otros"),
           digitalAccessInstructions,
           digitalAccessType,
           price,
@@ -272,6 +274,8 @@ function NewProductPageContent() {
                               Producto digital
                             </div>
                           </div>
+
+                          <ProductCategorySelect />
 
                           <div>
                             <label

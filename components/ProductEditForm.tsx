@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ProductCategorySelect from "@/components/ProductCategorySelect";
+import { normalizeProductCategory } from "@/lib/product-categories";
 import { formatMoney, getSellerNetAmount } from "@/lib/pricing";
 import {
   ProductDigitalAccessType,
@@ -31,6 +33,7 @@ type ProductFormProduct = {
   id: string;
   name: string;
   desc: string | null;
+  category: string;
   digitalAccessInstructions: string | null;
   digitalAccessType: ProductDigitalAccessType | null;
   price: number;
@@ -53,6 +56,7 @@ export default function ProductEditForm({
   const [form, setForm] = useState({
     name: product.name,
     desc: product.desc ?? "",
+    category: normalizeProductCategory(product.category) ?? "otros",
     digitalAccessInstructions: product.digitalAccessInstructions ?? "",
     digitalAccessType: normalizeProductDigitalAccessType(
       product.digitalAccessType
@@ -135,6 +139,7 @@ export default function ProductEditForm({
     const payload = {
       name: form.name,
       desc: form.desc,
+      category: form.category,
       digitalAccessInstructions: form.digitalAccessInstructions,
       digitalAccessType: form.digitalAccessType,
       price: Number(form.price),
@@ -207,6 +212,8 @@ export default function ProductEditForm({
           className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
         />
       </div>
+
+      <ProductCategorySelect value={form.category} onChange={(value) => setField("category", normalizeProductCategory(value) ?? "otros")} />
 
       <div className="rounded-lg border border-orange-100 bg-orange-50/70 p-4">
         <fieldset>

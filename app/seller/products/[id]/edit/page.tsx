@@ -32,6 +32,7 @@ export default async function EditProductPage({ params }: Props) {
       id: true,
       name: true,
       desc: true,
+      category: true,
       digitalAccessInstructions: true,
       digitalAccessType: true,
       price: true,

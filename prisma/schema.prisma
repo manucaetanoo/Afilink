@@ -121,6 +121,7 @@ model Product {
 
   name                      String                   @db.VarChar(140)
   desc                      String?                  @db.Text
+  category                  String                   @default("otros") @db.VarChar(40)
   digitalAccessInstructions String?                  @db.Text
   digitalAccessType         ProductDigitalAccessType @default(IMMEDIATE)
   price                     Int
@@ -147,6 +148,7 @@ model Product {
   @@index([isActive])
   @@index([sellerId, isActive])
   @@index([isActive, commissionValue, createdAt], map: "idx_product_active_commission_created")
+  @@index([isActive, category, createdAt], map: "idx_product_active_category_created")
 }
 
 model Campaign {

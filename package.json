@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test:conversion": "node scripts/check-payment-retries.cjs && node scripts/check-purchase-analytics.cjs && node scripts/audit-payment-edge-cases.cjs && node scripts/check-checkout-totals.cjs && node scripts/check-buy-button.cjs && node scripts/check-affiliate-dashboard.cjs && node scripts/check-seller-dashboard.cjs && node scripts/check-meta-pixel.mjs",
-    "test:checkout-browser": "node scripts/check-checkout-browser.cjs"
+    "test:checkout-browser": "node scripts/check-checkout-browser.cjs",
+    "test:catalog": "node scripts/check-products-catalog.cjs",
+    "test:catalog-browser": "node scripts/check-products-catalog-browser.cjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

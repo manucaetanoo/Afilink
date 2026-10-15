@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
@@ -8,14 +9,19 @@ import {
   FiLink,
   FiPackage,
   FiShoppingBag,
+  FiSearch,
 } from "react-icons/fi";
 import ProductCard, { type ProductCardProduct } from "@/components/ProductCard";
+import { CATALOG_FILTERS, DEFAULT_CATALOG_FILTER, catalogHref, normalizeCatalogSearch, type CatalogFilter } from "@/lib/product-categories";
 
 type Props = {
   products: ProductCardProduct[];
   pageSize: number;
   hasMoreInitial: boolean;
   totalInitial: number;
+  search: string;
+  category: CatalogFilter;
+  currentPage: number;
 };
 
 const formatMoney = (value: number) =>
@@ -161,17 +167,17 @@ function AffiliateSignupPanel() {
 }
 
 export default function ProductsCatalogClient({
-  products,
+  products: items,
   pageSize,
-  hasMoreInitial,
-  totalInitial,
+  hasMoreInitial: hasMore,
+  totalInitial: totalItems,
+  search,
+  category,
+  currentPage,
 }: Props) {
   const { data } = useSession();
-  const [items, setItems] = useState(products);
-  const [hasMore, setHasMore] = useState(hasMoreInitial);
-  const [totalItems, setTotalItems] = useState(totalInitial);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [loadingPage, setLoadingPage] = useState(false);
+  const router = useRouter();
+  const [loadingPage, startTransition] = useTransition();
   const role = data?.user?.role;
   const isVisitor = !role;
   const showAffiliateHighlights = role === "AFFILIATE";
@@ -192,50 +198,77 @@ export default function ProductsCatalogClient({
     : 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
-  async function fetchProducts(page = 1) {
-    const params = new URLSearchParams({
-      skip: String((page - 1) * pageSize),
-      take: String(pageSize),
+  function navigate(searchValue: string, filter: CatalogFilter, page = 1) {
+    startTransition(() => {
+      router.push(catalogHref(normalizeCatalogSearch(searchValue), filter, page), { scroll: false });
     });
-    const res = await fetch(`/api/products?${params.toString()}`, {
-      cache: "no-store",
-    });
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok || !Array.isArray(data?.products)) return null;
-
-    return {
-      products: data.products as ProductCardProduct[],
-      hasMore: Boolean(data.hasMore),
-      total: Number(data.total ?? 0),
-    };
   }
 
-  async function goToPage(page: number) {
+  function goToPage(page: number) {
     if (page < 1 || page > totalPages || page === currentPage || loadingPage) return;
-
-    setLoadingPage(true);
-
-    try {
-      const result = await fetchProducts(page);
-      if (!result) return;
-
-      setItems(result.products);
-      setHasMore(result.hasMore);
-      setTotalItems(result.total);
-      setCurrentPage(page);
-    } finally {
-      setLoadingPage(false);
-    }
+    navigate(search, category, page);
   }
 
   return (
     <>
-      <div className="border-t border-[#e3e5df] pt-6">
-        <p className="text-sm text-[#62645f]">
-          {totalItems} {totalItems === 1 ? "producto disponible" : "productos disponibles"}
+      <section aria-label="Buscar y filtrar el catálogo" className="border-t border-[#e3e5df] pt-6">
+        <form
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            navigate(String(form.get("q") ?? ""), category);
+          }}
+          className="flex flex-col gap-3 sm:flex-row"
+        >
+          <div className="relative flex-1">
+            <label htmlFor="catalog-search" className="sr-only">Buscar cursos y productos</label>
+            <FiSearch aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg text-[#777970]" />
+            <input
+              key={search}
+              id="catalog-search"
+              name="q"
+              type="search"
+              defaultValue={search}
+              maxLength={140}
+              placeholder="Buscá cursos, ebooks y herramientas..."
+              className="w-full rounded-xl border border-[#e3e5df] bg-[#f8f9f5] py-3.5 pl-12 pr-4 text-sm text-[#181917] outline-none transition placeholder:text-[#777970] focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+            />
+          </div>
+          <button type="submit" disabled={loadingPage} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#181917] px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-orange-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 disabled:opacity-50">
+            <FiSearch aria-hidden="true" /> Buscar
+          </button>
+        </form>
+        <div aria-label="Categorías" className="mt-5 flex flex-wrap gap-2">
+          {CATALOG_FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              aria-pressed={category === filter.value}
+              onClick={() => navigate(search, filter.value)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 ${category === filter.value ? "border-[#181917] bg-[#181917] text-white" : "border-[#e3e5df] bg-white text-[#62645f] hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700"}`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-xs leading-5 text-[#777970]">
+          {category === "todos"
+            ? "Todos los productos, del más nuevo al más antiguo."
+            : "Ordenados por porcentaje de comisión, de mayor a menor."}
         </p>
-      </div>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <p role="status" aria-live="polite" aria-atomic="true" className="text-sm text-[#62645f]">
+            {loadingPage ? "Buscando productos…" : <>{totalItems} {totalItems === 1 ? "producto encontrado" : "productos encontrados"}{search && <> para <strong>“{search}”</strong></>}</>}
+          </p>
+          {(search || category !== DEFAULT_CATALOG_FILTER) && (
+            <button type="button" onClick={() => navigate("", DEFAULT_CATALOG_FILTER)} className="text-sm font-semibold text-orange-700 underline underline-offset-4 hover:text-orange-900">
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+      </section>
+      <div aria-busy={loadingPage} className={loadingPage ? "pointer-events-none opacity-50" : ""}>
       {items.length === 0 ? (
         <section className="mt-10 rounded-[28px] border border-dashed border-orange-200 bg-white p-12 text-center shadow-sm">
           <div className="mx-auto max-w-md">
@@ -243,11 +276,12 @@ export default function ProductsCatalogClient({
               *
             </div>
             <h3 className="text-xl font-semibold text-slate-900">
-              No hay productos publicados
+              {search || category !== DEFAULT_CATALOG_FILTER ? "No encontramos resultados" : "Todavía no hay productos publicados"}
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              Cuando haya productos activos, los vas a ver aca con una vista mucho mas
-              orientada a venta y promocion.
+              {search || category !== DEFAULT_CATALOG_FILTER
+                ? "Probá con otras palabras o elegí otra categoría para encontrar lo que buscás."
+                : "Cuando haya cursos y productos disponibles, los vas a encontrar acá."}
             </p>
           </div>
         </section>
@@ -255,14 +289,10 @@ export default function ProductsCatalogClient({
         <>
           <section aria-labelledby="products-heading" className="mt-10">
             <h2 id="products-heading" className="sr-only">
-              Products
+              Cursos y productos
             </h2>
 
-            <div
-              className={`grid grid-cols-1 gap-x-6 gap-y-5 transition-opacity sm:grid-cols-2 sm:gap-y-10 xl:grid-cols-3 xl:gap-x-8 2xl:grid-cols-4 ${
-                loadingPage ? "opacity-50" : "opacity-100"
-              }`}
-            >
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 sm:gap-y-10 xl:grid-cols-3 xl:gap-x-8 2xl:grid-cols-4">
               {items.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -325,6 +355,7 @@ export default function ProductsCatalogClient({
           {isVisitor && <AffiliateSignupPanel />}
         </>
       )}
+      </div>
     </>
   );
 }

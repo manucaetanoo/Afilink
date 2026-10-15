@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole, requireUser } from "@/lib/auth";
 import { normalizeProductImageUrls } from "@/lib/product-images";
 import { normalizeProductDigitalAccessType } from "@/lib/product-access";
+import { normalizeProductCategory } from "@/lib/product-categories";
 
 const SELLER_PRODUCTS_LIMIT = 100;
 const MAX_SELLER_PRODUCTS_TAKE = 100;
@@ -42,6 +43,7 @@ export async function GET(req: Request) {
           id: true,
           name: true,
           desc: true,
+          category: true,
           digitalAccessInstructions: true,
           digitalAccessType: true,
           price: true,
@@ -93,6 +95,10 @@ export async function POST(req: Request) {
 
     const name = String(body.name ?? "").trim();
     const desc = String(body.desc ?? "").trim();
+    const category = normalizeProductCategory(body.category ?? "otros");
+    if (!category) {
+      return NextResponse.json({ ok: false, error: "Categoría inválida" }, { status: 400 });
+    }
     const digitalAccessInstructions = String(
       body.digitalAccessInstructions ?? ""
     ).trim();
@@ -144,6 +150,7 @@ export async function POST(req: Request) {
       data: {
         sellerId: user.id,
         name,
+        category,
         desc: desc.length ? desc : null,
         digitalAccessInstructions: digitalAccessInstructions.length
           ? digitalAccessInstructions

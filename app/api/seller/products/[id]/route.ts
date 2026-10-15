@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole, requireUser } from "@/lib/auth";
 import { normalizeProductImageUrls } from "@/lib/product-images";
 import { normalizeProductDigitalAccessType } from "@/lib/product-access";
+import { normalizeProductCategory } from "@/lib/product-categories";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "ERROR";
@@ -23,6 +24,7 @@ export async function PATCH(
     const data: {
       name?: string;
       desc?: string | null;
+      category?: string;
       digitalAccessInstructions?: string | null;
       digitalAccessType?: ReturnType<typeof normalizeProductDigitalAccessType>;
       price?: number;
@@ -46,6 +48,13 @@ export async function PATCH(
     }
 
     if (body.desc !== undefined) data.desc = String(body.desc).trim() || null;
+    if (body.category !== undefined) {
+      const category = normalizeProductCategory(body.category);
+      if (!category) {
+        return NextResponse.json({ ok: false, error: "Categoría inválida" }, { status: 400 });
+      }
+      data.category = category;
+    }
 
     if (body.digitalAccessInstructions !== undefined) {
       data.digitalAccessInstructions =
@@ -112,6 +121,7 @@ export async function PATCH(
         id: true,
         name: true,
         desc: true,
+        category: true,
         digitalAccessInstructions: true,
         digitalAccessType: true,
         price: true,

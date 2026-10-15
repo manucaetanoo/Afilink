@@ -1,11 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { FiDollarSign, FiStar, FiTrendingUp } from "react-icons/fi";
+import { PRODUCT_CATEGORIES, normalizeProductCategory } from "@/lib/product-categories";
 
 export type ProductCardProduct = {
   id: string;
   name: string;
   desc: string | null;
+  category?: string;
   price: number;
   commissionValue: number;
   imageUrls: string[];
@@ -42,6 +44,7 @@ export default function ProductCard({
   primaryActionLabel = "Comprar",
 }: ProductCardProps) {
   const imageUrl = product.imageUrls?.[0] ?? null;
+  const categoryLabel = PRODUCT_CATEGORIES.find((category) => category.value === normalizeProductCategory(product.category))?.label ?? "Digital";
   const isInlineImage = imageUrl?.startsWith("data:") ?? false;
   const isRemoteProductImage = /^https?:\/\//i.test(imageUrl ?? "");
   const hasCommission =
@@ -109,7 +112,7 @@ export default function ProductCard({
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-100">
               <FiStar className="text-sm" />
-              Digital
+              {categoryLabel}
             </span>
             {!isMarketplaceView && (
               <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-600 ring-1 ring-rose-100">

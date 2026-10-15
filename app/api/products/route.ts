@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getRenderableProductImageUrls } from "@/lib/product-images";
+import { getCatalogProducts } from "@/lib/products-catalog";
+import { normalizeCatalogFilter, normalizeCatalogSearch } from "@/lib/product-categories";
 
 const MAX_PRODUCTS_TAKE = 80;
 
@@ -14,62 +14,16 @@ function getPaginationValue(value: string | null, fallback: number, max: number)
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const skip = getPaginationValue(url.searchParams.get("skip"), 0, 10_000);
-  const take = getPaginationValue(url.searchParams.get("take"), 40, MAX_PRODUCTS_TAKE);
-
-  const where = {
-      isActive: true,
-    };
-
-  const [products, total] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      orderBy: [{ commissionValue: "desc" }, { createdAt: "desc" }],
-      skip,
-      take: take + 1,
-      select: {
-        id: true,
-        name: true,
-        desc: true,
-        price: true,
-        commissionValue: true,
-        imageUrls: true,
-        _count: {
-          select: {
-            links: true,
-          },
-        },
-      },
-    }),
-    prisma.product.count({ where }),
-  ]);
-
-  return NextResponse.json({
-    ok: true,
-    total,
-    hasMore: products.length > take,
-    products: products.slice(0, take).map((product) => ({
-      id: product.id,
-      name: product.name,
-      desc: product.desc,
-      price: product.price,
-      commissionValue: product.commissionValue,
-      imageUrls: getRenderableProductImageUrls(product.imageUrls, 1),
-      affiliateCount: product._count.links,
-    })),
-  });
+  const take = getPaginationValue(url.searchParams.get("take"), 40, MAX_PRODUCTS_TAKE) || 40;
+  const search = normalizeCatalogSearch(url.searchParams.get("q"));
+  const category = normalizeCatalogFilter(url.searchParams.get("category"));
+  const result = await getCatalogProducts({ search, category, skip, take });
+  return NextResponse.json({ ok: true, ...result });
 }
 
 export async function POST() {
-  try {
-    return NextResponse.json(
-      { error: "Usa /api/seller/products para crear productos autenticados" },
-      { status: 410 }
-    );
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json(
-      { error: "Error creando producto" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    { error: "Usa /api/seller/products para crear productos autenticados" },
+    { status: 410 }
+  );
 }
