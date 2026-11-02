@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -175,6 +175,11 @@ export default function ProductsCatalogClient({
   category,
   currentPage,
 }: Props) {
+  useEffect(() => {
+    // Start each visit at the top, independently of the previous page's scroll.
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
+
   const { data } = useSession();
   const router = useRouter();
   const [loadingPage, startTransition] = useTransition();
