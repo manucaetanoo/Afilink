@@ -9,6 +9,7 @@ import {
   UserRound,
 } from "lucide-react";
 import Script from "next/script";
+import type { MercadoPagoCashTicket } from "@/lib/payments/mercadopago";
 import { trackPurchaseStage } from "@/lib/purchase-tracking";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -91,6 +92,11 @@ const requiredShippingFields: Array<keyof ShippingData> = [
 
 const ALLOWED_SHIPPING_COUNTRY = "UY";
 const paymentBrickContainerId = "paymentBrick_container";
+const cashTicketDateFormat = new Intl.DateTimeFormat("es-UY", {
+  dateStyle: "long",
+  timeStyle: "short",
+  timeZone: "America/Montevideo",
+});
 
 const inputClassName =
   "mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-orange-400 focus:ring-4 focus:ring-orange-100";
@@ -141,8 +147,10 @@ export default function MercadoPagoCheckoutClient({
   const [paymentStatus, setPaymentStatus] = useState<string | null>(
     order.paymentStatus
   );
+  const [cashTicket, setCashTicket] = useState<MercadoPagoCashTicket | null>(null);
   const [shipping, setShipping] = useState<ShippingData>(order.shipping);
   const attemptIdRef = useRef<string | null>(null);
+  const statusRequestVersion = useRef({ next: 0, applied: 0 });
   const paymentPromiseRef = useRef<Promise<void> | null>(null);
   const lastSubmissionRef = useRef<{ selectedPaymentMethod?: string; formData: Record<string, unknown> } | null>(null);
   const preparingRef = useRef(false);
@@ -166,21 +174,26 @@ export default function MercadoPagoCheckoutClient({
   const verifyPayment = useCallback(async () => {
     if (paymentOrderId === "pendiente") return;
     const verifyingAttemptId = attemptIdRef.current;
+    const requestVersion = ++statusRequestVersion.current.next;
     const response = await fetch("/api/payments/mercadopago/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: paymentOrderId }) });
     const data = await response.json();
+    if (attemptIdRef.current !== verifyingAttemptId || requestVersion < statusRequestVersion.current.applied) return;
     if (!response.ok || !data.ok) throw new Error(data.error ?? "No se pudo verificar el pago");
-    if (attemptIdRef.current !== verifyingAttemptId) return;
-    setPaymentStatus(data.attemptStatus === "unknown" ? "unknown" : data.payment.status);
+    statusRequestVersion.current.applied = requestVersion;
+    const status = data.attemptStatus === "unknown" ? "unknown" : data.payment.status;
+    setPaymentStatus(status);
+    setCashTicket(status === "pending" ? data.payment.cashTicket ?? null : null);
     if (["rejected", "cancelled", "failed"].includes(data.attemptStatus)) releaseRejectedAttempt();
     if (data.orderStatus === "PAID" && data.redirectUrl) window.location.href = data.redirectUrl;
   }, [paymentOrderId, releaseRejectedAttempt]);
 
   useEffect(() => {
     if (!paymentLocked || paymentStatus === "approved" || paymentOrderId === "pendiente") return;
+    if (paymentStatus === "pending" && !accessConfirmed) void verifyPayment().catch(() => {});
     const timer = window.setInterval(() => { if (!document.hidden) void verifyPayment().catch(() => {}); }, 10_000);
     return () => window.clearInterval(timer);
     // Poll only the active order; the endpoint always queries Mercado Pago.
-  }, [paymentLocked, paymentStatus, paymentOrderId, verifyPayment]);
+  }, [accessConfirmed, paymentLocked, paymentStatus, paymentOrderId, verifyPayment]);
 
   const submitPayment = useCallback((submission: { selectedPaymentMethod?: string; formData: Record<string, unknown> }) => {
     if (paymentPromiseRef.current) return paymentPromiseRef.current;
@@ -205,7 +218,9 @@ export default function MercadoPagoCheckoutClient({
         throw new Error(data.error ?? "No se pudo confirmar el pago");
       }
       const status = String(data.payment?.status ?? "unknown");
+      statusRequestVersion.current.applied = ++statusRequestVersion.current.next;
       setPaymentStatus(status);
+      setCashTicket(status === "pending" ? data.payment.cashTicket ?? null : null);
       if (["rejected", "cancelled", "failed"].includes(status)) {
         releaseRejectedAttempt();
         // Tell the SDK the submission failed instead of resolving it as success.
@@ -329,6 +344,8 @@ export default function MercadoPagoCheckoutClient({
   ]);
 
   const statusMessage = getStatusMessage(paymentStatus);
+  const activeCashTicket = paymentStatus === "pending" ? cashTicket : null;
+  const consultPaymentStatus = () => void verifyPayment().catch(err => setError(err.message));
 
   const setShippingField = (field: keyof ShippingData, value: string) => {
     setShipping((current) => ({ ...current, [field]: value }));
@@ -421,7 +438,9 @@ export default function MercadoPagoCheckoutClient({
       <Script src={sdkUrl} strategy="afterInteractive" onReady={() => setSdkReady(true)} onError={() => setError("No pudimos cargar Mercado Pago. Revisá tu conexión y recargá la página.")} />
 
       <div className="space-y-6">
-        {paymentLocked && !accessConfirmed && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900"><p>{statusMessage}</p><button type="button" className="mt-3 min-h-11 rounded-lg border px-4 font-semibold" onClick={() => void verifyPayment().catch(err => setError(err.message))}>Consultar estado del pago</button></div>}
+        {paymentLocked && !accessConfirmed && (
+          <PaymentStatusNotice message={statusMessage} cashTicket={activeCashTicket} onConsult={consultPaymentStatus} />
+        )}
         <div className="overflow-hidden rounded-[2rem] border border-orange-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
           <div className="border-b border-orange-100 bg-gradient-to-r from-orange-50 via-white to-amber-50 px-5 py-5 sm:px-7">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -482,7 +501,7 @@ export default function MercadoPagoCheckoutClient({
               </button>
             </div>
 
-            <div className="min-w-0 rounded-[1.75rem] border border-slate-200 bg-white p-2 shadow-[0_18px_50px_rgba(15,23,42,0.06)] sm:p-6">
+            {(accessConfirmed || !paymentLocked) && <div className="min-w-0 rounded-[1.75rem] border border-slate-200 bg-white p-2 shadow-[0_18px_50px_rgba(15,23,42,0.06)] sm:p-6">
               {!accessConfirmed ? (
                 <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                   <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
@@ -499,11 +518,11 @@ export default function MercadoPagoCheckoutClient({
                     id={paymentBrickContainerId}
                     className={`${paymentLocked ? "hidden" : ""} min-h-72 max-w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-0 sm:p-2 [&_form]:!max-w-full [&_form]:!min-w-0`}
                   />
-                  {paymentLocked && <div role="status" className="rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                    <p>{statusMessage}</p>
-                    <button type="button" className="mt-3 min-h-11 rounded-lg border border-amber-300 px-4 font-semibold" onClick={() => void verifyPayment().catch(err => setError(err.message))}>Consultar estado del pago</button>
-                    {paymentStatus === "unknown" && lastSubmissionRef.current && lastSubmissionRef.current.selectedPaymentMethod !== "wallet_purchase" && <button type="button" className="ml-2 mt-3 min-h-11 rounded-lg border border-amber-300 px-4 font-semibold" onClick={() => void submitPayment(lastSubmissionRef.current!).catch(() => {})}>Reenviar el mismo intento</button>}
-                  </div>}
+                  {paymentLocked && (
+                    <PaymentStatusNotice message={statusMessage} cashTicket={activeCashTicket} onConsult={consultPaymentStatus}>
+                      {paymentStatus === "unknown" && lastSubmissionRef.current && lastSubmissionRef.current.selectedPaymentMethod !== "wallet_purchase" && <button type="button" className="min-h-11 rounded-lg border border-amber-300 px-4 font-semibold" onClick={() => void submitPayment(lastSubmissionRef.current!).catch(() => {})}>Reenviar el mismo intento</button>}
+                    </PaymentStatusNotice>
+                  )}
                   {!brickReady && !paymentLocked && (
                     <div className="flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-800">
                       <CreditCard className="mt-0.5 h-5 w-5 shrink-0" />
@@ -512,7 +531,7 @@ export default function MercadoPagoCheckoutClient({
                   )}
                 </div>
               )}
-            </div>
+            </div>}
           </section>
 
           <aside className="min-w-0 space-y-4 lg:sticky lg:top-6 lg:self-start">
@@ -577,7 +596,7 @@ export default function MercadoPagoCheckoutClient({
               </div>
             </div>
 
-            {statusMessage && (
+            {statusMessage && !activeCashTicket && (
               <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <span>{statusMessage}</span>
@@ -601,6 +620,57 @@ export default function MercadoPagoCheckoutClient({
         </div>
       </div>
     </>
+  );
+}
+
+function PaymentStatusNotice({ message, cashTicket, onConsult, children }: {
+  message: string | null;
+  cashTicket: MercadoPagoCashTicket | null;
+  onConsult: () => void;
+  children?: ReactNode;
+}) {
+  const method = cashTicket?.method === "abitab" ? "Abitab" : "Redpagos";
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+      <div role="status">
+        {cashTicket ? (
+          <>
+            <p className="font-semibold">{cashTicket.isTest ? `Pago de prueba en ${method}` : `Tu pago en ${method} está pendiente`}</p>
+            <p className="mt-1">
+              {cashTicket.isTest
+                ? "Mercado Pago generó estos datos para simular el pago."
+                : cashTicket.codes
+                  ? `Presentá estos códigos en un local ${method}. Cuando Mercado Pago confirme el pago, te enviaremos el acceso por correo.`
+                  : `Abrí el comprobante y seguí las instrucciones para pagar en un local ${method}. Cuando Mercado Pago confirme el pago, te enviaremos el acceso por correo.`}
+            </p>
+            {cashTicket.codes && (
+              <dl className="mt-3 grid gap-2 rounded-lg border border-amber-200 bg-white p-3 sm:grid-cols-2">
+                <div>
+                  <dt>Referencia de pago</dt>
+                  <dd className="break-all font-mono font-semibold text-slate-950">{cashTicket.codes.reference}</dd>
+                </div>
+                <div>
+                  <dt>Código de verificación</dt>
+                  <dd className="break-all font-mono font-semibold text-slate-950">{cashTicket.codes.verificationCode}</dd>
+                </div>
+              </dl>
+            )}
+            {cashTicket.expiresAt && (
+              <p className="mt-2">Vence el <time dateTime={cashTicket.expiresAt}>{cashTicketDateFormat.format(new Date(cashTicket.expiresAt))}</time> (hora de Uruguay).</p>
+            )}
+          </>
+        ) : <p>{message}</p>}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {cashTicket?.url && (
+          <a href={cashTicket.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-center font-semibold text-white hover:bg-slate-800">
+            Ver comprobante e instrucciones
+          </a>
+        )}
+        <button type="button" className="min-h-11 rounded-lg border border-amber-300 px-4 font-semibold" onClick={onConsult}>Consultar estado del pago</button>
+        {children}
+      </div>
+    </div>
   );
 }
 

@@ -22,19 +22,19 @@ window.fixtureEvents=[]; window.fixturePromise=null; window.fixtureMounts=0; win
 window.MercadoPago=class {bricks(){return {create:async(_type,id,settings)=>{
  const generation=++window.fixtureMounts;
  window.fixtureSettings=settings; const container=document.getElementById(id); const button=document.createElement('button');
- const method=document.createElement('select');method.id='fixture-method';method.innerHTML='<option value="visa">Visa</option><option value="master">Mastercard</option>';
+ const method=document.createElement('select');method.id='fixture-method';method.innerHTML='<option value="visa">Visa</option><option value="master">Mastercard</option><option value="abitab">Abitab</option><option value="redpagos">Redpagos</option>';
  button.id='fixture-pay';button.textContent='Pagar con tarjeta';button.className='min-h-12 w-full rounded-xl bg-blue-700 p-3 text-white';
  button.onclick=()=>{button.disabled=true;window.fixtureOutcome=null;window.fixtureSubmission={selectedPaymentMethod:'credit_card',formData:{token:'fixture-token-'+generation,payment_method_id:method.value}};window.fixturePromise=settings.callbacks.onSubmit(window.fixtureSubmission).then(()=>{window.fixtureOutcome='resolved'},()=>{window.fixtureOutcome='rejected';button.disabled=false;});};
  container.append(method,button);setTimeout(settings.callbacks.onReady,0);return {unmount:()=>container.replaceChildren()};
 }}}};
 const shipping={buyerName:'',buyerEmail:'',buyerPhone:'',shippingStreet:'',shippingNumber:'',shippingApartment:'',shippingCity:'',shippingState:'',shippingPostalCode:'',shippingCountry:'UY',shippingNotes:''};
-createRoot(document.getElementById('root')).render(React.createElement(Checkout,{publicKey:'fixture',sdkUrl:'/fixture-sdk',checkoutId:'11111111-1111-4111-8111-111111111111',productId:'course',draftItems:[{productId:'course'}],order:{id:'pendiente',total:9900,subtotal:9900,status:'DRAFT',paymentStatus:null,shipping,items:[{id:'item',total:9900,selectedSize:null,selectedColor:null,product:{name:'Curso de ejemplo',desc:'Un curso digital de ejemplo.',imageUrls:[]}}]}}));
+createRoot(document.getElementById('root')).render(React.createElement(Checkout,{publicKey:'fixture',sdkUrl:'/fixture-sdk',checkoutId:'11111111-1111-4111-8111-111111111111',productId:'course',draftItems:[{productId:'course'}],order:{id:window.fixtureRestored?'fixture-order':'pendiente',total:9900,subtotal:9900,status:window.fixtureRestored?'PENDING':'DRAFT',paymentStatus:window.fixtureRestored?'pending':null,shipping,items:[{id:'item',total:9900,selectedSize:null,selectedColor:null,product:{name:'Curso de ejemplo',desc:'Un curso digital de ejemplo.',imageUrls:['data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7']}}]}}));
 `);
 let browser,server;
 (async()=>{
   await new Promise((resolve,reject)=>webpack({mode:'development',entry:path.join(tmp,'entry.js'),output:{path:tmp,filename:'bundle.js'},resolve:{modules:[path.join(root,'node_modules')],alias:{'next/script':path.join(tmp,'script.js'),'@/lib/purchase-tracking':path.join(tmp,'tracking.js')}},devtool:false},(error,stats)=>error?reject(error):stats.hasErrors()?reject(Error(stats.toString({all:false,errors:true}))):resolve()));
   const css=await postcss([require('@tailwindcss/postcss')({base:root})]).process('@import "tailwindcss";',{from:path.join(root,'app/browser-test.css')});
-  let confirmations=[],preparations=[],mode='reject',firstPreferenceError=false,rejectionCount=2,statusOverride=null;
+  let confirmations=[],preparations=[],mode='reject',firstPreferenceError=false,rejectionCount=2,statusOverride=null,cashTicket=null;
   server=http.createServer(async(req,res)=>{
     if(req.url==='/bundle.js'){res.setHeader('Content-Type','text/javascript');return res.end(fs.readFileSync(path.join(tmp,'bundle.js')));}
     if(req.url==='/styles.css'){res.setHeader('Content-Type','text/css');return res.end(css.css);}
@@ -49,13 +49,14 @@ let browser,server;
       if(req.url.endsWith('/confirm')){
         confirmations.push(body);const confirmationMode=mode;await new Promise(resolve=>setTimeout(resolve,confirmationMode==='pending'?500:80));
         if(mode==='offline'&&confirmations.length===1){req.socket.destroy();return;}
-        const status=confirmationMode==='pending'?'pending':confirmationMode==='reject'&&confirmations.length<=rejectionCount?'rejected':'approved';
+        const status=confirmationMode==='pending'||confirmationMode==='cash'?'pending':confirmationMode==='reject'&&confirmations.length<=rejectionCount?'rejected':'approved';
         const rejectionDetails=['cc_rejected_insufficient_amount','cc_rejected_high_risk','cc_rejected_other_reason','cc_rejected_bad_filled_security_code'];
-        return res.end(JSON.stringify({ok:true,payment:{status,status_detail:status==='rejected'?rejectionDetails[confirmations.length-1]:undefined},checkout:{redirectUrl:status==='approved'?'/orders/fixture-order/success':null}}));
+        return res.end(JSON.stringify({ok:true,payment:{status,status_detail:status==='rejected'?rejectionDetails[confirmations.length-1]:undefined,cashTicket:confirmationMode==='cash'?cashTicket:null},checkout:{redirectUrl:status==='approved'?'/orders/fixture-order/success':null}}));
       }
-      if(req.url.endsWith('/status')){const status=statusOverride??(mode==='pending'?'pending':'unknown');return res.end(JSON.stringify({ok:true,orderStatus:'PENDING',payment:{status},attemptStatus:status}));}
+      if(req.url.endsWith('/status')){const status=statusOverride??(mode==='pending'||mode==='cash'?'pending':'unknown');return res.end(JSON.stringify({ok:true,orderStatus:'PENDING',payment:{status,cashTicket:mode==='cash'&&status==='pending'?cashTicket:null},attemptStatus:status}));}
     }
-    res.setHeader('Content-Type','text/html');res.end('<!doctype html><html lang="es"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/styles.css"></head><body><main class="min-h-screen bg-[#fffaf5] px-2 py-10 sm:px-4 md:px-8"><div class="mx-auto max-w-6xl" id="root"></div></main><script src="/bundle.js"></script></body></html>');
+    const restored = mode==='cash' && req.url==='/checkout/fixture-order';
+    res.setHeader('Content-Type','text/html; charset=utf-8');res.end(`<!doctype html><html lang="es"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/styles.css"></head><body><main class="min-h-screen bg-[#fffaf5] px-2 py-10 sm:px-4 md:px-8"><div class="mx-auto max-w-6xl" id="root"></div></main><script>window.fixtureRestored=${restored}</script><script src="/bundle.js"></script></body></html>`);
   });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const url=`http://127.0.0.1:${server.address().port}`;
   browser=await chromium.launch({headless:true, ...(process.env.AFILINK_BROWSER_PATH ? { executablePath:process.env.AFILINK_BROWSER_PATH } : {})});
@@ -108,4 +109,32 @@ let browser,server;
   console.log('PASS: a payment later rejected during status verification also resets the form and preserves contact details for a new attempt.');
   mode='reject';confirmations=[];preparations=[];firstPreferenceError=true;await fill();await page.getByText('Preferencia de prueba fallida').waitFor();await page.getByRole('button',{name:'Continuar al pago'}).click();await page.locator('#fixture-pay').waitFor();assert.equal(preparations[1].orderId,'fixture-order');
   console.log('PASS: mobile lost-response retry reuses attempt, pending payment locks new submission and preference failure retains the same order.');
+  for (const [method, name, width] of [['abitab', 'Abitab', 360], ['redpagos', 'Redpagos', 390]]) {
+    mode='cash';confirmations=[];preparations=[];statusOverride=null;
+    cashTicket={method,url:`https://www.mercadopago.com.uy/payments/12345/ticket?payment_method_id=${method}`,expiresAt:'2030-12-02T02:59:59.000Z',codes:{reference:'0123456789',verificationCode:'0098765432'},isTest:method==='redpagos'};
+    await page.setViewportSize({width,height:844});
+    await fill();
+    await page.locator('#fixture-method').selectOption(method);
+    await page.locator('#fixture-pay').click();
+    const receipt=page.getByRole('link',{name:'Ver comprobante e instrucciones'});
+    await receipt.waitFor();
+    await page.getByText(cashTicket.isTest?`Pago de prueba en ${name}`:`Tu pago en ${name} está pendiente`,{exact:true}).waitFor();
+    assert.equal(await receipt.getAttribute('href'),cashTicket.url);
+    assert.equal(await page.locator('time').getAttribute('datetime'),cashTicket.expiresAt);
+    await page.getByText(cashTicket.codes.reference,{exact:true}).waitFor();
+    await page.getByText(cashTicket.codes.verificationCode,{exact:true}).waitFor();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    await page.reload();
+    await receipt.waitFor({timeout:5000});
+    assert.equal(await receipt.getAttribute('href'),cashTicket.url);
+    await page.getByText(cashTicket.codes.reference,{exact:true}).waitFor();
+    assert.equal(confirmations.length,1);
+    assert.equal(preparations.length,1);
+    assert.equal(await page.getByRole('button',{name:'Continuar al pago'}).isDisabled(),true);
+    statusOverride='cancelled';
+    await page.getByRole('button',{name:'Consultar estado del pago'}).click();
+    await receipt.waitFor({state:'detached'});
+    await page.getByText('El pago fue cancelado o devuelto.').waitFor();
+    console.log(`PASS: ${name} instructions render at ${width}px, restore after reload and disappear when the payment expires.`);
+  }
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{await browser?.close();if(server)await new Promise(resolve=>server.close(resolve));const resolvedTmp=path.resolve(tmp);assert.equal(path.dirname(resolvedTmp),path.resolve(os.tmpdir()));assert.ok(path.basename(resolvedTmp).startsWith('afilink-checkout-browser-'));fs.rmSync(resolvedTmp,{recursive:true,force:true});});

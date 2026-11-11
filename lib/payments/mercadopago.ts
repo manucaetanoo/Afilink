@@ -18,11 +18,66 @@ type MercadoPagoPaymentResponse = {
   currency_id?: string;
   transaction_amount?: number;
   date_created?: string;
+  date_of_expiration?: string;
+  live_mode?: boolean;
+  payment_method_id?: string;
+  transaction_details?: {
+    external_resource_url?: string;
+    payment_method_reference_id?: string;
+    verification_code?: string;
+  };
   metadata?: { afilink_attempt_id?: string };
   payer?: {
     email?: string;
   };
 };
+
+export type MercadoPagoCashTicket = {
+  method: "abitab" | "redpagos";
+  url: string | null;
+  expiresAt: string | null;
+  codes: { reference: string; verificationCode: string } | null;
+  isTest: boolean;
+};
+
+function getCashTicketUrl(ticketUrl: string, paymentId: number | string) {
+  let url: URL;
+  try {
+    url = new URL(ticketUrl);
+  } catch {
+    return null;
+  }
+  const ticketPath = `/payments/${paymentId}/ticket`;
+  if (
+    url.protocol !== "https:" || url.port || url.username || url.password ||
+    !/^(?:www\.)?mercadopago\.com\.(?:uy|ar)$/.test(url.hostname) ||
+    (url.pathname !== ticketPath && url.pathname !== `${ticketPath}/`)
+  ) return null;
+  return url.href;
+}
+
+export function getMercadoPagoCashTicket(payment: MercadoPagoPaymentResponse): MercadoPagoCashTicket | null {
+  const method = payment.payment_method_id;
+  const details = payment.transaction_details;
+  if (payment.status !== "pending" || (method !== "abitab" && method !== "redpagos") || !details) return null;
+
+  const url = details.external_resource_url ? getCashTicketUrl(details.external_resource_url, payment.id) : null;
+  const { payment_method_reference_id: reference, verification_code: verificationCode } = details;
+  const codes = typeof reference === "string" && /^\d+$/.test(reference) &&
+    typeof verificationCode === "string" && /^\d+$/.test(verificationCode)
+    ? { reference, verificationCode }
+    : null;
+  if (!url && !codes) return null;
+
+  const expiration = Date.parse(payment.date_of_expiration ?? "");
+  return {
+    method,
+    url,
+    expiresAt: Number.isFinite(expiration) ? new Date(expiration).toISOString() : null,
+    codes,
+    isTest: payment.live_mode === false,
+  };
+}
 
 type MercadoPagoPreferenceResponse = {
   id: string;
@@ -497,23 +552,37 @@ export async function reconcileMercadoPagoOrder(orderId: string) {
   if (!order) throw new Error("Orden no encontrada");
   const active = await prisma.paymentAttempt.findFirst({ where: { orderId, status: { notIn: terminalAttemptStatuses } }, orderBy: { createdAt: "desc" } });
   const knownIds = new Set([order.paymentId, active?.paymentId].filter((id): id is string => Boolean(id)));
-  for (const id of knownIds) await syncOrderWithMercadoPagoPayment(await fetchMercadoPagoPayment(id));
-  if (!active || active.paymentId || active.status === "ready") return prisma.order.findUniqueOrThrow({ where: { id: orderId } });
-  const { apiUrl } = getMercadoPagoConfig();
-  // Search is required after an unknown result or a Wallet redirect, where the
-  // browser may never receive a payment ID. Never treat an empty search as rejection.
-  const response = await fetch(`${apiUrl}/v1/payments/search?external_reference=${encodeURIComponent(orderId)}&sort=date_created&criteria=desc`, {
-    headers: getMercadoPagoHeaders(), cache: "no-store", signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) throw new Error("No se pudo verificar el estado del pago");
-  const result = await response.json() as { results?: MercadoPagoPaymentResponse[] };
-  for (const payment of (result.results ?? []).filter(p => p.external_reference === orderId &&
-    (p.metadata?.afilink_attempt_id === active.id || (active.method === "wallet" && active.startedAt && p.date_created &&
-      new Date(p.date_created).getTime() >= active.startedAt.getTime()))).reverse()) {
-    const verified = await fetchMercadoPagoPayment(String(payment.id));
-    await syncOrderWithMercadoPagoPayment(verified);
+  const verifiedPayments = new Map<string, MercadoPagoPaymentResponse>();
+  async function syncPayment(id: string) {
+    if (verifiedPayments.has(id)) return;
+    const payment = await fetchMercadoPagoPayment(id);
+    if (payment.external_reference !== orderId || String(payment.id) !== id) throw new Error("El pago no corresponde a la orden");
+    await syncOrderWithMercadoPagoPayment(payment);
+    verifiedPayments.set(id, payment);
   }
-  return prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+  for (const id of knownIds) await syncPayment(id);
+
+  if (active && !active.paymentId && active.status !== "ready") {
+    const { apiUrl } = getMercadoPagoConfig();
+    // Search is required after an unknown result or a Wallet redirect, where the
+    // browser may never receive a payment ID. Never treat an empty search as rejection.
+    const response = await fetch(`${apiUrl}/v1/payments/search?external_reference=${encodeURIComponent(orderId)}&sort=date_created&criteria=desc`, {
+      headers: getMercadoPagoHeaders(), cache: "no-store", signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw new Error("No se pudo verificar el estado del pago");
+    const result = await response.json() as { results?: MercadoPagoPaymentResponse[] };
+    for (const payment of (result.results ?? []).filter(p => p.external_reference === orderId &&
+      (p.metadata?.afilink_attempt_id === active.id || (active.method === "wallet" && active.startedAt && p.date_created &&
+        new Date(p.date_created).getTime() >= active.startedAt.getTime()))).reverse()) {
+      await syncPayment(String(payment.id));
+    }
+  }
+
+  const currentOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+  const currentPayment = currentOrder.status === "PENDING" && currentOrder.paymentStatus === "pending" && currentOrder.paymentId
+    ? verifiedPayments.get(currentOrder.paymentId)
+    : undefined;
+  return { order: currentOrder, cashTicket: currentPayment ? getMercadoPagoCashTicket(currentPayment) : null };
 }
 
 export function verifyMercadoPagoWebhookSignature({

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createMercadoPagoPayment, fetchMercadoPagoPayment, syncOrderWithMercadoPagoPayment } from "@/lib/payments/mercadopago";
+import { createMercadoPagoPayment, fetchMercadoPagoPayment, getMercadoPagoCashTicket, syncOrderWithMercadoPagoPayment } from "@/lib/payments/mercadopago";
 import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/lib/prisma-enums";
 import { rateLimit } from "@/lib/rate-limit";
@@ -82,7 +82,12 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       orderIds: [orderId],
-      payment: { id: payment.id, status: payment.status, status_detail: "status_detail" in payment ? payment.status_detail : undefined },
+      payment: {
+        id: payment.id,
+        status: payment.status,
+        status_detail: "status_detail" in payment ? payment.status_detail : undefined,
+        cashTicket: getMercadoPagoCashTicket(payment),
+      },
       checkout: {
         redirectUrl:
           payment.status === "approved" ? `/orders/${orderId}/success` : null,

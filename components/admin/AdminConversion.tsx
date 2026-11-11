@@ -24,7 +24,7 @@ export default async function AdminConversion({ params }: { params: { period?: s
     <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(stateLabels).map(([key,label]) => <div key={key} className="rounded-xl bg-slate-50 p-4"><dt className="text-sm text-slate-600">{label}</dt><dd className="mt-2 text-2xl font-semibold">{metrics.states[key] ?? 0}</dd></div>)}</dl>
     <p className="mt-3 text-xs leading-5 text-slate-500">El abandono es una estimación: orden sin pago enviado y sin actividad durante 24 horas. No cancela la orden ni sus comisiones. Un pago con resultado incierto siempre queda en verificación.</p>
     <h3 className="mt-6 font-semibold">Clics de afiliados</h3>
-    <p className="mt-2 text-sm leading-6 text-slate-600">{metrics.clicks} clics · {metrics.clickSessions} sesiones identificadas · {Math.max(0, metrics.clicks - metrics.historicalClicks - metrics.clickSessions)} clics adicionales de esas sesiones · {metrics.historicalClicks} clics históricos sin sesión.</p>
-    <p className="mt-2 text-xs leading-5 text-slate-500">Los clics conservan su conteo original, incluyendo repeticiones. Incluyen campañas y no usan el filtro de dispositivo. El embudo comienza a medirse desde esta versión; los registros antiguos no permiten reconstruir sesiones.</p>
+    <p className="mt-2 text-sm leading-6 text-slate-600">{metrics.clicks} clics · {metrics.clickSessions} sesiones identificadas · {Math.max(0, metrics.clicks - metrics.historicalClicks - metrics.clickSessions)} clics adicionales de esas sesiones · {metrics.historicalClicks} clics sin sesión en el período.</p>
+    <p className="mt-2 text-xs leading-5 text-slate-500">Se cuentan los clics en enlaces de afiliados y campañas, incluidas las repeticiones. El filtro de dispositivo solo aplica al embudo y las órdenes. Elegí «Todo el historial» para incluir los clics anteriores al registro de sesiones.</p>
   </section>;
 }

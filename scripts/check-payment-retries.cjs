@@ -7,7 +7,7 @@ const crypto = require('node:crypto');
 function load(file, mocks, globals = {}) {
   const sandboxModule = { exports: {} };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
-    { module: sandboxModule, exports: sandboxModule.exports, console, Buffer, AbortSignal, Date, process: { env: { APP_URL: 'https://example.invalid', MERCADOPAGO_ACCESS_TOKEN: 'fixture', ...globals.env } }, ...globals,
+    { module: sandboxModule, exports: sandboxModule.exports, console, Buffer, AbortSignal, Date, URL, process: { env: { APP_URL: 'https://example.invalid', MERCADOPAGO_ACCESS_TOKEN: 'fixture', ...globals.env } }, ...globals,
       require: name => name === 'crypto' ? crypto : name in mocks ? mocks[name] : (() => { throw Error(`Unexpected import ${name}`); })() });
   return sandboxModule.exports;
 }
@@ -55,7 +55,16 @@ function fixture() {
       if (gate) await gate;
       const body = JSON.parse(options.body);
       if (!keys.has(key)) {
-        const payment = { id: `p${keys.size + 1}`, status: nextStatus, transaction_amount: body.transaction_amount, currency_id: 'UYU', external_reference: body.external_reference, metadata: body.metadata };
+        const id = `p${keys.size + 1}`;
+        const payment = { id, status: nextStatus, transaction_amount: body.transaction_amount, currency_id: 'UYU', external_reference: body.external_reference, metadata: body.metadata, payment_method_id: body.payment_method_id };
+        if (['abitab', 'redpagos'].includes(body.payment_method_id)) {
+          payment.date_of_expiration = '2030-12-01T23:59:59-03:00';
+          payment.transaction_details = {
+            external_resource_url: `https://www.mercadopago.com.uy/payments/${id}/ticket?payment_method_id=${body.payment_method_id}`,
+            payment_method_reference_id: '0123456789',
+            verification_code: '0098765432',
+          };
+        }
         keys.set(key,payment); payments.set(payment.id,payment);
       }
       if (loseResponse) { loseResponse = false; throw Error('connection lost after provider accepted request'); }
@@ -118,12 +127,13 @@ const formData = { token: 'fixture-token', payment_method_id: 'visa', installmen
   console.log('PASS: pending payment later approved by repeated concurrent webhooks; approved purchase event deduplicated.');
 
   f = fixture(); f.status('approved'); const httpAttempt = await f.preparePaymentAttempt('order');
-  const confirm = load('app/api/payments/mercadopago/confirm/route.ts', {
+  const confirmRoute = fixture => load('app/api/payments/mercadopago/confirm/route.ts', {
     'next/server': { NextResponse: { json:(body,init)=>({body,status:init?.status??200}) } },
-    '@/lib/prisma':{prisma:f.store},'@/lib/prisma-enums':load('lib/prisma-enums.ts',{}),
-    '@/lib/payments/mercadopago':f.mp,'@/lib/payments/attempts':f,
+    '@/lib/prisma':{prisma:fixture.store},'@/lib/prisma-enums':load('lib/prisma-enums.ts',{}),
+    '@/lib/payments/mercadopago':fixture.mp,'@/lib/payments/attempts':fixture,
     '@/lib/purchase-analytics':load('lib/purchase-session.ts',{}),'@/lib/rate-limit':{rateLimit:()=>({ok:true})},
   });
+  const confirm = confirmRoute(f);
   const confirmation=()=>({json:async()=>({orderId:'order',attemptId:httpAttempt.id,formData})});
   const responses=await Promise.all([confirm.POST(confirmation()),confirm.POST(confirmation())]);
   assert.ok(responses.every(r=>r.body.ok));assert.equal(f.charges,1);assert.equal(f.approved,1);
@@ -160,4 +170,57 @@ const formData = { token: 'fixture-token', payment_method_id: 'visa', installmen
   walletPayment.status='approved'; await f.mp.reconcileMercadoPagoOrder('order');
   assert.equal(f.order.status,'PAID'); assert.equal(f.approved,1);
   console.log('PASS: old/legacy rejections never attach to a new Wallet attempt; its own provider payment is reconciled and approved once.');
+
+  for (const method of ['abitab', 'redpagos']) {
+    f = fixture();
+    f.status('pending');
+    const attempt = await f.preparePaymentAttempt('order');
+    const confirmation = await confirmRoute(f).POST({ json: async () => ({
+      orderId: 'order', attemptId: attempt.id, formData: { payment_method_id: method },
+    }) });
+    const ticket = confirmation.body.payment.cashTicket;
+    assert.equal(ticket.method, method);
+    assert.equal(ticket.expiresAt, '2030-12-02T02:59:59.000Z');
+    assert.equal(ticket.codes.reference, '0123456789');
+    assert.equal(ticket.codes.verificationCode, '0098765432');
+    assert.equal(confirmation.body.checkout.redirectUrl, null);
+    assert.equal(f.order.status, 'PENDING');
+    assert.equal(f.approved, 0);
+
+    const statusRoute = load('app/api/payments/mercadopago/status/route.ts', {
+      'next/server': { NextResponse: { json: (body, init) => ({ body, status: init?.status ?? 200 }) } },
+      '@/lib/prisma': { prisma: f.store },
+      '@/lib/payments/mercadopago': f.mp,
+      '@/lib/rate-limit': { rateLimit: () => ({ ok: true }) },
+    });
+    const request = { json: async () => ({ orderId: 'order' }) };
+    const restored = await statusRoute.POST(request);
+    assert.equal(restored.body.payment.cashTicket.url, ticket.url);
+    assert.equal(restored.body.payment.cashTicket.codes.reference, ticket.codes.reference);
+    assert.equal(f.posted, 1, 'Restoring instructions must not create a payment');
+
+    const payment = f.payments.get('p1');
+    for (const url of [
+      'https://www.mercadopago.com.uy.evil.invalid/payments/p1/ticket',
+      'https://www.mercadopago.com.uy/payments/another-payment/ticket',
+      'http://www.mercadopago.com.uy/payments/p1/ticket',
+      'javascript:alert(1)',
+    ]) {
+      assert.equal(f.mp.getMercadoPagoCashTicket({ ...payment, transaction_details: { external_resource_url: url } }), null);
+    }
+    const codesOnly = f.mp.getMercadoPagoCashTicket({
+      ...payment,
+      live_mode: false,
+      transaction_details: { ...payment.transaction_details, external_resource_url: 'https://example.invalid/ticket' },
+    });
+    assert.equal(codesOnly.url, null);
+    assert.equal(codesOnly.codes.verificationCode, ticket.codes.verificationCode);
+    assert.equal(codesOnly.isTest, true);
+    payment.status = 'cancelled';
+    payment.status_detail = 'expired';
+    const expired = await statusRoute.POST(request);
+    assert.equal(expired.body.payment.status, 'cancelled');
+    assert.equal(expired.body.payment.cashTicket, null);
+  }
+  console.log('PASS: Abitab and Redpagos instructions survive reopening the order, reject untrusted links and disappear after expiration.');
 })().catch(error => { console.error(error); process.exitCode=1; });
