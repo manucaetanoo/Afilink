@@ -18,9 +18,9 @@ function load(file, imports = {}) {
   const categories = load('lib/product-categories.ts');
   const calls = [];
   const products = [
-    { id: 'a', name: 'Python inicial', desc: 'Curso práctico', category: 'tecnologia', commissionValue: 10, isActive: true, imageUrls: [], _count: { links: 4 } },
+    { id: 'a', name: 'Python inicial', desc: 'Curso práctico', category: 'tecnologia', commissionValue: 10, isActive: true, imageUrls: ['https://example.com/python.jpg'], _count: { links: 4 } },
     { id: 'b', name: 'Python avanzado', desc: 'Curso práctico', category: 'tecnologia', commissionValue: 40, isActive: true, imageUrls: [], _count: { links: 2 } },
-    { id: 'c', name: 'Python oculto', desc: 'Curso práctico', category: 'tecnologia', commissionValue: 100, isActive: false, imageUrls: [], _count: { links: 0 } },
+    { id: 'c', name: 'Python oculto', desc: 'Curso práctico', category: 'tecnologia', commissionValue: 100, isActive: false, imageUrls: [], _count: { links: 100 } },
     { id: 'd', name: 'Taller de electricidad', desc: 'Instalaciones domésticas', category: 'oficios', commissionValue: 20, isActive: true, imageUrls: [], _count: { links: 0 } },
   ];
   const match = (product, where) => product.isActive === where.isActive
@@ -35,7 +35,8 @@ function load(file, imports = {}) {
       calls.push(args);
       const sorted = products.filter((product) => match(product, args.where)).sort((a, b) => {
         for (const order of args.orderBy) {
-          const [field, direction] = Object.entries(order)[0];
+          const [field, orderValue] = Object.entries(order)[0];
+          const direction = field === 'links' ? orderValue._count : orderValue;
           const left = field === 'links' ? a._count.links : a[field];
           const right = field === 'links' ? b._count.links : b[field];
           if (left === right) continue;
@@ -44,13 +45,14 @@ function load(file, imports = {}) {
         }
         return 0;
       });
-      return sorted.slice(args.skip, args.skip + args.take);
+      const skip = args.skip ?? 0;
+      return sorted.slice(skip, skip + args.take);
     },
     count: async ({ where }) => products.filter((product) => match(product, where)).length,
   } };
   const catalog = load('lib/products-catalog.ts', {
     '@/lib/prisma': { prisma }, '@/lib/product-categories': categories,
-    '@/lib/product-images': { getRenderableProductImageUrls: (urls) => urls },
+    '@/lib/product-images': load('lib/product-images.ts'),
   });
 
   assert.equal(categories.normalizeCatalogFilter('inventada'), 'mayor-comision');
@@ -115,6 +117,13 @@ function load(file, imports = {}) {
   const health = { id: 'health', name: 'Bienestar físico', desc: 'Hábitos saludables', category: 'bienestar', commissionValue: 30, isActive: true, imageUrls: [], _count: { links: 0 } };
   const personal = { ...health, id: 'personal', name: 'Desarrollo personal', category: 'desarrollo-personal', commissionValue: 15 };
   products.push(health, personal, { ...personal, id: 'hidden-personal', isActive: false });
+  const homeProducts = await catalog.getHomeProducts();
+  assert.equal(Array.from(homeProducts, ({ id }) => id).join(','), 'a,b,d', 'Home ranks up to three active products by affiliate count, including products without a photo');
+  assert.equal(homeProducts[0].imageUrl, products[0].imageUrls[0], 'Home uses the uploaded product photo');
+  assert.equal(homeProducts[0].desc, products[0].desc);
+  assert.equal(homeProducts[0].affiliateCount, 4);
+  assert.equal(homeProducts[1].imageUrl, null);
+
   result = await catalog.getCatalogProducts({ category: 'bienestar', take: 1 });
   assert.equal(result.total, 2, 'Merged category counts both groups and excludes inactive products');
   assert.equal(result.products[0].id, 'health');

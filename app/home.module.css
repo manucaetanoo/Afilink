@@ -49,23 +49,20 @@
 .catalog { background: #f5f6f2; }
 .catalogHeading { display: flex; justify-content: space-between; align-items: end; gap: 30px; margin-bottom: 36px; }
 .catalogHeading h2 { margin: 0; }
-.catalogHeading > p { font-size: 16px; line-height: 1.7; color: var(--muted); }
-.products { display: grid; grid-template-columns: repeat(3, 1fr); gap: 23px; margin-bottom: 33px; }
-.product { border: 1px solid var(--line); background: white; border-radius: 16px; overflow: hidden; }
-.productArt { height: 205px; padding: 25px; display: flex; flex-direction: column; justify-content: space-between; }
-.productArt > span { font-size: 10px; letter-spacing: 1.1px; font-weight: 650; }
-.productArt b { font-size: 44px; letter-spacing: -2px; line-height: 1.1; font-family: var(--home-heading), Arial, sans-serif; }
-.canva { background: #e8edfa; color: #182c68; }
-.artDot { color: #597ade; }
-.capcut { background: #232721; color: white; }
-.capcut b { font-size: 35px; }
-.outline { color: #b8dd79; }
-.ebook { background: #ffdec5; color: #773303; }
-.ebook b { font-size: 33px; }
-.productInfo { padding: 26px; }
-.productType { font-size: 11px; letter-spacing: 1.5px; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+.catalogHeading > p { max-width: 270px; font-size: 16px; line-height: 1.7; color: var(--muted); }
+.products { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 23px; margin-bottom: 33px; }
+.product { display: flex; flex-direction: column; height: 100%; border: 1px solid var(--line); background: white; border-radius: 16px; overflow: hidden; transition: border-color .18s; }
+.product:hover { border-color: var(--orange); }
+.productVisual { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; background: #f4f3ee; color: var(--muted); font-size: 14px; }
+.productPhoto { object-fit: contain; }
+.productInfo { display: flex; flex: 1; flex-direction: column; padding: 26px; overflow-wrap: anywhere; }
+.productType { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
 .product h3 { font-size: 20px; letter-spacing: -.5px; margin-bottom: 12px; font-weight: 700; }
-.productInfo > p:last-child { font-size: 15px; line-height: 1.6; color: var(--muted); margin: 0; }
+.productDescription { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; font-size: 15px; line-height: 1.6; color: var(--muted); margin: 0 0 14px; }
+.productFooter { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; }
+.productFooter span { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--orange-dark); }
+.productFooter .arrow { width: 16px; height: 16px; }
+.catalogEmpty { margin-bottom: 24px; color: var(--muted); }
 .faq { display: grid; grid-template-columns: .8fr 1.2fr; gap: 95px; }
 .faq > div > p:last-child { font-size: 17px; line-height: 1.7; color: var(--muted); max-width: 270px; }
 .questions details { border-bottom: 1px solid var(--line); }
@@ -95,9 +92,7 @@
   .faq { gap: 45px; }
   .closing { padding: 45px; }
   .micro { font-size: 12px; }
-  .productInfo, .productArt { padding: 20px; }
-  .productArt b { font-size: 35px; }
-  .capcut b, .ebook b { font-size: 29px; }
+  .productInfo { padding: 20px; }
 }
 @media (max-width: 700px) {
   .home { padding-top: 94px; padding-bottom: 40px; }
@@ -134,17 +129,13 @@
   .step h3 { font-size: 20px; }
   .step p { font-size: 16px; grid-column: 2; }
   .catalogHeading { display: block; }
-  .catalogHeading > p { margin: 20px 0 0; font-size: 16px; }
+  .catalogHeading > p { max-width: none; margin: 20px 0 0; }
   .products { grid-template-columns: 1fr; gap: 18px; }
-  .product { display: grid; grid-template-columns: 115px 1fr; }
-  .productArt { height: 100%; min-height: 175px; padding: 14px; }
-  .productArt > span { font-size: 8px; letter-spacing: .5px; overflow-wrap: anywhere; }
-  .productArt b { font-size: 25px; letter-spacing: -1px; }
-  .capcut b, .ebook b { font-size: 22px; }
+  .productVisual { aspect-ratio: 16 / 10; }
   .productInfo { padding: 23px 18px; }
   .productType { font-size: 10px; }
   .product h3 { font-size: 18px; }
-  .productInfo > p:last-child { font-size: 14px; }
+  .productDescription { font-size: 14px; }
   .faq { grid-template-columns: 1fr; gap: 18px; }
   .faq h2 br { display: none; }
   .faq > div > p:last-child { max-width: none; font-size: 16px; }
@@ -162,6 +153,5 @@
   .micro { font-size: 11px; }
   .commissionCard { padding: 13px; }
   .commissionCard strong { font-size: 15px; }
-  .product { grid-template-columns: 95px 1fr; }
   .productInfo { padding: 20px 13px; }
 }

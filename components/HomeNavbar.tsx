@@ -70,6 +70,12 @@ export default function HomeNavbar() {
               {item.name}
             </button>
           ))}
+          <Link
+            href="/products"
+            className="rounded-full px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-orange-50 hover:text-[#E89C51]"
+          >
+            Productos
+          </Link>
         </div>
 
         <div className="hidden items-center gap-3 lg:flex">
@@ -103,6 +109,7 @@ export default function HomeNavbar() {
       </nav>
 
       <div
+        inert={!isMobileMenuOpen}
         className={cn(
           "mx-auto mt-2 max-w-7xl overflow-hidden rounded-2xl border border-black/5 bg-white/95 shadow-lg shadow-orange-950/10 backdrop-blur-xl transition-all duration-300 lg:hidden",
           isMobileMenuOpen
@@ -121,6 +128,13 @@ export default function HomeNavbar() {
               {item.name}
             </button>
           ))}
+          <Link
+            href="/products"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="rounded-xl px-3 py-3 text-sm font-semibold text-gray-800 transition hover:bg-orange-50 hover:text-[#E89C51]"
+          >
+            Productos
+          </Link>
 
           <div className="mt-2 grid gap-2 border-t border-gray-100 pt-3">
             <Link

@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getRenderableProductImageUrls } from "@/lib/product-images";
+import { getFirstRenderableProductImage, getRenderableProductImageUrls } from "@/lib/product-images";
 import { DEFAULT_CATALOG_FILTER, isProductCategory, normalizeCatalogFilter, normalizeCatalogSearch } from "@/lib/product-categories";
 
 export function catalogWhere(search: string, category: string): Prisma.ProductWhereInput {
@@ -50,4 +50,22 @@ export async function getCatalogProducts({
       affiliateCount: _count.links,
     })),
   };
+}
+
+export async function getHomeProducts() {
+  const products = await prisma.product.findMany({
+    where: catalogWhere("", "todos"),
+    orderBy: [{ links: { _count: "desc" } }, { createdAt: "desc" }, { id: "asc" }],
+    take: 3,
+    select: {
+      id: true, name: true, desc: true, category: true, price: true, imageUrls: true,
+      _count: { select: { links: true } },
+    },
+  });
+
+  return products.map(({ imageUrls, _count, ...product }) => ({
+    ...product,
+    imageUrl: getFirstRenderableProductImage(imageUrls),
+    affiliateCount: _count.links,
+  }));
 }
